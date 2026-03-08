@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         await client.messages.create({
           to: customerPhone,
           from: FROM,
-          body: `Hey, it's Chase from VinLedger. Here's that free link: https://vinledgerai.live — Trust Scores and Google-indexed pages on every vehicle in your inventory overnight. Reply anytime. Reply STOP to opt out.`
+          body: `Chase @ VinLedger: Free audit shows what buyers find when they Google your VINs. See plans: https://vinledgerai.live/pricing Reply STOP to opt out.`
         });
       } catch (err) {
         console.error('SMS error:', err.message);
