@@ -102,6 +102,7 @@ export default function ClawDialer() {
 
   const timerRef = useRef(null);
   const autoEndRef = useRef(null);
+  const pollRef = useRef(null);
   const agentRef = useRef(null);
   const agentModeRef = useRef(false);
   const agentPausedRef = useRef(false);
@@ -203,6 +204,24 @@ export default function ClawDialer() {
       setCallSid(data.callSid);
       setCallState('connected');
       notify(`Dialing ${contact.name || contact.phone}...`, 'info');
+
+      // Poll Twilio every 3s to detect when call ends (handles press-1 hangup)
+      clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
+          const pd = await pr.json();
+          if (pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer') {
+            clearInterval(pollRef.current);
+            clearInterval(timerRef.current);
+            clearTimeout(autoEndRef.current);
+            if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
+              setCallState('ended');
+            }
+          }
+        } catch {}
+      }, 3000);
+
       autoEndRef.current = setTimeout(() => {
         if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') endCall();
       }, 90000);
@@ -215,6 +234,7 @@ export default function ClawDialer() {
 
   function endCall() {
     clearInterval(timerRef.current);
+    clearInterval(pollRef.current);
     clearTimeout(autoEndRef.current);
     setCallState('ended');
   }
@@ -280,6 +300,24 @@ export default function ClawDialer() {
       setCallSid(data.callSid);
       setCallState('connected');
       notify(`[AGENT] Dialing ${contact.name || contact.phone}`, 'info');
+
+      // Poll for call end
+      clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
+          const pd = await pr.json();
+          if (pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer') {
+            clearInterval(pollRef.current);
+            clearInterval(timerRef.current);
+            clearTimeout(autoEndRef.current);
+            if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
+              setCallState('ended');
+            }
+          }
+        } catch {}
+      }, 3000);
+
       autoEndRef.current = setTimeout(() => {
         if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
           endCall();
