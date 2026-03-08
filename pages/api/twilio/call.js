@@ -1,24 +1,21 @@
 import twilio from 'twilio';
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb',
+    },
+  },
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  
-  let body = {};
-  try {
-    if (typeof req.body === 'string') {
-      body = JSON.parse(req.body);
-    } else {
-      body = req.body || {};
-    }
-  } catch (e) {
-    body = {};
-  }
 
-  const { to, contactName } = body;
+  const { to, contactName } = req.body || {};
   if (!to) return res.status(400).json({ error: 'Missing to number' });
 
   const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-  
+
   try {
     const call = await client.calls.create({
       to,
