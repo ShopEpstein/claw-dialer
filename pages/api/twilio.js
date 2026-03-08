@@ -7,11 +7,11 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/xml');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Hi, this is an important message for the owner or manager. We help dealerships get more leads by putting a trust score and Google indexed page on every vehicle in your inventory overnight. Visit V-I-N-ledger-A-I dot live to get started free. Press 1 to get the link texted to you right now.</Say>
-  <Gather numDigits="1" action="/api/twilio?action=gather" method="POST">
-    <Say voice="alice">Press 1 now to receive the link by text.</Say>
+  <Say voice="Polly.Matthew">Hi, this is an important message for the owner or manager. We help dealerships get more leads by putting a Trust Score and Google indexed page on every vehicle in your inventory overnight. Press 1 now to get the link texted to you free. Press any other key to opt out.</Say>
+  <Gather numDigits="1" action="/api/twilio?action=gather" method="POST" timeout="10">
   </Gather>
-  <Say voice="alice">Thank you. Have a great day.</Say>
+  <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
+  <Hangup/>
 </Response>`);
   }
 
@@ -25,15 +25,20 @@ export default async function handler(req, res) {
         await client.messages.create({
           to: from,
           from: process.env.TWILIO_FROM_NUMBER,
-          body: `Hey! Here's your free VinLedger link — see what your inventory looks like with Trust Scores and Google-indexed VIN pages: https://vinledgerai.live/dealers — reply STOP to opt out.`
+          body: `Here's your free link: vinledgerai.live — see Trust Scores and Google-indexed pages on every vehicle in your inventory. Takes 60 seconds. Reply STOP to opt out.`
         });
       } catch (err) {
         console.error('SMS error:', err);
       }
+      return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew">Perfect. Check your texts in just a moment. Have a great day!</Say>
+  <Hangup/>
+</Response>`);
     }
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="alice">Great! Check your texts in just a moment. Have a great day!</Say>
+  <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
   <Hangup/>
 </Response>`);
   }
@@ -44,7 +49,7 @@ export default async function handler(req, res) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.calls(CallSid).update({
-          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="alice">Hi, I am calling from VinLedger about a tool that helps dealerships get more leads and cut software costs. Visit vinledgerai.live to learn more. Have a great day!</Say><Hangup/></Response>`
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew">Hi, I am calling from VinLedger. We help dealerships get more leads with Trust Scores and Google indexed inventory pages. Visit vinledgerai.live to learn more. Have a great day!</Say><Hangup/></Response>`
         });
       } catch (err) {
         console.error('Voicemail drop error:', err);
