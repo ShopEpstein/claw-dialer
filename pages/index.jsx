@@ -190,7 +190,7 @@ export default function ClawDialer() {
     timerRef.current = setInterval(() => setCallSeconds(s => s+1), 1000);
 
     try {
-      const r = await fetch('/api/twilio/call', {
+      const r = await fetch('/api/twilio?action=call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -244,7 +244,7 @@ export default function ClawDialer() {
       notify(`🔥 HOT LEAD! Auto-sending SMS to ${activeContact.name}`, 'success');
       // Auto-fire SMS
       try {
-        await fetch('/api/twilio/sms', {
+        await fetch('/api/twilio?action=sms', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ to: activeContact.phone, body: SMS_FOLLOW_UP(activeContact.name) })
@@ -295,7 +295,7 @@ export default function ClawDialer() {
     if (!activeContact?.phone) return notify('No phone number', 'warning');
     if (smsBody.length > 160) return notify('Keep under 160 chars', 'warning');
     try {
-      const r = await fetch('/api/twilio/sms', {
+      const r = await fetch('/api/twilio?action=sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: activeContact.phone, body: smsBody })
