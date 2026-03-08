@@ -1,0 +1,73 @@
+import twilio from 'twilio';
+
+export default async function handler(req, res) {
+  const { action } = req.query;
+
+  // ── TWIML (GET or POST from Twilio) ──
+  if (action === 'twiml') {
+    res.setHeader('Content-Type', 'text/xml');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/></Response>`);
+  }
+
+  // ── AMD VOICEMAIL DROP (POST from Twilio callback) ──
+  if (action === 'amd') {
+    const { CallSid, AnsweredBy } = req.body || {};
+    const { contactName } = req.query;
+    if (AnsweredBy === 'machine_end_beep' || AnsweredBy === 'machine_end_silence' || AnsweredBy === 'machine_end_other') {
+      try {
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await client.calls(CallSid).update({
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="man">Hi, I'm calling from VinLedger about a tool that helps dealerships get more leads and cut software costs. Please call or text us back at this number. Thanks and have a great day!</Say><Hangup/></Response>`
+        });
+      } catch (err) {
+        console.error('Voicemail drop error:', err);
+      }
+    }
+    return res.status(200).end();
+  }
+
+  // ── ALL OTHER ACTIONS REQUIRE POST ──
+  if (req.method !== 'POST') return res.status(405).end();
+
+  const body = req.body || {};
+
+  // ── OUTBOUND CALL ──
+  if (action === 'call') {
+    const { to, contactName } = body;
+    if (!to) return res.status(400).json({ error: 'Missing to number' });
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const call = await client.calls.create({
+        to,
+        from: process.env.TWILIO_FROM_NUMBER,
+        url: `${baseUrl}/api/twilio?action=twiml`,
+        machineDetection: 'DetectMessageEnd',
+        asyncAmdStatusCallback: `${baseUrl}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
+        asyncAmdStatusCallbackMethod: 'POST',
+      });
+      return res.status(200).json({ success: true, callSid: call.sid });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── SEND SMS ──
+  if (action === 'sms') {
+    const { to, body: smsBody } = body;
+    if (!to || !smsBody) return res.status(400).json({ error: 'Missing to or body' });
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const message = await client.messages.create({
+        to,
+        from: process.env.TWILIO_FROM_NUMBER,
+        body: smsBody,
+      });
+      return res.status(200).json({ success: true, messageSid: message.sid, status: message.status });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  return res.status(400).json({ error: 'Unknown action' });
+}
