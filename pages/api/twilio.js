@@ -1,18 +1,12 @@
 import twilio from 'twilio';
 
+const STUDIO_FLOW_URL = 'https://webhooks.twilio.com/v1/Accounts/ACfe0876c1f28398a9406f4c25165293f1/Flows/FWce25cde6f4329472b03498fd9989185a';
+
 export default async function handler(req, res) {
   const { action } = req.query;
 
-  // ── TWIML (GET or POST from Twilio) ──
-  if (action === 'twiml') {
-    res.setHeader('Content-Type', 'text/xml');
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Pause length="1"/></Response>`);
-  }
-
-  // ── AMD VOICEMAIL DROP (POST from Twilio callback) ──
   if (action === 'amd') {
     const { CallSid, AnsweredBy } = req.body || {};
-    const { contactName } = req.query;
     if (AnsweredBy === 'machine_end_beep' || AnsweredBy === 'machine_end_silence' || AnsweredBy === 'machine_end_other') {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -26,12 +20,9 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ── ALL OTHER ACTIONS REQUIRE POST ──
   if (req.method !== 'POST') return res.status(405).end();
-
   const body = req.body || {};
 
-  // ── OUTBOUND CALL ──
   if (action === 'call') {
     const { to, contactName } = body;
     if (!to) return res.status(400).json({ error: 'Missing to number' });
@@ -41,7 +32,7 @@ export default async function handler(req, res) {
       const call = await client.calls.create({
         to,
         from: process.env.TWILIO_FROM_NUMBER,
-        url: `${baseUrl}/api/twilio?action=twiml`,
+        url: STUDIO_FLOW_URL,
         machineDetection: 'DetectMessageEnd',
         asyncAmdStatusCallback: `${baseUrl}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
         asyncAmdStatusCallbackMethod: 'POST',
@@ -52,7 +43,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── SEND SMS ──
   if (action === 'sms') {
     const { to, body: smsBody } = body;
     if (!to || !smsBody) return res.status(400).json({ error: 'Missing to or body' });
