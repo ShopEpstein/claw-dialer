@@ -84,6 +84,25 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── INBOX: Fetch inbound SMS replies (last 50) ────────────────────────────
+  if (action === 'inbox') {
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const messages = await client.messages.list({ to: FROM, limit: 50 });
+      return res.status(200).json({
+        messages: messages.map(m => ({
+          sid: m.sid,
+          from: m.from,
+          body: m.body,
+          dateSent: m.dateSent,
+          status: m.status
+        }))
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message, messages: [] });
+    }
+  }
+
   // ── All below require POST ────────────────────────────────────────────────
   if (req.method !== 'POST') return res.status(405).end();
   const body = req.body || {};
