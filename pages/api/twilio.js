@@ -20,22 +20,19 @@ export default async function handler(req, res) {
 </Response>`);
   }
 
-  // ── GATHER: Keypress handler — SMS goes to the person WE CALLED ──────────
-  // BUG FIX: For outbound calls, From = our toll-free number, To/Called = customer
+  // ── GATHER: Press 1 → SMS with real hyperlink ─────────────────────────────
   if (action === 'gather') {
     const digit = req.body?.Digits;
+    // For outbound calls: To/Called = customer, From = our number
     const customerPhone = req.body?.To || req.body?.Called || req.body?.From;
 
     if (digit === '1' && customerPhone) {
       try {
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID,
-          process.env.TWILIO_AUTH_TOKEN
-        );
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.messages.create({
           to: customerPhone,
           from: FROM,
-          body: `Thanks for your interest! Check out VinLedger free at vinledgerai.live — Trust Scores and Google-indexed pages on every vehicle in your inventory. Takes 60 seconds to see your lot. Reply STOP to opt out.`
+          body: `Thanks for pressing 1! Here is your free VinLedger link: https://vinledgerai.live — Trust Scores and Google-indexed pages on every vehicle in your inventory. Reply STOP to opt out.`
         });
       } catch (err) {
         console.error('SMS send error:', err.message);
@@ -53,16 +50,9 @@ export default async function handler(req, res) {
   // ── AMD: Voicemail drop ───────────────────────────────────────────────────
   if (action === 'amd') {
     const { CallSid, AnsweredBy } = req.body || {};
-    if (
-      AnsweredBy === 'machine_end_beep' ||
-      AnsweredBy === 'machine_end_silence' ||
-      AnsweredBy === 'machine_end_other'
-    ) {
+    if (AnsweredBy === 'machine_end_beep' || AnsweredBy === 'machine_end_silence' || AnsweredBy === 'machine_end_other') {
       try {
-        const client = twilio(
-          process.env.TWILIO_ACCOUNT_SID,
-          process.env.TWILIO_AUTH_TOKEN
-        );
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.calls(CallSid).update({
           twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew">Hi, calling from VinLedger. We help dealerships get more leads with Trust Scores and Google indexed inventory pages. Visit vinledgerai.live to learn more. Have a great day!</Say><Hangup/></Response>`
         });
@@ -73,28 +63,44 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ── STATUS: Twilio call status callback (acknowledge only) ───────────────
+  // ── STATUS: Twilio pings this when call ends — return callSid + status ────
+  // The frontend polls /api/twilio?action=callstatus&sid=XXX to check
   if (action === 'status') {
+    const { CallSid, CallStatus } = req.body || {};
+    console.log(`Call ${CallSid} ended with status: ${CallStatus}`);
     return res.status(200).end();
+  }
+
+  // ── CALLSTATUS: Frontend polls this to check if a call has ended ──────────
+  if (action === 'callstatus') {
+    const { sid } = req.query;
+    if (!sid) return res.status(400).json({ error: 'Missing sid' });
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const call = await client.calls(sid).fetch();
+      return res.status(200).json({ status: call.status, duration: call.duration });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   // ── All below require POST ────────────────────────────────────────────────
   if (req.method !== 'POST') return res.status(405).end();
   const body = req.body || {};
 
-  // ── CALL: Initiate outbound call ─────────────────────────────────────────
+  // ── CALL: Initiate outbound call with statusCallback ─────────────────────
   if (action === 'call') {
     const { to, contactName } = body;
     if (!to) return res.status(400).json({ error: 'Missing to number' });
     try {
-      const client = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       const call = await client.calls.create({
         to,
         from: FROM,
         url: `${BASE}/api/twilio?action=twiml`,
+        statusCallback: `${BASE}/api/twilio?action=status`,
+        statusCallbackMethod: 'POST',
+        statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
         machineDetection: 'DetectMessageEnd',
         asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
         asyncAmdStatusCallbackMethod: 'POST',
@@ -110,15 +116,8 @@ export default async function handler(req, res) {
     const { to, body: smsBody } = body;
     if (!to || !smsBody) return res.status(400).json({ error: 'Missing to or body' });
     try {
-      const client = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
-      const message = await client.messages.create({
-        to,
-        from: FROM,
-        body: smsBody,
-      });
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const message = await client.messages.create({ to, from: FROM, body: smsBody });
       return res.status(200).json({ success: true, messageSid: message.sid, status: message.status });
     } catch (err) {
       return res.status(500).json({ error: err.message });
