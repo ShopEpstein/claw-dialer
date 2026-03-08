@@ -1,5 +1,7 @@
 import twilio from 'twilio';
 
+const BASE = process.env.NEXT_PUBLIC_BASE_URL;
+
 export default async function handler(req, res) {
   const { action } = req.query;
 
@@ -7,8 +9,9 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/xml');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Hi, this is an important message for the owner or manager. We help dealerships get more leads by putting a Trust Score and Google indexed page on every vehicle in your inventory overnight. Press 1 now to get the link texted to you free. Press any other key to opt out.</Say>
-  <Gather numDigits="1" action="/api/twilio?action=gather" method="POST" timeout="10">
+  <Say voice="Polly.Matthew">We help dealerships get more leads by putting a Trust Score and Google indexed page on every vehicle in your inventory overnight. Press 1 now to get the link texted to you free.</Say>
+  <Gather numDigits="1" action="${BASE}/api/twilio?action=gather" method="POST" timeout="8">
+    <Say voice="Polly.Matthew">Press 1 now.</Say>
   </Gather>
   <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
   <Hangup/>
@@ -25,20 +28,15 @@ export default async function handler(req, res) {
         await client.messages.create({
           to: from,
           from: process.env.TWILIO_FROM_NUMBER,
-          body: `Here's your free link: vinledgerai.live — see Trust Scores and Google-indexed pages on every vehicle in your inventory. Takes 60 seconds. Reply STOP to opt out.`
+          body: `Thanks for your interest! Check out VinLedger free at vinledgerai.live — Trust Scores and Google-indexed pages on every vehicle in your inventory. Takes 60 seconds to see your lot. Reply STOP to opt out.`
         });
       } catch (err) {
         console.error('SMS error:', err);
       }
-      return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Say voice="Polly.Matthew">Perfect. Check your texts in just a moment. Have a great day!</Say>
-  <Hangup/>
-</Response>`);
     }
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
+  <Say voice="Polly.Matthew">Perfect. Check your texts in just a moment. Have a great day!</Say>
   <Hangup/>
 </Response>`);
   }
@@ -49,7 +47,7 @@ export default async function handler(req, res) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.calls(CallSid).update({
-          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew">Hi, I am calling from VinLedger. We help dealerships get more leads with Trust Scores and Google indexed inventory pages. Visit vinledgerai.live to learn more. Have a great day!</Say><Hangup/></Response>`
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew">Hi, calling from VinLedger. We help dealerships get more leads with Trust Scores and Google indexed inventory pages. Visit vinledgerai.live to learn more. Have a great day!</Say><Hangup/></Response>`
         });
       } catch (err) {
         console.error('Voicemail drop error:', err);
@@ -69,9 +67,12 @@ export default async function handler(req, res) {
       const call = await client.calls.create({
         to,
         from: process.env.TWILIO_FROM_NUMBER,
-        url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio?action=twiml`,
+        url: `${BASE}/api/twilio?action=twiml`,
+        statusCallback: `${BASE}/api/twilio?action=status`,
+        statusCallbackMethod: 'POST',
+        statusCallbackEvent: ['completed'],
         machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: `${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
+        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
         asyncAmdStatusCallbackMethod: 'POST',
       });
       return res.status(200).json({ success: true, callSid: call.sid });
