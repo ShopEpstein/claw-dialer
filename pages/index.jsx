@@ -205,6 +205,15 @@ export default function ClawDialer() {
       setCallSid(data.callSid);
       setCallState('connected');
       notify(`Dialing ${activeContact.name}...`, 'info');
+      // Auto-end after 90s — Twilio hangs up by then, this closes the UI
+      setTimeout(() => {
+        if (callStateRef && callStateRef.current === 'connected') {
+          endCall();
+          if (agentModeRef.current && !agentPausedRef.current) {
+            setDisposition('voicemail');
+          }
+        }
+      }, 90000);
     } catch (err) {
       setCallState('idle');
       clearInterval(timerRef.current);
@@ -276,18 +285,25 @@ export default function ClawDialer() {
 
   function agentNext() {
     if (!agentModeRef.current || agentPausedRef.current) return;
-    const newOnes = contacts.filter(c => c.status === 'new');
-    if (newOnes.length === 0) {
-      setAgentMode(false);
-      notify('Agent complete — no new contacts remaining', 'success');
-      return;
-    }
-    const nextIdx = contacts.indexOf(newOnes[0]);
-    selectContact(nextIdx);
-    // Trigger actual call
-    setTimeout(() => {
-      if (agentModeRef.current && !agentPausedRef.current) startCall();
-    }, 1500);
+    setContacts(prev => {
+      const newOnes = prev.filter(c => c.status === 'new');
+      if (newOnes.length === 0) {
+        setAgentMode(false);
+        notify('Agent complete — no new contacts remaining', 'success');
+        return prev;
+      }
+      const nextContact = newOnes[0];
+      const nextIdx = prev.indexOf(nextContact);
+      // Mark as 'calling' so agent doesn't pick it again
+      const updated = prev.map((c, i) => i === nextIdx ? { ...c, status: 'calling' } : c);
+      setTimeout(() => {
+        selectContact(nextIdx);
+        setTimeout(() => {
+          if (agentModeRef.current && !agentPausedRef.current) startCall();
+        }, 1500);
+      }, 100);
+      return updated;
+    });
   }
 
   // ── SMS ──
