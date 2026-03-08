@@ -376,7 +376,7 @@ export default function ClawDialer() {
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'7px 10px',outline:'none',borderRadius:2}} />
               <button onClick={() => setShowAddModal(true)} style={{padding:'7px 12px',background:'var(--teal)',color:'var(--bg)',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,letterSpacing:1,border:'none',cursor:'pointer',borderRadius:2}}>+ ADD</button>
             </div>
-            <div style={{padding:'6px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6'}}>
+            <div style={{padding:'6px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6}}>
               {['all','new','callback','interested'].map(f => (
                 <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',border:`1px solid ${statusFilter===f ? 'var(--teal-dim)' : 'var(--border2)'}`,background: statusFilter===f ? 'var(--surface3)' : 'transparent',color: statusFilter===f ? 'var(--teal)' : 'var(--text-dim)',borderRadius:2}}>
                   {f === 'all' ? 'ALL' : f === 'new' ? 'NEW' : f === 'callback' ? 'CALLBACK' : 'HOT'}
