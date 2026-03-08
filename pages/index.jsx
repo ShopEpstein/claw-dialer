@@ -104,6 +104,8 @@ const DEFAULT_SCRIPTS = [
 const SMS_FOLLOW_UP = (name) =>
   `Hi ${name || 'there'}, this is Chase from VinLedger. Happy to walk you through how we get Google-indexed pages on your entire inventory overnight. Just reply here.`;
 
+const VINLEDGER_API = 'https://vinledgerai.live';
+
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Barlow+Condensed:wght@300;400;500;600;700&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -203,6 +205,8 @@ export default function ClawDialer() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContact, setNewContact] = useState({ name:'', business_name:'', phone:'', email:'', list_name:'' });
   const [resetModal, setResetModal] = useState(false);
+  const [loadingVL, setLoadingVL] = useState(false);
+  const [vlFilter, setVlFilter] = useState('FL');
   const [unreadInbox, setUnreadInbox] = useState(0);
 
   const timerRef = useRef(null);
@@ -415,10 +419,56 @@ export default function ClawDialer() {
         await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: contact.phone, body: SMS_FOLLOW_UP(contact.name) }) });
       } catch {}
     }
+    syncToVinLedger(contact, outcome, notesRef.current);
     setCallSeconds(0);
     setNotes('');
     pressedOneRef.current = false;
     if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 2000);
+  }
+
+  // ── VINLEDGER SYNC ───────────────────────────────────────────────────────
+  async function loadFromVinLedger() {
+    setLoadingVL(true);
+    try {
+      const url = `${VINLEDGER_API}/api/dealers/export?has_phone=true&limit=500${vlFilter ? `&state=${vlFilter}` : ''}`;
+      const r = await fetch(url);
+      const data = await r.json();
+      const dealers = (data.dealers || data || []);
+      const mapped = dealers.map(d => ({
+        id: `vl_${d.id}`,
+        vinledger_id: d.id,
+        name: d.name || 'Unknown Dealer',
+        business_name: d.name || '',
+        phone: d.phone || '',
+        email: '',
+        address: [d.address, d.city, d.state, d.zip].filter(Boolean).join(', '),
+        dealer_type: d.dealer_type || 'independent',
+        status: d.call_status || 'new',
+        notes: d.call_notes || '',
+        list_name: `VinLedger ${vlFilter || 'All'}`,
+        created_at: new Date().toISOString()
+      })).filter(d => d.phone);
+      const existingPhones = new Set(contacts.map(c => c.phone));
+      const fresh = mapped.filter(d => !existingPhones.has(d.phone));
+      setContacts(prev => [...prev, ...fresh]);
+      notify(`Loaded ${fresh.length} dealers from VinLedger (${mapped.length - fresh.length} dupes skipped)`, 'success');
+    } catch(err) {
+      notify(`VinLedger load failed: ${err.message}`, 'warning');
+    }
+    setLoadingVL(false);
+  }
+
+  async function syncToVinLedger(contact, outcome, notes) {
+    if (!contact?.vinledger_id) return;
+    try {
+      await fetch(`${VINLEDGER_API}/api/dealers/${contact.vinledger_id}/call-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ outcome, notes, called_at: new Date().toISOString() })
+      });
+    } catch(err) {
+      console.error('VinLedger sync failed:', err.message);
+    }
   }
 
   // ── AGENT MODE ────────────────────────────────────────────────────────────
@@ -606,6 +656,15 @@ export default function ClawDialer() {
               <label style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>
                 CSV<input type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV} />
               </label>
+            </div>
+            <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',background:'rgba(20,241,198,0.03)',display:'flex',gap:6,alignItems:'center'}}>
+              <select value={vlFilter} onChange={e=>setVlFilter(e.target.value)} style={{background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text-dim)',fontFamily:'DM Mono, monospace',fontSize:9,padding:'4px 6px',outline:'none',borderRadius:2}}>
+                <option value="">ALL STATES</option>
+                {['FL','TX','CA','GA','NC','TN','AL','MS','LA','SC','VA','OH','MI','IL','PA','NY','NJ','AZ','NV','CO'].map(s=><option key={s} value={s}>{s}</option>)}
+              </select>
+              <button onClick={loadFromVinLedger} disabled={loadingVL} style={{flex:1,padding:'5px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,cursor:loadingVL?'wait':'pointer',border:'1px solid var(--teal-dim)',background:loadingVL?'rgba(20,241,198,0.05)':'rgba(20,241,198,0.1)',color:'var(--teal)',borderRadius:2}}>
+                {loadingVL ? '⟳ LOADING...' : '⚡ LOAD VINLEDGER'}
+              </button>
             </div>
             <div style={{flex:1,overflowY:'auto'}}>
               {filteredContacts.length === 0 ? (
