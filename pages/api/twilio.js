@@ -9,8 +9,7 @@ export default async function handler(req, res) {
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew">We help dealerships get more leads by putting a Trust Score and Google indexed page on every vehicle in your inventory overnight. Press 1 now to get the link texted to you free.</Say>
-  <Gather numDigits="1" action="${BASE}/api/twilio?action=gather" method="POST" timeout="8">
-    <Say voice="Polly.Matthew">Press 1 now to receive the link by text.</Say>
+<Gather numDigits="1" action="https://claw-dialer.vercel.app/api/twilio?action=gather" method="POST" timeout="8">    <Say voice="Polly.Matthew">Press 1 now to receive the link by text.</Say>
   </Gather>
   <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
   <Hangup/>
