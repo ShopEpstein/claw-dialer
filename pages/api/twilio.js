@@ -1,9 +1,8 @@
 import twilio from 'twilio';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_URL;
-
 export default async function handler(req, res) {
   const { action } = req.query;
+  const BASE = 'https://claw-dialer.vercel.app';
 
   if (action === 'twiml') {
     res.setHeader('Content-Type', 'text/xml');
@@ -11,7 +10,7 @@ export default async function handler(req, res) {
 <Response>
   <Say voice="Polly.Matthew">We help dealerships get more leads by putting a Trust Score and Google indexed page on every vehicle in your inventory overnight. Press 1 now to get the link texted to you free.</Say>
   <Gather numDigits="1" action="${BASE}/api/twilio?action=gather" method="POST" timeout="8">
-    <Say voice="Polly.Matthew">Press 1 now.</Say>
+    <Say voice="Polly.Matthew">Press 1 now to receive the link by text.</Say>
   </Gather>
   <Say voice="Polly.Matthew">Thank you. Have a great day.</Say>
   <Hangup/>
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
   if (action === 'gather') {
     const digit = req.body?.Digits;
     const from = req.body?.From;
-    res.setHeader('Content-Type', 'text/xml');
     if (digit === '1' && from) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -34,11 +32,17 @@ export default async function handler(req, res) {
         console.error('SMS error:', err);
       }
     }
+    res.setHeader('Content-Type', 'text/xml');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew">Perfect. Check your texts in just a moment. Have a great day!</Say>
+  <Say voice="Polly.Matthew">${digit === '1' ? 'Perfect. Check your texts in just a moment. Have a great day!' : 'Thank you. Have a great day.'}</Say>
   <Hangup/>
 </Response>`);
+  }
+
+  if (action === 'status') {
+    // Twilio calls this when call completes — just acknowledge
+    return res.status(200).end();
   }
 
   if (action === 'amd') {
@@ -68,9 +72,6 @@ export default async function handler(req, res) {
         to,
         from: process.env.TWILIO_FROM_NUMBER,
         url: `${BASE}/api/twilio?action=twiml`,
-        statusCallback: `${BASE}/api/twilio?action=status`,
-        statusCallbackMethod: 'POST',
-        statusCallbackEvent: ['completed'],
         machineDetection: 'DetectMessageEnd',
         asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
         asyncAmdStatusCallbackMethod: 'POST',
