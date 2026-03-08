@@ -205,17 +205,25 @@ export default function ClawDialer() {
       setCallState('connected');
       notify(`Dialing ${contact.name || contact.phone}...`, 'info');
 
-      // Poll Twilio every 3s to detect when call ends (handles press-1 hangup)
+      // Poll Twilio every 3s — auto-disposition on call end
       clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
         try {
           const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
           const pd = await pr.json();
-          if (pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer') {
+          const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer';
+          if (done && (callStateRef.current === 'connected' || callStateRef.current === 'dialing')) {
             clearInterval(pollRef.current);
             clearInterval(timerRef.current);
             clearTimeout(autoEndRef.current);
-            if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
+            const dur = parseInt(pd.duration || 0);
+            let outcome;
+            if (pd.status === 'no-answer' || pd.status === 'failed' || pd.status === 'busy') outcome = 'voicemail';
+            else if (pd.status === 'completed' && dur >= 15) outcome = 'answered';
+            else outcome = 'voicemail';
+            if (agentModeRef.current && !agentPausedRef.current) {
+              setDisposition(outcome);
+            } else {
               setCallState('ended');
             }
           }
@@ -244,6 +252,7 @@ export default function ClawDialer() {
     if (idx === null) return;
     const contact = contactsRef.current[idx];
     clearInterval(timerRef.current);
+    clearInterval(pollRef.current);
     clearTimeout(autoEndRef.current);
     setCallState('idle');
     const entry = { id: Date.now(), contact_id: contact.id, name: contact.name, business: contact.business_name, phone: contact.phone, outcome, duration: callSecondsRef.current, notes: notesRef.current, script: scripts[scriptIdxRef.current]?.name, timestamp: new Date().toISOString() };
@@ -257,7 +266,7 @@ export default function ClawDialer() {
     }
     setCallSeconds(0);
     setNotes('');
-    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 4000);
+    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 2000);
   }
 
   function toggleAgent() {
@@ -301,17 +310,26 @@ export default function ClawDialer() {
       setCallState('connected');
       notify(`[AGENT] Dialing ${contact.name || contact.phone}`, 'info');
 
-      // Poll for call end
+      // Poll for call end — auto-disposition on end
       clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
         try {
           const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
           const pd = await pr.json();
-          if (pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer') {
+          const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer';
+          if (done && (callStateRef.current === 'connected' || callStateRef.current === 'dialing')) {
             clearInterval(pollRef.current);
             clearInterval(timerRef.current);
             clearTimeout(autoEndRef.current);
-            if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
+            const dur = parseInt(pd.duration || 0);
+            let outcome;
+            if (pd.status === 'no-answer' || pd.status === 'failed' || pd.status === 'busy') outcome = 'voicemail';
+            else if (pd.status === 'completed' && dur >= 15) outcome = 'answered';
+            else outcome = 'voicemail';
+            // Agent mode: auto-advance. Manual: show ended state for human disposition.
+            if (agentModeRef.current && !agentPausedRef.current) {
+              setDisposition(outcome);
+            } else {
               setCallState('ended');
             }
           }
