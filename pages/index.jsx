@@ -1,54 +1,101 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+const PASSWORD = 'claw2026';
+
+// Area code → UTC offset (standard time). Used for TCPA 8am-9pm local guard.
+const AREA_TZ = {
+  // Eastern
+  '201':'-5','202':'-5','203':'-5','207':'-5','212':'-5','215':'-5','216':'-5','217':'-5','218':'-5','219':'-5',
+  '224':'-5','225':'-6','228':'-6','229':'-5','231':'-5','234':'-5','239':'-5','240':'-5','248':'-5','251':'-6',
+  '252':'-5','253':'-8','254':'-6','256':'-6','260':'-5','267':'-5','269':'-5','270':'-6','276':'-5','281':'-6',
+  '301':'-5','302':'-5','303':'-7','304':'-5','305':'-5','309':'-6','310':'-8','312':'-6','313':'-5','314':'-6',
+  '315':'-5','316':'-6','317':'-5','318':'-6','319':'-6','320':'-6','321':'-5','323':'-8','325':'-6','330':'-5',
+  '331':'-6','334':'-6','336':'-5','337':'-6','339':'-5','340':'-4','347':'-5','351':'-5','352':'-5','360':'-8',
+  '361':'-6','385':'-7','386':'-5','401':'-5','402':'-6','404':'-5','405':'-6','406':'-7','407':'-5','408':'-8',
+  '409':'-6','410':'-5','412':'-5','413':'-5','414':'-6','415':'-8','417':'-6','419':'-5','423':'-5','425':'-8',
+  '430':'-6','432':'-6','434':'-5','435':'-7','440':'-5','442':'-8','443':'-5','445':'-5','458':'-8','469':'-6',
+  '470':'-5','475':'-5','478':'-5','479':'-6','480':'-7','484':'-5','501':'-6','502':'-5','503':'-8','504':'-6',
+  '505':'-7','507':'-6','508':'-5','509':'-8','510':'-8','512':'-6','513':'-5','515':'-6','516':'-5','517':'-5',
+  '518':'-5','520':'-7','530':'-8','531':'-6','534':'-6','539':'-6','540':'-5','541':'-8','551':'-5','559':'-8',
+  '561':'-5','562':'-8','563':'-6','567':'-5','570':'-5','571':'-5','573':'-6','574':'-5','575':'-7','580':'-6',
+  '585':'-5','586':'-5','601':'-6','602':'-7','603':'-5','605':'-6','606':'-5','607':'-5','608':'-6','609':'-5',
+  '610':'-5','612':'-6','614':'-5','615':'-6','616':'-5','617':'-5','618':'-6','619':'-8','620':'-6','623':'-7',
+  '626':'-8','628':'-8','629':'-6','630':'-6','631':'-5','636':'-6','641':'-6','646':'-5','650':'-8','651':'-6',
+  '657':'-8','659':'-6','660':'-6','661':'-8','662':'-6','667':'-5','669':'-8','671':'-10','678':'-5','681':'-5',
+  '682':'-6','701':'-6','702':'-8','703':'-5','704':'-5','706':'-5','707':'-8','708':'-6','712':'-6','713':'-6',
+  '714':'-8','715':'-6','716':'-5','717':'-5','718':'-5','719':'-7','720':'-7','724':'-5','725':'-8','726':'-6',
+  '727':'-5','731':'-6','732':'-5','734':'-5','737':'-6','740':'-5','743':'-5','747':'-8','754':'-5','757':'-5',
+  '760':'-8','762':'-5','763':'-6','765':'-5','769':'-6','770':'-5','772':'-5','773':'-6','774':'-5','775':'-8',
+  '779':'-6','781':'-5','785':'-6','786':'-5','801':'-7','802':'-5','803':'-5','804':'-5','805':'-8','806':'-6',
+  '808':'-10','810':'-5','812':'-5','813':'-5','814':'-5','815':'-6','816':'-6','817':'-6','818':'-8','820':'-8',
+  '828':'-5','830':'-6','831':'-8','832':'-6','843':'-5','845':'-5','847':'-6','848':'-5','850':'-6','856':'-5',
+  '857':'-5','858':'-8','859':'-5','860':'-5','862':'-5','863':'-5','864':'-5','865':'-5','870':'-6','872':'-6',
+  '878':'-5','901':'-6','903':'-6','904':'-5','906':'-5','907':'-9','908':'-5','909':'-8','910':'-5','912':'-5',
+  '913':'-6','914':'-5','915':'-7','916':'-8','917':'-5','918':'-6','919':'-5','920':'-6','925':'-8','928':'-7',
+  '929':'-5','931':'-6','936':'-6','937':'-5','938':'-6','940':'-6','941':'-5','947':'-5','949':'-8','951':'-8',
+  '952':'-6','954':'-5','956':'-6','959':'-5','970':'-7','971':'-8','972':'-6','973':'-5','978':'-5','979':'-6',
+  '980':'-5','984':'-5','985':'-6','989':'-5'
+};
+
+function getTCPAHour(phone) {
+  const digits = phone.replace(/\D/g,'');
+  const areaCode = digits.startsWith('1') ? digits.slice(1,4) : digits.slice(0,3);
+  const offsetHours = parseInt(AREA_TZ[areaCode] || '-6');
+  const nowUTC = new Date();
+  const localHour = (nowUTC.getUTCHours() + 24 + offsetHours) % 24;
+  return localHour;
+}
+
+function isTCPAAllowed(phone) {
+  const h = getTCPAHour(phone);
+  return h >= 8 && h < 21;
+}
+
 const DEFAULT_SCRIPTS = [
   {
-    name: 'FILS / VINLEDGER',
-    color: '#14F1C6',
+    name: 'FILS / VINLEDGER', color: '#14F1C6',
     sections: [
       { label: 'OPENER', text: "Hey, is this [CONTACT_NAME]? Hey [FIRST_NAME], this is Chase calling from VinLedger — quick question for you..." },
-      { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? Because we put a Trust Score, recall info, and a branded page on every vehicle on your lot, overnight. So instead of them finding sketchy third-party data, they find your dealership." },
+      { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? Because we put a Trust Score, recall info, and a branded page on every vehicle on your lot, overnight." },
       { label: 'DIFFERENTIATOR', text: "CARFAX charges dealers $99 to $300 a month just for reports. We give you unlimited reports, SEO-indexed inventory pages, lead capture, AND a full shop CRM to replace Tekmetric — all for $249 a month." },
-      { label: 'CLOSE', text: "We're doing a founding partner rate right now — price is locked forever at whatever you sign up at. Can I send you a quick walkthrough link? Takes about 3 minutes to see what your lot would look like." }
+      { label: 'CLOSE', text: "We're doing a founding partner rate right now — price is locked forever at whatever you sign up at. Can I send you a quick walkthrough link?" }
     ]
   },
   {
-    name: 'ECONOCLAW',
-    color: '#FF6B2B',
+    name: 'ECONOCLAW', color: '#FF6B2B',
     sections: [
       { label: 'OPENER', text: "Hey [CONTACT_NAME], quick question — do you have anyone working your business 24/7, handling leads, answering questions, following up? Because most businesses don't." },
       { label: 'HOOK', text: "We deploy 21 specialized AI agents to your business. They handle customer service, content, research, outreach, analytics — all while you sleep. It's like hiring a full department, except it costs $99 a month." },
-      { label: 'COMPARISON', text: "An agency would charge you $5,000 setup and $1,500 a month for this. We're at $500 setup and $99 a month during our launch window. After the window closes it goes to $299 — but founding customers keep $99 forever." },
+      { label: 'COMPARISON', text: "An agency would charge you $5,000 setup and $1,500 a month for this. We're at $500 setup and $99 a month during our launch window." },
       { label: 'CLOSE', text: "Can I send you a 2-minute breakdown of exactly what the 21 agents do? No pitch call needed — just read it and tell me if it makes sense for your business." }
     ]
   },
   {
-    name: 'WHITEGLOVECLAW',
-    color: '#FFD600',
+    name: 'WHITEGLOVECLAW', color: '#FFD600',
     sections: [
       { label: 'OPENER', text: "Good [morning/afternoon] [CONTACT_NAME], I'm reaching out because we deploy enterprise-grade AI infrastructure for executive teams and founders who want the full white-glove experience." },
-      { label: 'POSITIONING', text: "SetupClaw is the market leader in this space — we offer identical scope, identical hardening, identical deliverables, at 20% below their pricing. Same 24/7 infrastructure, same 14-day hypercare, same same-day go-live." },
-      { label: 'TIERS', text: "Hosted VPS at $2,400. Mac Mini with iMessage integration at $4,000. In-person deployment at $4,800. Additional specialized agents at $1,200 each. SetupClaw charges $600 to $1,200 more for the same thing." },
-      { label: 'CLOSE', text: "I'd love to schedule a 15-minute call to understand your specific needs. What does your week look like?" }
+      { label: 'POSITIONING', text: "SetupClaw is the market leader — we offer identical scope, identical deliverables, at 20% below their pricing. Same 24/7 infrastructure, same same-day go-live." },
+      { label: 'TIERS', text: "Hosted VPS at $2,400. Mac Mini with iMessage at $4,000. In-person at $4,800. Additional agents at $1,200 each." },
+      { label: 'CLOSE', text: "I'd love to schedule a 15-minute call. What does your week look like?" }
     ]
   },
   {
-    name: 'RENTACLAW',
-    color: '#3B8FFF',
+    name: 'RENTACLAW', color: '#3B8FFF',
     sections: [
-      { label: 'OPENER', text: "Hey [CONTACT_NAME], quick question — have you looked into AI agents for your business? Not asking you to commit to anything — we actually rent them." },
-      { label: 'CONCEPT', text: "Think of it like renting a car. Daily at $9, weekly at $49, monthly at $149, annual at $999. You get all 21 agents for whatever period you need. Use them for a campaign, a product launch, a busy season — then pause." },
-      { label: 'FLEXIBILITY', text: "We also accept IOU arrangements and revenue share if cash flow is tight. We're flexible because we want you to try it and see the value before you commit." },
+      { label: 'OPENER', text: "Hey [CONTACT_NAME], quick question — have you looked into AI agents for your business? Not asking you to commit — we actually rent them." },
+      { label: 'CONCEPT', text: "Think of it like renting a car. Daily $9, weekly $49, monthly $149. You get all 21 agents for whatever period you need." },
+      { label: 'FLEXIBILITY', text: "We also accept IOU arrangements and revenue share if cash flow is tight." },
       { label: 'CLOSE', text: "Want to try a week for $49? If it doesn't generate at least $49 in value, I'll give you your money back personally." }
     ]
   },
   {
-    name: 'CLAWAWAY',
-    color: '#2EFF9A',
+    name: 'CLAWAWAY', color: '#2EFF9A',
     sections: [
       { label: 'OPENER', text: "Hey [CONTACT_NAME] — I'm going to be straight with you. We build AI systems. We're flexible on what we build, what you pay, and how you pay it." },
-      { label: 'CORE MESSAGE', text: "Tell us what you want to build. Tell us what you want to pay. Tell us how you want to pay it. Card, ACH, Zelle, CashApp, crypto, rev share, equity, even barter. We'll figure it out." },
-      { label: 'PROOF', text: "We're already running 21 AI agents across five live platforms. We know how to build this stuff. What we care about is getting you results, not getting you to sign a specific package." },
+      { label: 'CORE MESSAGE', text: "Tell us what you want to build. Tell us what you want to pay. Tell us how you want to pay it. Card, Zelle, crypto, rev share, barter. We'll figure it out." },
+      { label: 'PROOF', text: "We're already running 21 AI agents across five live platforms." },
       { label: 'CLOSE', text: "What's the one thing in your business right now that's eating the most time or costing the most money? Let's start there." }
     ]
   }
@@ -71,6 +118,7 @@ const css = `
   ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: var(--border2); }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
   @keyframes slideUp { from{transform:translateY(20px);opacity:0} to{transform:translateY(0);opacity:1} }
+  @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
 `;
 
 function fmtTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}` }
@@ -78,9 +126,64 @@ function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').sl
 function storageGet(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch { return def; } }
 function storageSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
+// ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }) {
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  function attempt() {
+    if (pw === PASSWORD) { onLogin(); }
+    else {
+      setErr(true); setShake(true);
+      setTimeout(() => setShake(false), 500);
+      setTimeout(() => setErr(false), 2000);
+      setPw('');
+    }
+  }
+
+  return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'var(--bg)',position:'relative',overflow:'hidden'}}>
+      {/* Scan line */}
+      <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:'linear-gradient(90deg,transparent,rgba(20,241,198,0.4),transparent)',animation:'scanline 4s linear infinite',pointerEvents:'none'}}></div>
+      {/* Grid */}
+      <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(20,241,198,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(20,241,198,0.03) 1px,transparent 1px)',backgroundSize:'40px 40px',pointerEvents:'none'}}></div>
+
+      <div style={{position:'relative',zIndex:1,textAlign:'center',animation: shake ? 'none' : undefined, transform: shake ? 'translateX(0)' : undefined}}>
+        <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:48,letterSpacing:8,color:'var(--teal)',textShadow:'0 0 40px rgba(20,241,198,0.5)',marginBottom:4}}>CLAW DIALER</div>
+        <div style={{fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)',letterSpacing:4,marginBottom:48}}>// COMMAND CENTER — AUTHORIZED ACCESS ONLY</div>
+
+        <div style={{background:'var(--surface)',border:`1px solid ${err ? 'var(--red)' : 'var(--border2)'}`,borderRadius:2,padding:32,width:320,transition:'border-color 0.2s'}}>
+          <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color: err ? 'var(--red)' : 'var(--text-dim)',letterSpacing:2,marginBottom:12,transition:'color 0.2s'}}>
+            {err ? 'ACCESS DENIED' : 'ENTER PASSCODE'}
+          </div>
+          <input
+            type="password"
+            value={pw}
+            onChange={e => setPw(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && attempt()}
+            autoFocus
+            style={{width:'100%',background:'var(--surface2)',border:`1px solid ${err ? 'var(--red)' : 'var(--border2)'}`,color:'var(--teal)',fontFamily:'DM Mono, monospace',fontSize:20,padding:'12px 14px',outline:'none',borderRadius:2,textAlign:'center',letterSpacing:8,marginBottom:16}}
+          />
+          <button onClick={attempt} style={{width:'100%',padding:'12px',fontFamily:'Bebas Neue, sans-serif',fontSize:16,letterSpacing:4,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>
+            AUTHENTICATE
+          </button>
+        </div>
+
+        <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--border2)',marginTop:24,letterSpacing:1}}>
+          SOLANA SOLAR SOLUTIONS © 2026
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function ClawDialer() {
+  const [authed, setAuthed] = useState(() => storageGet('claw_authed', false));
   const [contacts, setContacts] = useState(() => storageGet('claw_contacts', []));
   const [callLog, setCallLog] = useState(() => storageGet('claw_calllog', []));
+  const [inboxMessages, setInboxMessages] = useState(() => storageGet('claw_inbox', []));
   const [scripts, setScripts] = useState(() => storageGet('claw_scripts', DEFAULT_SCRIPTS));
   const [activeIdx, setActiveIdx] = useState(null);
   const [tab, setTab] = useState('dialer');
@@ -99,10 +202,13 @@ export default function ClawDialer() {
   const [clock, setClock] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newContact, setNewContact] = useState({ name:'', business_name:'', phone:'', email:'', list_name:'' });
+  const [resetModal, setResetModal] = useState(false);
+  const [unreadInbox, setUnreadInbox] = useState(0);
 
   const timerRef = useRef(null);
   const autoEndRef = useRef(null);
   const pollRef = useRef(null);
+  const inboxPollRef = useRef(null);
   const agentRef = useRef(null);
   const agentModeRef = useRef(false);
   const agentPausedRef = useRef(false);
@@ -112,6 +218,7 @@ export default function ClawDialer() {
   const scriptIdxRef = useRef(0);
   const callSecondsRef = useRef(0);
   const contactsRef = useRef([]);
+  const pressedOneRef = useRef(false); // tracks if press-1 happened this call
 
   agentModeRef.current = agentMode;
   agentPausedRef.current = agentPaused;
@@ -122,19 +229,51 @@ export default function ClawDialer() {
   callSecondsRef.current = callSeconds;
   contactsRef.current = contacts;
 
+  // Clock
   useEffect(() => {
     const t = setInterval(() => setClock(new Date().toLocaleTimeString('en-US',{hour12:false})), 1000);
     return () => clearInterval(t);
   }, []);
 
+  // Persist
   useEffect(() => { storageSet('claw_contacts', contacts); }, [contacts]);
   useEffect(() => { storageSet('claw_calllog', callLog); }, [callLog]);
+  useEffect(() => { storageSet('claw_inbox', inboxMessages); }, [inboxMessages]);
   useEffect(() => { storageSet('claw_scripts', scripts); }, [scripts]);
+  useEffect(() => { storageSet('claw_authed', authed); }, [authed]);
+
+  // Poll inbound SMS every 10s
+  useEffect(() => {
+    if (!authed) return;
+    function pollInbox() {
+      fetch('/api/twilio?action=inbox')
+        .then(r => r.json())
+        .then(data => {
+          if (data.messages && data.messages.length > 0) {
+            setInboxMessages(prev => {
+              const existingSids = new Set(prev.map(m => m.sid));
+              const newMsgs = data.messages.filter(m => !existingSids.has(m.sid));
+              if (newMsgs.length > 0) {
+                setUnreadInbox(u => u + newMsgs.length);
+                return [...newMsgs, ...prev].slice(0, 200);
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }
+    pollInbox();
+    inboxPollRef.current = setInterval(pollInbox, 10000);
+    return () => clearInterval(inboxPollRef.current);
+  }, [authed]);
 
   const notify = useCallback((msg, type='info') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3500);
   }, []);
+
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
 
   const activeContact = activeIdx !== null ? contacts[activeIdx] : null;
 
@@ -156,6 +295,14 @@ export default function ClawDialer() {
       next[idx] = { ...next[idx], status, notes: notesVal !== undefined ? notesVal : next[idx].notes };
       return next;
     });
+  }
+
+  function resetQueue() {
+    setContacts(prev => prev.map(c =>
+      ['called','voicemail','calling'].includes(c.status) ? { ...c, status: 'new' } : c
+    ));
+    setResetModal(false);
+    notify('Queue reset — all contacts back to NEW', 'success');
   }
 
   function handleCSV(e) {
@@ -183,11 +330,13 @@ export default function ClawDialer() {
     e.target.value = '';
   }
 
+  // ── CALL ─────────────────────────────────────────────────────────────────
   async function startCall() {
     const idx = activeIdxRef.current;
     if (idx === null) return notify('Select a contact first', 'warning');
     const contact = contactsRef.current[idx];
     if (!contact?.phone) return notify('No phone number', 'warning');
+    pressedOneRef.current = false;
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -195,8 +344,7 @@ export default function ClawDialer() {
     timerRef.current = setInterval(() => setCallSeconds(s => s+1), 1000);
     try {
       const r = await fetch('/api/twilio?action=call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: contact.phone, contactId: contact.id, contactName: contact.name, script: scripts[scriptIdxRef.current]?.name })
       });
       const data = await r.json();
@@ -204,32 +352,7 @@ export default function ClawDialer() {
       setCallSid(data.callSid);
       setCallState('connected');
       notify(`Dialing ${contact.name || contact.phone}...`, 'info');
-
-      // Poll Twilio every 3s — auto-disposition on call end
-      clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        try {
-          const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
-          const pd = await pr.json();
-          const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer';
-          if (done && (callStateRef.current === 'connected' || callStateRef.current === 'dialing')) {
-            clearInterval(pollRef.current);
-            clearInterval(timerRef.current);
-            clearTimeout(autoEndRef.current);
-            const dur = parseInt(pd.duration || 0);
-            let outcome;
-            if (pd.status === 'no-answer' || pd.status === 'failed' || pd.status === 'busy') outcome = 'voicemail';
-            else if (pd.status === 'completed' && dur >= 15) outcome = 'answered';
-            else outcome = 'voicemail';
-            if (agentModeRef.current && !agentPausedRef.current) {
-              setDisposition(outcome);
-            } else {
-              setCallState('ended');
-            }
-          }
-        } catch {}
-      }, 3000);
-
+      startPoll(data.callSid);
       autoEndRef.current = setTimeout(() => {
         if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') endCall();
       }, 90000);
@@ -238,6 +361,34 @@ export default function ClawDialer() {
       clearInterval(timerRef.current);
       notify(`Call failed: ${err.message}`, 'warning');
     }
+  }
+
+  function startPoll(sid) {
+    clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const pr = await fetch(`/api/twilio?action=callstatus&sid=${sid}`);
+        const pd = await pr.json();
+        const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer';
+        if (done && (callStateRef.current === 'connected' || callStateRef.current === 'dialing')) {
+          clearInterval(pollRef.current);
+          clearInterval(timerRef.current);
+          clearTimeout(autoEndRef.current);
+          // Determine disposition
+          const dur = parseInt(pd.duration || 0);
+          let outcome;
+          if (pressedOneRef.current) outcome = 'interested';
+          else if (pd.status === 'no-answer' || pd.status === 'failed' || pd.status === 'busy') outcome = 'voicemail';
+          else if (pd.status === 'completed' && dur >= 15) outcome = 'answered';
+          else outcome = 'voicemail';
+          if (agentModeRef.current && !agentPausedRef.current) {
+            setDisposition(outcome);
+          } else {
+            setCallState('ended');
+          }
+        }
+      } catch {}
+    }, 3000);
   }
 
   function endCall() {
@@ -266,22 +417,52 @@ export default function ClawDialer() {
     }
     setCallSeconds(0);
     setNotes('');
+    pressedOneRef.current = false;
     if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 2000);
   }
 
+  // ── AGENT MODE ────────────────────────────────────────────────────────────
   function toggleAgent() {
     const next = !agentMode;
-    setAgentMode(next);
-    if (next) { setAgentPaused(false); notify('AI Agent Mode ACTIVE', 'info'); setTimeout(() => agentNext(), 1000); }
-    else { clearTimeout(agentRef.current); notify('Agent stopped', 'warning'); }
+    if (next) {
+      // Check if queue has new contacts
+      const newCount = contacts.filter(c => c.status === 'new').length;
+      if (newCount === 0) {
+        setResetModal(true);
+        return;
+      }
+      setAgentMode(true);
+      setAgentPaused(false);
+      notify(`AI Agent firing — ${newCount} contacts in queue`, 'info');
+      setTimeout(() => agentNext(), 500);
+    } else {
+      setAgentMode(false);
+      clearTimeout(agentRef.current);
+      notify('Agent stopped', 'warning');
+    }
   }
 
   function agentNext() {
     if (!agentModeRef.current || agentPausedRef.current) return;
     setContacts(prev => {
       const newIdx = prev.findIndex(c => c.status === 'new');
-      if (newIdx === -1) { setAgentMode(false); notify('Agent complete — queue empty', 'success'); return prev; }
+      if (newIdx === -1) {
+        setAgentMode(false);
+        notify('Queue empty — all contacts dialed', 'success');
+        return prev;
+      }
       const contact = prev[newIdx];
+
+      // TCPA time guard
+      if (contact.phone && !isTCPAAllowed(contact.phone)) {
+        const h = getTCPAHour(contact.phone);
+        notify(`TCPA skip: ${contact.name} — local time ${h}:00 (outside 8am-9pm)`, 'warning');
+        // Mark skipped and move to next
+        const updated = prev.map((c, i) => i === newIdx ? { ...c, status: 'tcpa-skip' } : c);
+        agentRef.current = setTimeout(() => agentNext(), 500);
+        return updated;
+      }
+
       const updated = prev.map((c, i) => i === newIdx ? { ...c, status: 'calling' } : c);
       setTimeout(() => {
         setActiveIdx(newIdx);
@@ -289,7 +470,7 @@ export default function ClawDialer() {
         setSmsBody(SMS_FOLLOW_UP(contact.name || ''));
         setTimeout(() => {
           if (agentModeRef.current && !agentPausedRef.current) startCallForAgent(contact, newIdx);
-        }, 1500);
+        }, 800);
       }, 100);
       return updated;
     });
@@ -297,45 +478,23 @@ export default function ClawDialer() {
 
   async function startCallForAgent(contact, idx) {
     if (!contact?.phone) return;
+    pressedOneRef.current = false;
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
     clearTimeout(autoEndRef.current);
     timerRef.current = setInterval(() => setCallSeconds(s => s+1), 1000);
     try {
-      const r = await fetch('/api/twilio?action=call', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: contact.phone, contactId: contact.id, contactName: contact.name, script: scripts[scriptIdxRef.current]?.name }) });
+      const r = await fetch('/api/twilio?action=call', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ to: contact.phone, contactId: contact.id, contactName: contact.name, script: scripts[scriptIdxRef.current]?.name })
+      });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
       setCallSid(data.callSid);
       setCallState('connected');
-      notify(`[AGENT] Dialing ${contact.name || contact.phone}`, 'info');
-
-      // Poll for call end — auto-disposition on end
-      clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        try {
-          const pr = await fetch(`/api/twilio?action=callstatus&sid=${data.callSid}`);
-          const pd = await pr.json();
-          const done = pd.status === 'completed' || pd.status === 'failed' || pd.status === 'busy' || pd.status === 'no-answer';
-          if (done && (callStateRef.current === 'connected' || callStateRef.current === 'dialing')) {
-            clearInterval(pollRef.current);
-            clearInterval(timerRef.current);
-            clearTimeout(autoEndRef.current);
-            const dur = parseInt(pd.duration || 0);
-            let outcome;
-            if (pd.status === 'no-answer' || pd.status === 'failed' || pd.status === 'busy') outcome = 'voicemail';
-            else if (pd.status === 'completed' && dur >= 15) outcome = 'answered';
-            else outcome = 'voicemail';
-            // Agent mode: auto-advance. Manual: show ended state for human disposition.
-            if (agentModeRef.current && !agentPausedRef.current) {
-              setDisposition(outcome);
-            } else {
-              setCallState('ended');
-            }
-          }
-        } catch {}
-      }, 3000);
-
+      notify(`[AGENT] ${contact.name || contact.phone}`, 'info');
+      startPoll(data.callSid);
       autoEndRef.current = setTimeout(() => {
         if (callStateRef.current === 'connected' || callStateRef.current === 'dialing') {
           endCall();
@@ -347,9 +506,11 @@ export default function ClawDialer() {
       clearInterval(timerRef.current);
       notify(`Agent call failed: ${err.message}`, 'warning');
       setContacts(prev => prev.map((c, i) => i === idx ? { ...c, status: 'new' } : c));
+      if (agentModeRef.current) agentRef.current = setTimeout(() => agentNext(), 3000);
     }
   }
 
+  // ── SMS ───────────────────────────────────────────────────────────────────
   async function sendSMS() {
     if (!activeContact?.phone) return notify('No phone number', 'warning');
     if (smsBody.length > 160) return notify('Keep under 160 chars', 'warning');
@@ -362,11 +523,21 @@ export default function ClawDialer() {
     } catch (err) { notify(`SMS failed: ${err.message}`, 'warning'); }
   }
 
+  async function replyToMessage(to, body) {
+    try {
+      const r = await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to, body }) });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error);
+      notify(`Reply sent ✓`, 'success');
+    } catch (err) { notify(`Reply failed: ${err.message}`, 'warning'); }
+  }
+
   function exportCSV(rows, filename) {
     const content = rows.map(r => r.map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], {type:'text/csv'})); a.download = filename; a.click();
   }
 
+  // ── STATS ─────────────────────────────────────────────────────────────────
   const totalCalls = callLog.length;
   const answeredCalls = callLog.filter(c => !['voicemail','not-interested'].includes(c.outcome)).length;
   const interestedCalls = callLog.filter(c => c.outcome === 'interested').length;
@@ -377,28 +548,39 @@ export default function ClawDialer() {
   const statusColor = { idle:'#6B7A8D', dialing:'#FFD600', connected:'#2EFF9A', ended:'#FF6B2B' };
   const statusText = { idle:'STANDBY', dialing:'DIALING...', connected:'CONNECTED', ended:'CALL ENDED' };
 
+  const tabs = ['dialer','dashboard','inbox','admin'];
+
   return (
     <>
       <Head><title>CLAW DIALER — Command Center</title><style>{css}</style></Head>
 
+      {/* TOP BAR */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',height:50,background:'var(--surface)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:16}}>
           <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:20,letterSpacing:3,color:'var(--teal)'}}>CLAW DIALER <span style={{color:'var(--text-dim)',fontSize:10,fontFamily:'DM Mono, monospace',letterSpacing:2,verticalAlign:'middle'}}>// COMMAND CENTER</span></span>
-          <span style={{display:'flex',alignItems:'center',gap:6,padding:'3px 10px',borderRadius:2,fontFamily:'DM Mono, monospace',fontSize:10,letterSpacing:1,background:'rgba(46,255,154,0.08)',border:'1px solid rgba(46,255,154,0.2)',color:'var(--green)'}}>
+          <span style={{display:'flex',alignItems:'center',gap:6,padding:'3px 10px',borderRadius:2,fontFamily:'DM Mono, monospace',fontSize:10,background:'rgba(46,255,154,0.08)',border:'1px solid rgba(46,255,154,0.2)',color:'var(--green)'}}>
             <span style={{width:6,height:6,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite',display:'inline-block'}}></span>TWILIO READY
           </span>
         </div>
-        <div style={{display:'flex',gap:16,fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>
-          <span>+1 (855) 960-0110</span><span style={{color:'var(--border2)'}}>|</span><span style={{color:'var(--teal)'}}>{clock}</span>
+        <div style={{display:'flex',gap:16,alignItems:'center',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>
+          <span>+1 (855) 960-0110</span>
+          <span style={{color:'var(--border2)'}}>|</span>
+          <span style={{color:'var(--teal)'}}>{clock}</span>
+          <button onClick={() => { setAuthed(false); storageSet('claw_authed', false); }} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:9,background:'transparent',border:'1px solid var(--border2)',color:'var(--text-dim)',cursor:'pointer',borderRadius:2,letterSpacing:1}}>LOCK</button>
         </div>
       </div>
 
+      {/* NAV */}
       <div style={{display:'flex',background:'var(--surface)',borderBottom:'1px solid var(--border)',padding:'0 20px'}}>
-        {['dialer','dashboard','admin'].map(t => (
-          <button key={t} onClick={() => setTab(t)} style={{padding:'10px 18px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color: tab===t ? 'var(--teal)' : 'var(--text-dim)',cursor:'pointer',border:'none',borderBottom: tab===t ? '2px solid var(--teal)' : '2px solid transparent',background:'none'}}>{t.toUpperCase()}</button>
+        {tabs.map(t => (
+          <button key={t} onClick={() => { setTab(t); if(t==='inbox') setUnreadInbox(0); }} style={{padding:'10px 18px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,letterSpacing:2,textTransform:'uppercase',color: tab===t ? 'var(--teal)' : 'var(--text-dim)',cursor:'pointer',border:'none',borderBottom: tab===t ? '2px solid var(--teal)' : '2px solid transparent',background:'none',position:'relative'}}>
+            {t.toUpperCase()}
+            {t === 'inbox' && unreadInbox > 0 && <span style={{position:'absolute',top:6,right:4,background:'var(--red)',color:'white',borderRadius:'50%',width:14,height:14,fontSize:8,fontFamily:'DM Mono, monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>{unreadInbox}</span>}
+          </button>
         ))}
       </div>
 
+      {/* ── DIALER TAB ── */}
       {tab === 'dialer' && (
         <div style={{display:'grid',gridTemplateColumns:'320px 1fr 280px',height:'calc(100vh - 90px)',overflow:'hidden'}}>
 
@@ -406,7 +588,10 @@ export default function ClawDialer() {
           <div style={{borderRight:'1px solid var(--border)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
             <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)'}}>
               <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>CONTACTS</span>
-              <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{filteredContacts.length} / {contacts.length}</span>
+              <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{filteredContacts.length}/{contacts.length}</span>
+                <button onClick={() => setResetModal(true)} style={{padding:'2px 6px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--border2)',color:'var(--text-dim)',cursor:'pointer',borderRadius:2,letterSpacing:1}}>RESET</button>
+              </div>
             </div>
             <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'7px 10px',outline:'none',borderRadius:2}} />
@@ -414,11 +599,11 @@ export default function ClawDialer() {
             </div>
             <div style={{padding:'6px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6,flexWrap:'wrap'}}>
               {['all','new','callback','interested'].map(f => (
-                <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',border:`1px solid ${statusFilter===f ? 'var(--teal-dim)' : 'var(--border2)'}`,background: statusFilter===f ? 'var(--surface3)' : 'transparent',color: statusFilter===f ? 'var(--teal)' : 'var(--text-dim)',borderRadius:2}}>
-                  {f === 'all' ? 'ALL' : f === 'new' ? 'NEW' : f === 'callback' ? 'CB' : 'HOT'}
+                <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--teal-dim)':'var(--border2)'}`,background:statusFilter===f?'var(--surface3)':'transparent',color:statusFilter===f?'var(--teal)':'var(--text-dim)',borderRadius:2}}>
+                  {f==='all'?'ALL':f==='new'?'NEW':f==='callback'?'CB':'HOT'}
                 </button>
               ))}
-              <label style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,textTransform:'uppercase',cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>
+              <label style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>
                 CSV<input type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV} />
               </label>
             </div>
@@ -430,9 +615,9 @@ export default function ClawDialer() {
                 </div>
               ) : filteredContacts.map((c) => {
                 const idx = contacts.indexOf(c);
-                const sColor = { new:'#3B8FFF', called:'#FFD600', calling:'#FFD600', interested:'#14F1C6', voicemail:'#6B7A8D', callback:'#FF6B2B', 'not-interested':'#FF3B3B' }[c.status||'new'];
+                const sColor = {new:'#3B8FFF',called:'#FFD600',calling:'#FFD600',interested:'#14F1C6',voicemail:'#6B7A8D',callback:'#FF6B2B','not-interested':'#FF3B3B','tcpa-skip':'#6B3B7A'}[c.status||'new'];
                 return (
-                  <div key={c.id} onClick={() => selectContact(idx)} style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:10,background: activeIdx===idx ? 'var(--surface3)' : 'transparent',borderLeft: activeIdx===idx ? '2px solid var(--teal)' : '2px solid transparent'}}>
+                  <div key={c.id} onClick={() => selectContact(idx)} style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:10,background:activeIdx===idx?'var(--surface3)':'transparent',borderLeft:activeIdx===idx?'2px solid var(--teal)':'2px solid transparent'}}>
                     <div style={{width:30,height:30,background:'var(--surface3)',border:'1px solid var(--border2)',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Bebas Neue, sans-serif',fontSize:13,color:'var(--teal)',flexShrink:0}}>{initials(c.name)}</div>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'Unknown'}</div>
@@ -447,19 +632,24 @@ export default function ClawDialer() {
 
           {/* CENTER DIALER */}
           <div style={{borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            {/* Agent bar */}
             <div style={{padding:'12px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--orange)'}}>// AI AGENT MODE</span>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>AUTO-DIAL</span>
-                <div onClick={toggleAgent} style={{width:38,height:19,background: agentMode ? 'rgba(255,107,43,0.3)' : 'var(--surface3)',border:`1px solid ${agentMode ? 'var(--orange)' : 'var(--border2)'}`,borderRadius:10,cursor:'pointer',position:'relative'}}>
-                  <div style={{position:'absolute',width:13,height:13,borderRadius:'50%',background: agentMode ? 'var(--orange)' : 'var(--text-dim)',top:2,left: agentMode ? 21 : 2,transition:'left 0.3s',boxShadow: agentMode ? '0 0 8px rgba(255,107,43,0.6)' : 'none'}}></div>
+                <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--orange)'}}>// AI AGENT MODE</span>
+                {agentMode && <span style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--orange)',animation:'pulse 1s infinite'}}>{agentPaused?'PAUSED':'RUNNING'}</span>}
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{queuedCount} IN QUEUE</span>
+                <div onClick={toggleAgent} style={{width:38,height:19,background:agentMode?'rgba(255,107,43,0.3)':'var(--surface3)',border:`1px solid ${agentMode?'var(--orange)':'var(--border2)'}`,borderRadius:10,cursor:'pointer',position:'relative'}}>
+                  <div style={{position:'absolute',width:13,height:13,borderRadius:'50%',background:agentMode?'var(--orange)':'var(--text-dim)',top:2,left:agentMode?21:2,transition:'left 0.3s',boxShadow:agentMode?'0 0 8px rgba(255,107,43,0.6)':'none'}}></div>
                 </div>
-                {agentMode && <button onClick={() => setAgentPaused(p => !p)} style={{padding:'4px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>{agentPaused ? 'RESUME' : 'PAUSE'}</button>}
+                {agentMode && <button onClick={() => setAgentPaused(p=>!p)} style={{padding:'4px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>{agentPaused?'RESUME':'PAUSE'}</button>}
               </div>
             </div>
 
+            {/* Stats */}
             <div style={{padding:'10px 20px',borderBottom:'1px solid var(--border)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-              {[['Queued', queuedCount, 'var(--text)'],['Called', totalCalls, 'var(--text)'],['Interested', interestedCalls, 'var(--teal)'],['Pipeline', `$${pipeline}`, 'var(--green)']].map(([label,val,color]) => (
+              {[['Queued',queuedCount,'var(--text)'],['Called',totalCalls,'var(--text)'],['Interested',interestedCalls,'var(--teal)'],['Pipeline',`$${pipeline}`,'var(--green)']].map(([label,val,color]) => (
                 <div key={label} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:2,padding:'8px 10px',textAlign:'center'}}>
                   <div style={{fontFamily:'DM Mono, monospace',fontSize:18,color,lineHeight:1}}>{val}</div>
                   <div style={{fontSize:9,color:'var(--text-dim)',letterSpacing:1,textTransform:'uppercase',marginTop:3}}>{label}</div>
@@ -467,31 +657,29 @@ export default function ClawDialer() {
               ))}
             </div>
 
+            {/* Active call */}
             <div style={{padding:'18px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
               <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
                 <div>
-                  <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:26,letterSpacing:2,color:'var(--text)',lineHeight:1}}>{activeContact?.name || 'SELECT A CONTACT'}</div>
-                  <div style={{fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)',marginTop:4}}>{activeContact?.business_name || 'Choose from the list'}</div>
-                  <div style={{fontFamily:'DM Mono, monospace',fontSize:13,color:'var(--teal)',marginTop:6}}>{activeContact?.phone || '—'}</div>
+                  <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:26,letterSpacing:2,color:'var(--text)',lineHeight:1}}>{activeContact?.name||'SELECT A CONTACT'}</div>
+                  <div style={{fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)',marginTop:4}}>{activeContact?.business_name||'Choose from the list'}</div>
+                  <div style={{fontFamily:'DM Mono, monospace',fontSize:13,color:'var(--teal)',marginTop:6}}>{activeContact?.phone||'—'}</div>
                 </div>
                 {callState !== 'idle' && <div style={{fontFamily:'DM Mono, monospace',fontSize:30,color:'var(--teal)',letterSpacing:4}}>{fmtTime(callSeconds)}</div>}
               </div>
-
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,fontFamily:'DM Mono, monospace',fontSize:11}}>
-                <div style={{width:8,height:8,borderRadius:'50%',background: statusColor[callState],animation: ['dialing','connected'].includes(callState) ? 'pulse 1s infinite' : 'none'}}></div>
-                <span style={{color: statusColor[callState]}}>{statusText[callState]}</span>
+                <div style={{width:8,height:8,borderRadius:'50%',background:statusColor[callState],animation:['dialing','connected'].includes(callState)?'pulse 1s infinite':'none'}}></div>
+                <span style={{color:statusColor[callState]}}>{statusText[callState]}</span>
                 {callSid && <span style={{color:'var(--text-dim)',fontSize:9}}>SID: {callSid.slice(0,16)}...</span>}
               </div>
-
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                {callState === 'idle' && <button onClick={startCall} style={{padding:'12px 24px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:3,background:'var(--green)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>📞 DIAL</button>}
+                {callState==='idle' && <button onClick={startCall} style={{padding:'12px 24px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:3,background:'var(--green)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>📞 DIAL</button>}
                 {['dialing','connected'].includes(callState) && <>
                   <button onClick={endCall} style={{padding:'12px 24px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:3,background:'var(--red)',color:'white',border:'none',cursor:'pointer',borderRadius:2}}>🔴 END</button>
                   <button onClick={() => setDisposition('voicemail')} style={{padding:'12px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>🎙 DROP VM</button>
                 </>}
-                <button onClick={() => activeContact ? setSmsModal(true) : notify('Select a contact','warning')} style={{padding:'12px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>💬 SMS</button>
+                <button onClick={() => activeContact?setSmsModal(true):notify('Select a contact','warning')} style={{padding:'12px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>💬 SMS</button>
               </div>
-
               {['connected','ended'].includes(callState) && (
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:14,paddingTop:14,borderTop:'1px solid var(--border)'}}>
                   {[['answered','✅ ANSWERED','var(--green)'],['voicemail','📬 VOICEMAIL','var(--text-dim)'],['callback','🔁 CALLBACK','var(--orange)'],['interested','🔥 INTERESTED','var(--teal)'],['not-interested','❌ NOT INT.','var(--red)']].map(([outcome,label,color]) => (
@@ -501,10 +689,11 @@ export default function ClawDialer() {
               )}
             </div>
 
+            {/* Script */}
             <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
               <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
                 {scripts.map((s,i) => (
-                  <button key={i} onClick={() => setScriptIdx(i)} style={{padding:'5px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:`1px solid ${scriptIdx===i ? s.color : 'var(--border2)'}`,background: scriptIdx===i ? `${s.color}22` : 'transparent',color: scriptIdx===i ? s.color : 'var(--text-dim)',borderRadius:2}}>{s.name}</button>
+                  <button key={i} onClick={() => setScriptIdx(i)} style={{padding:'5px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:`1px solid ${scriptIdx===i?s.color:'var(--border2)'}`,background:scriptIdx===i?`${s.color}22`:'transparent',color:scriptIdx===i?s.color:'var(--text-dim)',borderRadius:2}}>{s.name}</button>
                 ))}
               </div>
               {scripts[scriptIdx]?.sections.map((sec,i) => (
@@ -520,11 +709,11 @@ export default function ClawDialer() {
             </div>
           </div>
 
-          {/* RIGHT CALL LOG */}
+          {/* RIGHT: CALL LOG */}
           <div style={{overflow:'hidden',display:'flex',flexDirection:'column'}}>
-            {[['TOTAL CALLS', totalCalls, 'var(--teal)'],['ANSWER RATE', `${answerRate}%`, 'var(--green)'],['INTERESTED', interestedCalls, 'var(--orange)']].map(([label,val,color]) => (
+            {[['TOTAL CALLS',totalCalls,'var(--teal)'],['ANSWER RATE',`${answerRate}%`,'var(--green)'],['INTERESTED',interestedCalls,'var(--orange)']].map(([label,val,color]) => (
               <div key={label} style={{padding:'14px',borderBottom:'1px solid var(--border)'}}>
-                <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:5}}>{label}</div>
+                <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',letterSpacing:2,marginBottom:5}}>{label}</div>
                 <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:30,letterSpacing:2,color,lineHeight:1}}>{val}</div>
               </div>
             ))}
@@ -538,9 +727,9 @@ export default function ClawDialer() {
               <button onClick={() => exportCSV([['Name','Business','Phone','Outcome','Duration','Script','Notes','Time'],...callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'call-log.csv')} style={{padding:'4px 8px',fontFamily:'Barlow Condensed, sans-serif',fontSize:9,fontWeight:700,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>EXPORT</button>
             </div>
             <div style={{flex:1,overflowY:'auto'}}>
-              {callLog.length === 0 ? <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>No calls yet</div>
-              : callLog.slice(0,60).map(entry => {
-                const c = {answered:'var(--green)',voicemail:'var(--text-dim)',callback:'var(--orange)',interested:'var(--teal)','not-interested':'var(--red)'}[entry.outcome]||'var(--text-dim)';
+              {callLog.length===0?<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>No calls yet</div>
+              :callLog.slice(0,60).map(entry => {
+                const c={answered:'var(--green)',voicemail:'var(--text-dim)',callback:'var(--orange)',interested:'var(--teal)','not-interested':'var(--red)'}[entry.outcome]||'var(--text-dim)';
                 return (
                   <div key={entry.id} style={{padding:'9px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:8}}>
                     <div style={{width:6,height:6,borderRadius:'50%',background:c,flexShrink:0}}></div>
@@ -556,6 +745,7 @@ export default function ClawDialer() {
         </div>
       )}
 
+      {/* ── DASHBOARD TAB ── */}
       {tab === 'dashboard' && (
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16,marginBottom:24}}>
@@ -571,18 +761,12 @@ export default function ClawDialer() {
             <div style={{padding:'12px 16px',borderBottom:'1px solid var(--border)'}}><span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>OUTCOME BREAKDOWN</span></div>
             <table style={{width:'100%',borderCollapse:'collapse'}}>
               <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                {['OUTCOME','COUNT','%'].map(h => <th key={h} style={{padding:'8px 16px',textAlign:h==='OUTCOME'?'left':'right',fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',fontWeight:400}}>{h}</th>)}
+                {['OUTCOME','COUNT','%'].map(h=><th key={h} style={{padding:'8px 16px',textAlign:h==='OUTCOME'?'left':'right',fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',fontWeight:400}}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {[['INTERESTED 🔥','interested','var(--teal)'],['ANSWERED','answered','var(--green)'],['CALLBACK','callback','var(--orange)'],['VOICEMAIL','voicemail','var(--text-dim)'],['NOT INTERESTED','not-interested','var(--red)']].map(([label,key,color]) => {
-                  const count = callLog.filter(c=>c.outcome===key).length;
-                  return (
-                    <tr key={key} style={{borderBottom:'1px solid var(--border)'}}>
-                      <td style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:13,fontWeight:600,color}}>{label}</td>
-                      <td style={{padding:'9px 16px',textAlign:'right',fontFamily:'DM Mono, monospace',fontSize:13}}>{count}</td>
-                      <td style={{padding:'9px 16px',textAlign:'right',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>{totalCalls>0?Math.round(count/totalCalls*100):0}%</td>
-                    </tr>
-                  );
+                {[['INTERESTED 🔥','interested','var(--teal)'],['ANSWERED','answered','var(--green)'],['CALLBACK','callback','var(--orange)'],['VOICEMAIL','voicemail','var(--text-dim)'],['NOT INTERESTED','not-interested','var(--red)']].map(([label,key,color])=>{
+                  const count=callLog.filter(c=>c.outcome===key).length;
+                  return(<tr key={key} style={{borderBottom:'1px solid var(--border)'}}><td style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:13,fontWeight:600,color}}>{label}</td><td style={{padding:'9px 16px',textAlign:'right',fontFamily:'DM Mono, monospace',fontSize:13}}>{count}</td><td style={{padding:'9px 16px',textAlign:'right',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>{totalCalls>0?Math.round(count/totalCalls*100):0}%</td></tr>);
                 })}
               </tbody>
             </table>
@@ -590,6 +774,27 @@ export default function ClawDialer() {
         </div>
       )}
 
+      {/* ── INBOX TAB ── */}
+      {tab === 'inbox' && (
+        <div style={{height:'calc(100vh - 90px)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          <div style={{padding:'12px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:14,letterSpacing:3,color:'var(--teal)'}}>// INBOUND SMS REPLIES</span>
+            <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{inboxMessages.length} messages</span>
+          </div>
+          <div style={{flex:1,overflowY:'auto'}}>
+            {inboxMessages.length === 0 ? (
+              <div style={{padding:60,textAlign:'center',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>
+                <div style={{fontSize:32,marginBottom:12,opacity:0.3}}>💬</div>
+                No replies yet — replies to your SMS campaigns appear here
+              </div>
+            ) : inboxMessages.map((msg, i) => (
+              <InboxMessage key={msg.sid||i} msg={msg} onReply={replyToMessage} notify={notify} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── ADMIN TAB ── */}
       {tab === 'admin' && (
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{marginBottom:28}}>
@@ -605,13 +810,8 @@ export default function ClawDialer() {
             {scripts.map((s,i) => (
               <div key={i} style={{marginBottom:16}}>
                 <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:s.color,letterSpacing:2,marginBottom:6}}>SCRIPT {String.fromCharCode(65+i)} — {s.name}</div>
-                <textarea defaultValue={s.sections.map(sec => `[${sec.label}]\n${sec.text}`).join('\n\n')}
-                  onBlur={e => {
-                    const blocks = e.target.value.split(/\[([^\]]+)\]\n/);
-                    const sections = [];
-                    for (let j = 1; j < blocks.length; j+=2) sections.push({label:blocks[j],text:(blocks[j+1]||'').trim()});
-                    if (sections.length > 0) setScripts(prev => { const next=[...prev]; next[i]={...next[i],sections}; return next; });
-                  }}
+                <textarea defaultValue={s.sections.map(sec=>`[${sec.label}]\n${sec.text}`).join('\n\n')}
+                  onBlur={e=>{const blocks=e.target.value.split(/\[([^\]]+)\]\n/);const sections=[];for(let j=1;j<blocks.length;j+=2)sections.push({label:blocks[j],text:(blocks[j+1]||'').trim()});if(sections.length>0)setScripts(prev=>{const next=[...prev];next[i]={...next[i],sections};return next;});}}
                   style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'10px 12px',outline:'none',borderRadius:2,resize:'vertical',minHeight:100,lineHeight:1.6}}
                 />
               </div>
@@ -620,14 +820,15 @@ export default function ClawDialer() {
           <div>
             <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:14,letterSpacing:3,color:'var(--text-mid)',marginBottom:14,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>DATA MANAGEMENT</div>
             <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-              <button onClick={() => exportCSV([['Name','Business','Phone','Outcome','Duration','Script','Notes','Time'],...callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'call-log.csv')} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>EXPORT CALL LOG</button>
-              <button onClick={() => exportCSV([['Name','Business','Phone','Email','Status','List'],...contacts.map(c=>[c.name,c.business_name,c.phone,c.email,c.status,c.list_name])],'contacts.csv')} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>EXPORT CONTACTS</button>
-              <button onClick={() => { if(confirm('Clear all?')) { setContacts([]); setCallLog([]); notify('Cleared','warning'); } }} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--red)',color:'white',border:'none',cursor:'pointer',borderRadius:2,marginLeft:'auto'}}>CLEAR ALL</button>
+              <button onClick={()=>exportCSV([['Name','Business','Phone','Outcome','Duration','Script','Notes','Time'],...callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'call-log.csv')} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>EXPORT CALL LOG</button>
+              <button onClick={()=>exportCSV([['Name','Business','Phone','Email','Status','List'],...contacts.map(c=>[c.name,c.business_name,c.phone,c.email,c.status,c.list_name])],'contacts.csv')} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>EXPORT CONTACTS</button>
+              <button onClick={()=>{if(confirm('Clear all?')){setContacts([]);setCallLog([]);notify('Cleared','warning');}}} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--red)',color:'white',border:'none',cursor:'pointer',borderRadius:2,marginLeft:'auto'}}>CLEAR ALL</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── SMS MODAL ── */}
       {smsModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:2,padding:24,width:440,animation:'slideUp 0.2s ease'}}>
@@ -639,45 +840,86 @@ export default function ClawDialer() {
             <div style={{marginBottom:6}}>
               <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:6}}>MESSAGE</div>
               <textarea value={smsBody} onChange={e=>setSmsBody(e.target.value)} style={{width:'100%',background:'var(--surface2)',border:`1px solid ${smsBody.length>160?'var(--red)':'var(--border2)'}`,color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'8px 10px',outline:'none',borderRadius:2,resize:'none',height:80}} />
-              <div style={{fontFamily:'DM Mono, monospace',fontSize:9,textAlign:'right',marginTop:4,color: smsBody.length>160 ? 'var(--red)' : smsBody.length>140 ? 'var(--yellow)' : 'var(--text-dim)'}}>{smsBody.length} / 160</div>
+              <div style={{fontFamily:'DM Mono, monospace',fontSize:9,textAlign:'right',marginTop:4,color:smsBody.length>160?'var(--red)':smsBody.length>140?'var(--yellow)':'var(--text-dim)'}}>{smsBody.length}/160</div>
             </div>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:16}}>
-              <button onClick={() => setSmsModal(false)} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
+              <button onClick={()=>setSmsModal(false)} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
               <button onClick={sendSMS} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>SEND SMS</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── ADD CONTACT MODAL ── */}
       {showAddModal && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:2,padding:24,width:420,animation:'slideUp 0.2s ease'}}>
             <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:18,letterSpacing:3,color:'var(--teal)',marginBottom:18}}>// ADD CONTACT</div>
-            {[['Name','name'],['Business','business_name'],['Phone','phone'],['Email','email'],['List Name','list_name']].map(([label,key]) => (
+            {[['Name','name'],['Business','business_name'],['Phone','phone'],['Email','email'],['List Name','list_name']].map(([label,key])=>(
               <div key={key} style={{marginBottom:10}}>
                 <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:5}}>{label.toUpperCase()}</div>
-                <input value={newContact[key]} onChange={e => setNewContact(p=>({...p,[key]:e.target.value}))} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'8px 10px',outline:'none',borderRadius:2}} />
+                <input value={newContact[key]} onChange={e=>setNewContact(p=>({...p,[key]:e.target.value}))} style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'8px 10px',outline:'none',borderRadius:2}} />
               </div>
             ))}
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:16}}>
-              <button onClick={() => setShowAddModal(false)} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
-              <button onClick={() => {
-                if (!newContact.name && !newContact.phone) return notify('Need name or phone','warning');
-                setContacts(prev => [...prev, {...newContact, id:Date.now(), status:'new', notes:'', created_at:new Date().toISOString()}]);
-                setNewContact({name:'',business_name:'',phone:'',email:'',list_name:''});
-                setShowAddModal(false);
-                notify('Contact added','success');
-              }} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>ADD</button>
+              <button onClick={()=>setShowAddModal(false)} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
+              <button onClick={()=>{if(!newContact.name&&!newContact.phone)return notify('Need name or phone','warning');setContacts(prev=>[...prev,{...newContact,id:Date.now(),status:'new',notes:'',created_at:new Date().toISOString()}]);setNewContact({name:'',business_name:'',phone:'',email:'',list_name:''});setShowAddModal(false);notify('Contact added','success');}} style={{padding:'9px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>ADD</button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ── RESET QUEUE MODAL ── */}
+      {resetModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--orange)',borderRadius:2,padding:32,width:400,animation:'slideUp 0.2s ease',textAlign:'center'}}>
+            <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:22,letterSpacing:3,color:'var(--orange)',marginBottom:12}}>QUEUE EMPTY</div>
+            <div style={{fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)',lineHeight:1.7,marginBottom:24}}>
+              All contacts have been dialed.<br/>Reset called/voicemail contacts back to NEW and run the list again?
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+              <button onClick={()=>setResetModal(false)} style={{padding:'10px 20px',fontFamily:'Barlow Condensed, sans-serif',fontSize:12,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
+              <button onClick={()=>{resetQueue();setTimeout(()=>{setAgentMode(true);setAgentPaused(false);setTimeout(()=>agentNext(),500);},100);}} style={{padding:'10px 20px',fontFamily:'Barlow Condensed, sans-serif',fontSize:12,fontWeight:700,background:'var(--orange)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>RESET + START AGENT</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NOTIFICATION TOAST ── */}
       {notification && (
         <div style={{position:'fixed',bottom:24,right:24,padding:'12px 18px',background:'var(--surface)',border:'1px solid var(--border2)',borderLeft:`3px solid ${notification.type==='success'?'var(--green)':notification.type==='warning'?'var(--orange)':'var(--teal)'}`,borderRadius:2,fontFamily:'DM Mono, monospace',fontSize:12,color:'var(--text)',zIndex:1000,maxWidth:320,animation:'slideUp 0.3s ease'}}>
           {notification.msg}
         </div>
       )}
     </>
+  );
+}
+
+// ── INBOX MESSAGE COMPONENT ────────────────────────────────────────────────
+function InboxMessage({ msg, onReply, notify }) {
+  const [replyText, setReplyText] = useState('');
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div style={{borderBottom:'1px solid var(--border)',padding:'14px 20px'}}>
+      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6}}>
+            <span style={{fontFamily:'DM Mono, monospace',fontSize:12,color:'var(--teal)',fontWeight:700}}>{msg.from}</span>
+            <span style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)'}}>{msg.dateSent ? new Date(msg.dateSent).toLocaleString() : ''}</span>
+          </div>
+          <div style={{fontFamily:'Barlow Condensed, sans-serif',fontSize:15,color:'var(--text)',lineHeight:1.5}}>{msg.body}</div>
+        </div>
+        <button onClick={()=>setOpen(o=>!o)} style={{padding:'6px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,background:open?'var(--teal)':'transparent',color:open?'var(--bg)':'var(--teal)',border:'1px solid var(--teal)',cursor:'pointer',borderRadius:2,flexShrink:0}}>
+          {open?'CANCEL':'REPLY'}
+        </button>
+      </div>
+      {open && (
+        <div style={{marginTop:12,display:'flex',gap:8}}>
+          <input value={replyText} onChange={e=>setReplyText(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&replyText.trim()){onReply(msg.from,replyText);setReplyText('');setOpen(false);}}} placeholder="Type reply..." style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'8px 10px',outline:'none',borderRadius:2}} autoFocus />
+          <button onClick={()=>{if(replyText.trim()){onReply(msg.from,replyText);setReplyText('');setOpen(false);}}} style={{padding:'8px 14px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>SEND</button>
+        </div>
+      )}
+    </div>
   );
 }
