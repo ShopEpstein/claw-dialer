@@ -1,7 +1,5 @@
 import twilio from 'twilio';
 
-const STUDIO_FLOW_URL = 'https://webhooks.twilio.com/v1/Accounts/ACfe0876c1f28398a9406f4c25165293f1/Flows/FWce25cde6f4329472b03498fd9989185a';
-
 export default async function handler(req, res) {
   const { action } = req.query;
 
@@ -28,13 +26,12 @@ export default async function handler(req, res) {
     if (!to) return res.status(400).json({ error: 'Missing to number' });
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
       const call = await client.calls.create({
         to,
         from: process.env.TWILIO_FROM_NUMBER,
-        url: STUDIO_FLOW_URL,
+        url: 'https://webhooks.twilio.com/v1/Accounts/ACfe0876c1f28398a9406f4c25165293f1/Flows/FWce25cde6f4329472b03498fd9989185a',
         machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: `${baseUrl}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
+        asyncAmdStatusCallback: `${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
         asyncAmdStatusCallbackMethod: 'POST',
       });
       return res.status(200).json({ success: true, callSid: call.sid });
