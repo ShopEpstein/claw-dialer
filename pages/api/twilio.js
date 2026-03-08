@@ -4,7 +4,7 @@ const BASE = 'https://claw-dialer.vercel.app';
 const FROM = '+18559600110';
 
 // Static MP3 hosted in /public — no API calls, no latency, no cost
-const PITCH_URL = `${BASE}/VinHunter.mp3`;
+const PITCH_URL = 'https://vinhunter-9518.twil.io/VinHunter.mp3';
 
 export default async function handler(req, res) {
   const { action } = req.query;
