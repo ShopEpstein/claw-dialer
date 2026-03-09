@@ -208,6 +208,9 @@ export default function ClawDialer() {
   const [loadingVL, setLoadingVL] = useState(false);
   const [vlFilter, setVlFilter] = useState('FL');
   const [unreadInbox, setUnreadInbox] = useState(0);
+  const [serverAgent, setServerAgent] = useState({ status:'idle', queue:0, called:0, total:0, current:null, interested:0, recentCalls:[] });
+  const [serverAgentRunning, setServerAgentRunning] = useState(false);
+  const serverPollRef = useRef(null);
 
   const timerRef = useRef(null);
   const autoEndRef = useRef(null);
@@ -245,6 +248,47 @@ export default function ClawDialer() {
   useEffect(() => { storageSet('claw_inbox', inboxMessages); }, [inboxMessages]);
   useEffect(() => { storageSet('claw_scripts', scripts); }, [scripts]);
   useEffect(() => { storageSet('claw_authed', authed); }, [authed]);
+
+  // Poll server agent status every 5s
+  useEffect(() => {
+    function pollServerAgent() {
+      fetch('/api/agent?action=status')
+        .then(r => r.json())
+        .then(data => {
+          setServerAgent(data);
+          setServerAgentRunning(data.status === 'running');
+        })
+        .catch(() => {});
+    }
+    pollServerAgent();
+    serverPollRef.current = setInterval(pollServerAgent, 5000);
+    return () => clearInterval(serverPollRef.current);
+  }, [authed]);
+
+  async function startServerAgent() {
+    const state = vlFilter || 'FL';
+    const r = await fetch('/api/agent?action=start', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ state })
+    });
+    const data = await r.json();
+    notify(data.message || 'Server agent started', 'success');
+  }
+
+  async function stopServerAgent() {
+    await fetch('/api/agent?action=stop', { method: 'POST' });
+    notify('Server agent stopped', 'warning');
+  }
+
+  async function pauseServerAgent() {
+    await fetch('/api/agent?action=pause', { method: 'POST' });
+    notify('Server agent paused', 'warning');
+  }
+
+  async function resumeServerAgent() {
+    await fetch('/api/agent?action=resume', { method: 'POST' });
+    notify('Server agent resumed', 'success');
+  }
 
   // Poll inbound SMS every 10s
   useEffect(() => {
@@ -628,6 +672,40 @@ export default function ClawDialer() {
             {t === 'inbox' && unreadInbox > 0 && <span style={{position:'absolute',top:6,right:4,background:'var(--red)',color:'white',borderRadius:'50%',width:14,height:14,fontSize:8,fontFamily:'DM Mono, monospace',display:'flex',alignItems:'center',justifyContent:'center'}}>{unreadInbox}</span>}
           </button>
         ))}
+      </div>
+
+      {/* ── SERVER AGENT BANNER ── */}
+      <div style={{background:'var(--surface)',borderBottom:'1px solid var(--border)',padding:'10px 20px',display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:serverAgentRunning?'var(--green)':'var(--text-dim)',animation:serverAgentRunning?'pulse 1s infinite':'none'}}></div>
+          <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:serverAgentRunning?'var(--green)':'var(--text-dim)'}}>SERVER AGENT</span>
+          <span style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginLeft:4}}>{serverAgent.status.toUpperCase()}</span>
+        </div>
+        {serverAgent.status !== 'idle' && <>
+          <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-mid)'}}>
+            {serverAgent.called}/{serverAgent.total} CALLED
+          </span>
+          <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--teal)'}}>
+            {serverAgent.interested} INTERESTED
+          </span>
+          {serverAgent.current && <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--yellow)',animation:'pulse 1s infinite'}}>
+            📞 {serverAgent.current.name || serverAgent.current.phone}
+          </span>}
+        </>}
+        <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+          {serverAgent.status === 'idle' || serverAgent.status === 'done' ? (
+            <button onClick={startServerAgent} style={{padding:'6px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,letterSpacing:1,background:'var(--green)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>
+              ▶ START SERVER AGENT
+            </button>
+          ) : <>
+            {serverAgent.paused ? (
+              <button onClick={resumeServerAgent} style={{padding:'6px 14px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'var(--teal)',color:'var(--bg)',border:'none',cursor:'pointer',borderRadius:2}}>▶ RESUME</button>
+            ) : (
+              <button onClick={pauseServerAgent} style={{padding:'6px 14px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--yellow)',border:'1px solid var(--yellow)',cursor:'pointer',borderRadius:2}}>⏸ PAUSE</button>
+            )}
+            <button onClick={stopServerAgent} style={{padding:'6px 14px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--red)',border:'1px solid var(--red)',cursor:'pointer',borderRadius:2}}>⏹ STOP</button>
+          </>}
+        </div>
       </div>
 
       {/* ── DIALER TAB ── */}
