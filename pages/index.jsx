@@ -204,6 +204,8 @@ const [selectedIds, setSelectedIds] = useState(new Set());
 const [bulkMode, setBulkMode] = useState(false);
 const [contextMenu, setContextMenu] = useState(null); // {x, y, idx}
 const [confirmDelete, setConfirmDelete] = useState(null); // idx or ‘bulk’
+const [isMobile, setIsMobile] = useState(false);
+const [mobileView, setMobileView] = useState(‘list’); // ‘list’ | ‘dial’ | ‘log’
 
 const timerRef = useRef(null);
 const autoEndRef = useRef(null);
@@ -242,6 +244,14 @@ return () => document.removeEventListener(‘click’, handleClick);
 useEffect(() => {
 const t = setInterval(() => setClock(new Date().toLocaleTimeString(‘en-US’,{hour12:false})), 1000);
 return () => clearInterval(t);
+}, []);
+
+// Mobile detection
+useEffect(() => {
+function check() { setIsMobile(window.innerWidth < 768); }
+check();
+window.addEventListener(‘resize’, check);
+return () => window.removeEventListener(‘resize’, check);
 }, []);
 
 // Persist
@@ -338,6 +348,7 @@ function selectContact(idx) {
 setActiveIdx(idx);
 setNotes(contacts[idx]?.notes || ‘’);
 setSmsBody(SMS_FOLLOW_UP(contacts[idx]?.name || ‘’));
+if (isMobile) setMobileView(‘dial’);
 }
 
 function updateContactStatus(idx, status, notesVal) {
@@ -702,6 +713,217 @@ const statusText = { idle:‘STANDBY’, dialing:‘DIALING…’, connected:‘
 
 const tabs = [‘dialer’,‘dashboard’,‘inbox’,‘admin’];
 
+// ── PANEL RENDERS ─────────────────────────────────────────────────────────
+const ContactsPanel = (
+<div style={{borderRight:‘1px solid var(–border)’,overflow:‘hidden’,display:‘flex’,flexDirection:‘column’,height:‘100%’}}>
+<div style={{padding:‘12px 14px’,borderBottom:‘1px solid var(–border)’,display:‘flex’,alignItems:‘center’,justifyContent:‘space-between’,background:‘var(–surface)’}}>
+<span style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:12,letterSpacing:3,color:‘var(–text-mid)’}}>CONTACTS</span>
+<div style={{display:‘flex’,gap:6,alignItems:‘center’}}>
+<span style={{fontFamily:‘DM Mono, monospace’,fontSize:10,color:‘var(–text-dim)’}}>{filteredContacts.length}/{contacts.length}</span>
+<button onClick={() => { setBulkMode(b=>!b); setSelectedIds(new Set()); }} style={{padding:‘2px 6px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:bulkMode?‘rgba(255,107,43,0.2)’:‘transparent’,border:`1px solid ${bulkMode?'var(--orange)':'var(--border2)'}`,color:bulkMode?‘var(–orange)’:‘var(–text-dim)’,cursor:‘pointer’,borderRadius:2,letterSpacing:1}}>{bulkMode?‘DONE’:‘SELECT’}</button>
+<button onClick={() => setResetModal(true)} style={{padding:‘2px 6px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘transparent’,border:‘1px solid var(–border2)’,color:‘var(–text-dim)’,cursor:‘pointer’,borderRadius:2,letterSpacing:1}}>RESET</button>
+</div>
+</div>
+{bulkMode && selectedIds.size > 0 && (
+<div style={{padding:‘8px 12px’,borderBottom:‘1px solid var(–border)’,background:‘rgba(255,107,43,0.08)’,display:‘flex’,gap:6,alignItems:‘center’,flexWrap:‘wrap’}}>
+<span style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–orange)’}}>{selectedIds.size} SELECTED</span>
+<button onClick={selectAll} style={{padding:‘3px 8px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘transparent’,border:‘1px solid var(–border2)’,color:‘var(–text-dim)’,cursor:‘pointer’,borderRadius:2}}>ALL</button>
+<button onClick={() => bulkSetStatus(‘new’)} style={{padding:‘3px 8px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘transparent’,border:‘1px solid var(–blue)’,color:‘var(–blue)’,cursor:‘pointer’,borderRadius:2}}>→ NEW</button>
+<button onClick={() => bulkSetStatus(‘callback’)} style={{padding:‘3px 8px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘transparent’,border:‘1px solid var(–orange)’,color:‘var(–orange)’,cursor:‘pointer’,borderRadius:2}}>→ CB</button>
+<button onClick={() => bulkSetStatus(‘dnc’)} style={{padding:‘3px 8px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘transparent’,border:‘1px solid var(–red)’,color:‘var(–red)’,cursor:‘pointer’,borderRadius:2}}>DNC</button>
+<button onClick={() => setConfirmDelete(‘bulk’)} style={{padding:‘3px 8px’,fontFamily:‘DM Mono, monospace’,fontSize:8,background:‘rgba(255,59,59,0.15)’,border:‘1px solid var(–red)’,color:‘var(–red)’,cursor:‘pointer’,borderRadius:2}}>🗑 DELETE</button>
+</div>
+)}
+<div style={{padding:‘10px 12px’,borderBottom:‘1px solid var(–border)’,display:‘flex’,gap:6}}>
+<input value={search} onChange={e=>setSearch(e.target.value)} placeholder=“Search…” style={{flex:1,background:‘var(–surface2)’,border:‘1px solid var(–border2)’,color:‘var(–text)’,fontFamily:‘DM Mono, monospace’,fontSize:11,padding:‘7px 10px’,outline:‘none’,borderRadius:2}} />
+<button onClick={() => setShowAddModal(true)} style={{padding:‘7px 12px’,background:‘var(–teal)’,color:‘var(–bg)’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:11,fontWeight:700,border:‘none’,cursor:‘pointer’,borderRadius:2}}>+ ADD</button>
+</div>
+<div style={{padding:‘6px 12px’,borderBottom:‘1px solid var(–border)’,display:‘flex’,gap:6,flexWrap:‘wrap’}}>
+{[‘all’,‘new’,‘callback’,‘interested’,‘dnc’].map(f => (
+<button key={f} onClick={() => setStatusFilter(f)} style={{padding:‘4px 10px’,fontSize:9,fontFamily:‘Barlow Condensed, sans-serif’,fontWeight:700,letterSpacing:1.5,cursor:‘pointer’,border:`1px solid ${statusFilter===f?'var(--teal-dim)':'var(--border2)'}`,background:statusFilter===f?‘var(–surface3)’:‘transparent’,color:statusFilter===f?‘var(–teal)’:‘var(–text-dim)’,borderRadius:2}}>
+{f===‘all’?‘ALL’:f===‘new’?‘NEW’:f===‘callback’?‘CB’:f===‘interested’?‘HOT’:‘DNC’}
+</button>
+))}
+<label style={{padding:‘4px 10px’,fontSize:9,fontFamily:‘Barlow Condensed, sans-serif’,fontWeight:700,letterSpacing:1.5,cursor:‘pointer’,border:‘1px solid var(–border2)’,background:‘transparent’,color:‘var(–text-dim)’,borderRadius:2}}>
+CSV<input type=“file” accept=”.csv” style={{display:‘none’}} onChange={handleCSV} />
+</label>
+</div>
+<div style={{padding:‘8px 12px’,borderBottom:‘1px solid var(–border)’,background:‘rgba(20,241,198,0.03)’,display:‘flex’,gap:6,alignItems:‘center’}}>
+<select value={vlFilter} onChange={e=>setVlFilter(e.target.value)} style={{background:‘var(–surface2)’,border:‘1px solid var(–border2)’,color:‘var(–text-dim)’,fontFamily:‘DM Mono, monospace’,fontSize:9,padding:‘4px 6px’,outline:‘none’,borderRadius:2}}>
+<option value="">ALL STATES</option>
+{[‘FL’,‘TX’,‘CA’,‘GA’,‘NC’,‘TN’,‘AL’,‘MS’,‘LA’,‘SC’,‘VA’,‘OH’,‘MI’,‘IL’,‘PA’,‘NY’,‘NJ’,‘AZ’,‘NV’,‘CO’].map(s=><option key={s} value={s}>{s}</option>)}
+</select>
+<button onClick={loadFromVinLedger} disabled={loadingVL} style={{flex:1,padding:‘5px 10px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:10,fontWeight:700,letterSpacing:1,cursor:loadingVL?‘wait’:‘pointer’,border:‘1px solid var(–teal-dim)’,background:loadingVL?‘rgba(20,241,198,0.05)’:‘rgba(20,241,198,0.1)’,color:‘var(–teal)’,borderRadius:2}}>
+{loadingVL ? ‘⟳ LOADING…’ : ‘⚡ LOAD VINLEDGER’}
+</button>
+</div>
+<div style={{flex:1,overflowY:‘auto’}}>
+{filteredContacts.length === 0 ? (
+<div style={{padding:40,textAlign:‘center’,color:‘var(–text-dim)’,fontFamily:‘DM Mono, monospace’,fontSize:11}}>
+<div style={{fontSize:28,marginBottom:10,opacity:0.3}}>📋</div>
+{contacts.length === 0 ? ‘Upload CSV or add contacts’ : ‘No matches’}
+</div>
+) : filteredContacts.map((c) => {
+const idx = contacts.indexOf(c);
+const sColor = {new:’#3B8FFF’,called:’#FFD600’,calling:’#FFD600’,interested:’#14F1C6’,voicemail:’#6B7A8D’,callback:’#FF6B2B’,‘not-interested’:’#FF3B3B’,‘tcpa-skip’:’#6B3B7A’,dnc:’#4A0000’}[c.status||‘new’];
+return (
+<div key={c.id}
+onClick={() => bulkMode ? toggleSelectContact(idx, {stopPropagation:()=>{}}) : selectContact(idx)}
+onContextMenu={e => { e.preventDefault(); setContextMenu({x:e.clientX, y:e.clientY, idx}); }}
+style={{padding:‘10px 14px’,borderBottom:‘1px solid var(–border)’,cursor:‘pointer’,display:‘flex’,alignItems:‘center’,gap:10,background:activeIdx===idx?‘var(–surface3)’:‘transparent’,borderLeft:activeIdx===idx?‘2px solid var(–teal)’:‘2px solid transparent’,position:‘relative’,opacity:c.status===‘dnc’?0.4:1}}
+>
+{bulkMode && (
+<div onClick={e=>toggleSelectContact(idx,e)} style={{width:16,height:16,border:`1px solid ${selectedIds.has(idx)?'var(--teal)':'var(--border2)'}`,background:selectedIds.has(idx)?‘var(–teal)’:‘transparent’,borderRadius:2,display:‘flex’,alignItems:‘center’,justifyContent:‘center’,flexShrink:0,cursor:‘pointer’}}>
+{selectedIds.has(idx) && <span style={{color:‘var(–bg)’,fontSize:10,lineHeight:1}}>✓</span>}
+</div>
+)}
+<div style={{width:30,height:30,background:‘var(–surface3)’,border:‘1px solid var(–border2)’,borderRadius:2,display:‘flex’,alignItems:‘center’,justifyContent:‘center’,fontFamily:‘Bebas Neue, sans-serif’,fontSize:13,color:‘var(–teal)’,flexShrink:0}}>{initials(c.name)}</div>
+<div style={{flex:1,minWidth:0}}>
+<div style={{fontSize:13,fontWeight:600,color:‘var(–text)’,whiteSpace:‘nowrap’,overflow:‘hidden’,textOverflow:‘ellipsis’}}>{c.name||‘Unknown’}</div>
+<div style={{fontSize:11,color:‘var(–text-dim)’,whiteSpace:‘nowrap’,overflow:‘hidden’,textOverflow:‘ellipsis’,marginTop:2}}>{c.business_name||c.phone||’—’}</div>
+</div>
+<div style={{display:‘flex’,alignItems:‘center’,gap:4}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:8,padding:‘2px 6px’,borderRadius:2,color:sColor,border:`1px solid ${sColor}33`,background:`${sColor}11`,flexShrink:0}}>{(c.status||‘NEW’).toUpperCase()}</div>
+<button onClick={e=>{e.stopPropagation();setConfirmDelete(idx);}} style={{padding:‘2px 5px’,background:‘transparent’,border:‘1px solid transparent’,color:‘var(–text-dim)’,cursor:‘pointer’,borderRadius:2,fontSize:10}} onMouseOver={e=>e.currentTarget.style.color=‘var(–red)’} onMouseOut={e=>e.currentTarget.style.color=‘var(–text-dim)’}>🗑</button>
+</div>
+</div>
+);
+})}
+</div>
+</div>
+);
+
+const DialPanel = (
+<div style={{borderRight:‘1px solid var(–border)’,display:‘flex’,flexDirection:‘column’,overflow:‘hidden’,height:‘100%’}}>
+{/* Agent bar */}
+<div style={{padding:‘12px 20px’,borderBottom:‘1px solid var(–border)’,background:‘var(–surface)’,display:‘flex’,alignItems:‘center’,justifyContent:‘space-between’,flexShrink:0}}>
+<div style={{display:‘flex’,alignItems:‘center’,gap:10}}>
+<span style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:12,letterSpacing:3,color:‘var(–orange)’}}>// AI AGENT MODE</span>
+{agentMode && <span style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–orange)’,animation:‘pulse 1s infinite’}}>{agentPaused?‘PAUSED’:‘RUNNING’}</span>}
+<div style={{padding:‘2px 8px’,borderRadius:2,border:`1px solid ${aiCallMode?'var(--teal)':'var(--border2)'}`,background:aiCallMode?‘rgba(20,241,198,0.1)’:‘transparent’,fontFamily:‘DM Mono, monospace’,fontSize:8,color:aiCallMode?‘var(–teal)’:‘var(–text-dim)’,cursor:‘pointer’}} onClick={() => setAiCallMode(m=>!m)}>
+{aiCallMode ? ‘🤖 AI MODE’ : ‘📻 REC MODE’}
+</div>
+</div>
+<div style={{display:‘flex’,alignItems:‘center’,gap:10}}>
+<span style={{fontFamily:‘DM Mono, monospace’,fontSize:10,color:‘var(–text-dim)’}}>{queuedCount} IN QUEUE</span>
+<div onClick={toggleAgent} style={{width:38,height:19,background:agentMode?‘rgba(255,107,43,0.3)’:‘var(–surface3)’,border:`1px solid ${agentMode?'var(--orange)':'var(--border2)'}`,borderRadius:10,cursor:‘pointer’,position:‘relative’}}>
+<div style={{position:‘absolute’,width:13,height:13,borderRadius:‘50%’,background:agentMode?‘var(–orange)’:‘var(–text-dim)’,top:2,left:agentMode?21:2,transition:‘left 0.3s’,boxShadow:agentMode?‘0 0 8px rgba(255,107,43,0.6)’:‘none’}}></div>
+</div>
+{agentMode && <button onClick={() => setAgentPaused(p=>!p)} style={{padding:‘4px 10px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:10,fontWeight:700,cursor:‘pointer’,border:‘1px solid var(–border2)’,background:‘transparent’,color:‘var(–text-dim)’,borderRadius:2}}>{agentPaused?‘RESUME’:‘PAUSE’}</button>}
+</div>
+</div>
+{/* Stats */}
+<div style={{padding:‘10px 20px’,borderBottom:‘1px solid var(–border)’,display:‘grid’,gridTemplateColumns:‘repeat(4,1fr)’,gap:8,flexShrink:0}}>
+{[[‘Queued’,queuedCount,‘var(–text)’],[‘Called’,totalCalls,‘var(–text)’],[‘Interested’,interestedCalls,‘var(–teal)’],[‘Pipeline’,`$${pipeline}`,‘var(–green)’]].map(([label,val,color]) => (
+<div key={label} style={{background:‘var(–surface2)’,border:‘1px solid var(–border)’,borderRadius:2,padding:‘8px 10px’,textAlign:‘center’}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:18,color,lineHeight:1}}>{val}</div>
+<div style={{fontSize:9,color:‘var(–text-dim)’,letterSpacing:1,textTransform:‘uppercase’,marginTop:3}}>{label}</div>
+</div>
+))}
+</div>
+{/* Active call */}
+<div style={{padding:‘18px 20px’,borderBottom:‘1px solid var(–border)’,background:‘var(–surface)’,flexShrink:0}}>
+<div style={{display:‘flex’,alignItems:‘flex-start’,justifyContent:‘space-between’,marginBottom:14}}>
+<div>
+<div style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:isMobile?20:26,letterSpacing:2,color:‘var(–text)’,lineHeight:1}}>{activeContact?.name||‘SELECT A CONTACT’}</div>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:11,color:‘var(–text-dim)’,marginTop:4}}>{activeContact?.business_name||‘Choose from the list’}</div>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:13,color:‘var(–teal)’,marginTop:6}}>{activeContact?.phone||’—’}</div>
+</div>
+<div style={{display:‘flex’,flexDirection:‘column’,alignItems:‘flex-end’,gap:6}}>
+{callState !== ‘idle’ && <div style={{fontFamily:‘DM Mono, monospace’,fontSize:30,color:‘var(–teal)’,letterSpacing:4}}>{fmtTime(callSeconds)}</div>}
+{isMobile && activeContact && <button onClick={() => setMobileView(‘list’)} style={{padding:‘4px 10px’,fontFamily:‘DM Mono, monospace’,fontSize:9,background:‘transparent’,border:‘1px solid var(–border2)’,color:‘var(–text-dim)’,cursor:‘pointer’,borderRadius:2}}>← LEADS</button>}
+</div>
+</div>
+<div style={{display:‘flex’,alignItems:‘center’,gap:8,marginBottom:14,fontFamily:‘DM Mono, monospace’,fontSize:11}}>
+<div style={{width:8,height:8,borderRadius:‘50%’,background:statusColor[callState],animation:[‘dialing’,‘connected’].includes(callState)?‘pulse 1s infinite’:‘none’}}></div>
+<span style={{color:statusColor[callState]}}>{statusText[callState]}</span>
+{callSid && <span style={{color:‘var(–text-dim)’,fontSize:9}}>SID: {callSid.slice(0,16)}…</span>}
+</div>
+<div style={{display:‘flex’,gap:8,flexWrap:‘wrap’,alignItems:‘center’}}>
+{callState===‘idle’ && (
+<div style={{display:‘flex’,gap:0,borderRadius:2,overflow:‘hidden’,border:‘1px solid var(–border2)’}}>
+<button onClick={startCall} style={{padding:‘12px 20px’,fontFamily:‘Bebas Neue, sans-serif’,fontSize:15,letterSpacing:3,background:aiCallMode?‘rgba(20,241,198,0.15)’:‘var(–green)’,color:aiCallMode?‘var(–teal)’:‘var(–bg)’,border:‘none’,cursor:‘pointer’}}>
+{aiCallMode ? ‘🤖 AI DIAL’ : ‘📞 DIAL’}
+</button>
+<button onClick={() => setAiCallMode(m => !m)} title={aiCallMode ? ‘Switch to recording’ : ‘Switch to AI agent’} style={{padding:‘12px 10px’,fontFamily:‘DM Mono, monospace’,fontSize:9,background:aiCallMode?‘rgba(20,241,198,0.25)’:‘var(–surface3)’,color:aiCallMode?‘var(–teal)’:‘var(–text-dim)’,border:‘none’,borderLeft:‘1px solid var(–border2)’,cursor:‘pointer’,letterSpacing:1}}>{aiCallMode ? ‘AI’ : ‘REC’}</button>
+</div>
+)}
+{[‘dialing’,‘connected’].includes(callState) && <>
+<button onClick={endCall} style={{padding:‘12px 24px’,fontFamily:‘Bebas Neue, sans-serif’,fontSize:15,letterSpacing:3,background:‘var(–red)’,color:‘white’,border:‘none’,cursor:‘pointer’,borderRadius:2}}>🔴 END</button>
+{!aiCallMode && <button onClick={() => setDisposition(‘voicemail’)} style={{padding:‘12px 16px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:11,fontWeight:700,background:‘transparent’,color:‘var(–text-dim)’,border:‘1px solid var(–border2)’,cursor:‘pointer’,borderRadius:2}}>🎙 DROP VM</button>}
+</>}
+{callState===‘idle’ && agentMode && (
+<button onClick={skipContact} style={{padding:‘12px 14px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:11,fontWeight:700,background:‘transparent’,color:‘var(–text-dim)’,border:‘1px solid var(–border2)’,cursor:‘pointer’,borderRadius:2}}>⏭ SKIP</button>
+)}
+<button onClick={() => activeContact?setSmsModal(true):notify(‘Select a contact’,‘warning’)} style={{padding:‘12px 16px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:11,fontWeight:700,background:‘transparent’,color:‘var(–text-dim)’,border:‘1px solid var(–border2)’,cursor:‘pointer’,borderRadius:2}}>💬 SMS</button>
+{activeContact && callState===‘idle’ && (
+<button onClick={() => setConfirmDelete(activeIdx)} style={{padding:‘12px 10px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:11,fontWeight:700,background:‘transparent’,color:‘var(–text-dim)’,border:‘1px solid var(–border2)’,cursor:‘pointer’,borderRadius:2}}>🗑</button>
+)}
+</div>
+{[‘connected’,‘ended’].includes(callState) && (
+<div style={{display:‘grid’,gridTemplateColumns:‘repeat(5,1fr)’,gap:6,marginTop:14,paddingTop:14,borderTop:‘1px solid var(–border)’}}>
+{[[‘answered’,‘✅ ANSWERED’,‘var(–green)’],[‘voicemail’,‘📬 VOICEMAIL’,‘var(–text-dim)’],[‘callback’,‘🔁 CALLBACK’,‘var(–orange)’],[‘interested’,‘🔥 INTERESTED’,‘var(–teal)’],[‘not-interested’,‘❌ NOT INT.’,‘var(–red)’]].map(([outcome,label,color]) => (
+<button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:‘8px 6px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:10,fontWeight:700,color,border:`1px solid ${color}44`,background:`${color}11`,cursor:‘pointer’,borderRadius:2}}>{label}</button>
+))}
+</div>
+)}
+</div>
+{/* Script */}
+<div style={{flex:1,overflowY:‘auto’,padding:‘16px 20px’}}>
+<div style={{display:‘flex’,gap:6,marginBottom:14,flexWrap:‘wrap’}}>
+{scripts.map((s,i) => (
+<button key={i} onClick={() => setScriptIdx(i)} style={{padding:‘5px 12px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:10,fontWeight:700,letterSpacing:1.5,cursor:‘pointer’,border:`1px solid ${scriptIdx===i?s.color:'var(--border2)'}`,background:scriptIdx===i?`${s.color}22`:‘transparent’,color:scriptIdx===i?s.color:‘var(–text-dim)’,borderRadius:2}}>{s.name}</button>
+))}
+</div>
+{scripts[scriptIdx]?.sections.map((sec,i) => (
+<div key={i} style={{marginBottom:14,padding:‘12px 14px’,background:‘var(–surface2)’,border:‘1px solid var(–border)’,borderLeft:`2px solid ${scripts[scriptIdx].color}`,borderRadius:2}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:8,color:scripts[scriptIdx].color,letterSpacing:2,marginBottom:6}}>{sec.label}</div>
+<div style={{fontFamily:‘Barlow Condensed, sans-serif’,fontSize:14,lineHeight:1.6,color:‘var(–text)’}}>{sec.text}</div>
+</div>
+))}
+<div style={{marginTop:8}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–text-dim)’,letterSpacing:1,marginBottom:6}}>NOTES</div>
+<textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder=“Call notes…” style={{width:‘100%’,background:‘var(–surface2)’,border:‘1px solid var(–border2)’,color:‘var(–text)’,fontFamily:‘DM Mono, monospace’,fontSize:11,padding:‘8px 10px’,outline:‘none’,borderRadius:2,resize:‘none’,height:60}} />
+</div>
+</div>
+</div>
+);
+
+const LogPanel = (
+<div style={{overflow:‘hidden’,display:‘flex’,flexDirection:‘column’,height:‘100%’}}>
+{[[‘TOTAL CALLS’,totalCalls,‘var(–teal)’],[‘ANSWER RATE’,`${answerRate}%`,‘var(–green)’],[‘INTERESTED’,interestedCalls,‘var(–orange)’]].map(([label,val,color]) => (
+<div key={label} style={{padding:‘14px’,borderBottom:‘1px solid var(–border)’,flexShrink:0}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–text-dim)’,letterSpacing:2,marginBottom:5}}>{label}</div>
+<div style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:30,letterSpacing:2,color,lineHeight:1}}>{val}</div>
+</div>
+))}
+<div style={{padding:‘14px’,borderBottom:‘1px solid var(–border)’,background:‘rgba(20,241,198,0.03)’,borderLeft:‘2px solid var(–teal)’,flexShrink:0}}>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–text-dim)’,letterSpacing:2,marginBottom:5}}>EST. PIPELINE MRR</div>
+<div style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:26,color:‘var(–teal)’,letterSpacing:2}}>${pipeline.toLocaleString()}</div>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–text-dim)’,marginTop:4}}>@ $99/mo per interested</div>
+</div>
+<div style={{padding:‘12px 14px’,borderBottom:‘1px solid var(–border)’,display:‘flex’,alignItems:‘center’,justifyContent:‘space-between’,flexShrink:0}}>
+<span style={{fontFamily:‘Bebas Neue, sans-serif’,fontSize:12,letterSpacing:3,color:‘var(–text-mid)’}}>CALL LOG</span>
+<button onClick={() => exportCSV([[‘Name’,‘Business’,‘Phone’,‘Outcome’,‘Duration’,‘Script’,‘Notes’,‘Time’],…callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],‘call-log.csv’)} style={{padding:‘4px 8px’,fontFamily:‘Barlow Condensed, sans-serif’,fontSize:9,fontWeight:700,cursor:‘pointer’,border:‘1px solid var(–border2)’,background:‘transparent’,color:‘var(–text-dim)’,borderRadius:2}}>EXPORT</button>
+</div>
+<div style={{flex:1,overflowY:‘auto’}}>
+{callLog.length===0?<div style={{padding:20,textAlign:‘center’,fontFamily:‘DM Mono, monospace’,fontSize:11,color:‘var(–text-dim)’}}>No calls yet</div>
+:callLog.slice(0,60).map(entry => {
+const c={answered:‘var(–green)’,voicemail:‘var(–text-dim)’,callback:‘var(–orange)’,interested:‘var(–teal)’,‘not-interested’:‘var(–red)’}[entry.outcome]||‘var(–text-dim)’;
+return (
+<div key={entry.id} style={{padding:‘9px 14px’,borderBottom:‘1px solid var(–border)’,display:‘flex’,alignItems:‘center’,gap:8}}>
+<div style={{width:6,height:6,borderRadius:‘50%’,background:c,flexShrink:0}}></div>
+<div style={{flex:1,minWidth:0}}>
+<div style={{fontSize:12,fontWeight:600,whiteSpace:‘nowrap’,overflow:‘hidden’,textOverflow:‘ellipsis’}}>{entry.name||‘Unknown’}</div>
+<div style={{fontFamily:‘DM Mono, monospace’,fontSize:9,color:‘var(–text-dim)’,marginTop:2}}>{entry.outcome.toUpperCase()} · {fmtTime(entry.duration)}</div>
+</div>
+</div>
+);
+})}
+</div>
+</div>
+);
+
 return (
 <>
 <Head><title>CLAW DIALER — Command Center</title><style>{css}</style></Head>
@@ -768,226 +990,46 @@ return (
   </div>
 
   {/* ── DIALER TAB ── */}
-  {tab === 'dialer' && (
+  {tab === 'dialer' && !isMobile && (
     <div style={{display:'grid',gridTemplateColumns:'320px 1fr 280px',height:'calc(100vh - 90px)',overflow:'hidden'}}>
+      {ContactsPanel}
+      {DialPanel}
+      {LogPanel}
+    </div>
+  )}
 
-      {/* CONTACTS */}
-      <div style={{borderRight:'1px solid var(--border)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)'}}>
-          <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>CONTACTS</span>
-          <div style={{display:'flex',gap:6,alignItems:'center'}}>
-            <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{filteredContacts.length}/{contacts.length}</span>
-            <button onClick={() => { setBulkMode(b=>!b); setSelectedIds(new Set()); }} style={{padding:'2px 6px',fontFamily:'DM Mono, monospace',fontSize:8,background:bulkMode?'rgba(255,107,43,0.2)':'transparent',border:`1px solid ${bulkMode?'var(--orange)':'var(--border2)'}`,color:bulkMode?'var(--orange)':'var(--text-dim)',cursor:'pointer',borderRadius:2,letterSpacing:1}}>{bulkMode?'DONE':'SELECT'}</button>
-            <button onClick={() => setResetModal(true)} style={{padding:'2px 6px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--border2)',color:'var(--text-dim)',cursor:'pointer',borderRadius:2,letterSpacing:1}}>RESET</button>
-          </div>
-        </div>
-        {bulkMode && selectedIds.size > 0 && (
-          <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',background:'rgba(255,107,43,0.08)',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-            <span style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--orange)'}}>{selectedIds.size} SELECTED</span>
-            <button onClick={selectAll} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--border2)',color:'var(--text-dim)',cursor:'pointer',borderRadius:2}}>ALL</button>
-            <button onClick={() => bulkSetStatus('new')} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--blue)',color:'var(--blue)',cursor:'pointer',borderRadius:2}}>→ NEW</button>
-            <button onClick={() => bulkSetStatus('callback')} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--orange)',color:'var(--orange)',cursor:'pointer',borderRadius:2}}>→ CB</button>
-            <button onClick={() => bulkSetStatus('dnc')} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:8,background:'transparent',border:'1px solid var(--red)',color:'var(--red)',cursor:'pointer',borderRadius:2}}>DNC</button>
-            <button onClick={() => setConfirmDelete('bulk')} style={{padding:'3px 8px',fontFamily:'DM Mono, monospace',fontSize:8,background:'rgba(255,59,59,0.15)',border:'1px solid var(--red)',color:'var(--red)',cursor:'pointer',borderRadius:2}}>🗑 DELETE</button>
-          </div>
-        )}
-        <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'7px 10px',outline:'none',borderRadius:2}} />
-          <button onClick={() => setShowAddModal(true)} style={{padding:'7px 12px',background:'var(--teal)',color:'var(--bg)',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,border:'none',cursor:'pointer',borderRadius:2}}>+ ADD</button>
-        </div>
-        <div style={{padding:'6px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:6,flexWrap:'wrap'}}>
-          {['all','new','callback','interested','dnc'].map(f => (
-            <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--teal-dim)':'var(--border2)'}`,background:statusFilter===f?'var(--surface3)':'transparent',color:statusFilter===f?'var(--teal)':'var(--text-dim)',borderRadius:2}}>
-              {f==='all'?'ALL':f==='new'?'NEW':f==='callback'?'CB':f==='interested'?'HOT':'DNC'}
-            </button>
-          ))}
-          <label style={{padding:'4px 10px',fontSize:9,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>
-            CSV<input type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV} />
-          </label>
-        </div>
-        <div style={{padding:'8px 12px',borderBottom:'1px solid var(--border)',background:'rgba(20,241,198,0.03)',display:'flex',gap:6,alignItems:'center'}}>
-          <select value={vlFilter} onChange={e=>setVlFilter(e.target.value)} style={{background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text-dim)',fontFamily:'DM Mono, monospace',fontSize:9,padding:'4px 6px',outline:'none',borderRadius:2}}>
-            <option value="">ALL STATES</option>
-            {['FL','TX','CA','GA','NC','TN','AL','MS','LA','SC','VA','OH','MI','IL','PA','NY','NJ','AZ','NV','CO'].map(s=><option key={s} value={s}>{s}</option>)}
-          </select>
-          <button onClick={loadFromVinLedger} disabled={loadingVL} style={{flex:1,padding:'5px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,cursor:loadingVL?'wait':'pointer',border:'1px solid var(--teal-dim)',background:loadingVL?'rgba(20,241,198,0.05)':'rgba(20,241,198,0.1)',color:'var(--teal)',borderRadius:2}}>
-            {loadingVL ? '⟳ LOADING...' : '⚡ LOAD VINLEDGER'}
+  {tab === 'dialer' && isMobile && (
+    <div style={{height:'calc(100vh - 110px)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* Mobile sub-nav */}
+      <div style={{display:'flex',borderBottom:'1px solid var(--border)',background:'var(--surface)',flexShrink:0}}>
+        {[['list','📋 LEADS'],['dial','📞 DIAL'],['log','📊 LOG']].map(([v,label]) => (
+          <button key={v} onClick={() => setMobileView(v)} style={{flex:1,padding:'10px 4px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,letterSpacing:1,background:'none',border:'none',borderBottom:`2px solid ${mobileView===v?'var(--teal)':'transparent'}`,color:mobileView===v?'var(--teal)':'var(--text-dim)',cursor:'pointer'}}>
+            {label}
+            {v==='dial' && activeContact && <span style={{display:'block',fontSize:8,color:'var(--text-dim)',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:80,margin:'1px auto 0'}}>{activeContact.name||activeContact.phone}</span>}
           </button>
-        </div>
-        <div style={{flex:1,overflowY:'auto'}}>
-          {filteredContacts.length === 0 ? (
-            <div style={{padding:40,textAlign:'center',color:'var(--text-dim)',fontFamily:'DM Mono, monospace',fontSize:11}}>
-              <div style={{fontSize:28,marginBottom:10,opacity:0.3}}>📋</div>
-              {contacts.length === 0 ? 'Upload CSV or add contacts' : 'No matches'}
-            </div>
-          ) : filteredContacts.map((c) => {
-            const idx = contacts.indexOf(c);
-            const sColor = {new:'#3B8FFF',called:'#FFD600',calling:'#FFD600',interested:'#14F1C6',voicemail:'#6B7A8D',callback:'#FF6B2B','not-interested':'#FF3B3B','tcpa-skip':'#6B3B7A',dnc:'#4A0000'}[c.status||'new'];
-            return (
-              <div key={c.id}
-                onClick={() => bulkMode ? toggleSelectContact(idx, {stopPropagation:()=>{}}) : selectContact(idx)}
-                onContextMenu={e => { e.preventDefault(); setContextMenu({x:e.clientX, y:e.clientY, idx}); }}
-                style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',cursor:'pointer',display:'flex',alignItems:'center',gap:10,background:activeIdx===idx?'var(--surface3)':'transparent',borderLeft:activeIdx===idx?'2px solid var(--teal)':'2px solid transparent',position:'relative',opacity:c.status==='dnc'?0.4:1}}
-              >
-                {bulkMode && (
-                  <div onClick={e=>toggleSelectContact(idx,e)} style={{width:16,height:16,border:`1px solid ${selectedIds.has(idx)?'var(--teal)':'var(--border2)'}`,background:selectedIds.has(idx)?'var(--teal)':'transparent',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}>
-                    {selectedIds.has(idx) && <span style={{color:'var(--bg)',fontSize:10,lineHeight:1}}>✓</span>}
-                  </div>
-                )}
-                <div style={{width:30,height:30,background:'var(--surface3)',border:'1px solid var(--border2)',borderRadius:2,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Bebas Neue, sans-serif',fontSize:13,color:'var(--teal)',flexShrink:0}}>{initials(c.name)}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'Unknown'}</div>
-                  <div style={{fontSize:11,color:'var(--text-dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',marginTop:2}}>{c.business_name||c.phone||'—'}</div>
-                </div>
-                <div style={{display:'flex',alignItems:'center',gap:6}}>
-                  <div style={{fontFamily:'DM Mono, monospace',fontSize:8,padding:'2px 6px',borderRadius:2,color:sColor,border:`1px solid ${sColor}33`,background:`${sColor}11`,flexShrink:0}}>{(c.status||'NEW').toUpperCase()}</div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setConfirmDelete(idx); }}
-                    title="Delete"
-                    style={{padding:'2px 5px',background:'transparent',border:'1px solid transparent',color:'var(--text-dim)',cursor:'pointer',borderRadius:2,fontSize:11,opacity:0,transition:'opacity 0.15s'}}
-                    className="del-btn"
-                    onMouseOver={e=>e.currentTarget.style.opacity='1'}
-                    onMouseOut={e=>e.currentTarget.style.opacity='0'}
-                  >🗑</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* CENTER DIALER */}
-      <div style={{borderRight:'1px solid var(--border)',display:'flex',flexDirection:'column',overflow:'hidden'}}>
-        {/* Agent bar */}
-        <div style={{padding:'12px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--orange)'}}>// AI AGENT MODE</span>
-            {agentMode && <span style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--orange)',animation:'pulse 1s infinite'}}>{agentPaused?'PAUSED':'RUNNING'}</span>}
-            <div style={{padding:'2px 8px',borderRadius:2,border:`1px solid ${aiCallMode?'var(--teal)':'var(--border2)'}`,background:aiCallMode?'rgba(20,241,198,0.1)':'transparent',fontFamily:'DM Mono, monospace',fontSize:8,color:aiCallMode?'var(--teal)':'var(--text-dim)',cursor:'pointer'}} onClick={() => setAiCallMode(m=>!m)} title="Toggle AI vs Recording mode">
-              {aiCallMode ? '🤖 AI MODE' : '📻 REC MODE'}
-            </div>
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)'}}>{queuedCount} IN QUEUE</span>
-            <div onClick={toggleAgent} style={{width:38,height:19,background:agentMode?'rgba(255,107,43,0.3)':'var(--surface3)',border:`1px solid ${agentMode?'var(--orange)':'var(--border2)'}`,borderRadius:10,cursor:'pointer',position:'relative'}}>
-              <div style={{position:'absolute',width:13,height:13,borderRadius:'50%',background:agentMode?'var(--orange)':'var(--text-dim)',top:2,left:agentMode?21:2,transition:'left 0.3s',boxShadow:agentMode?'0 0 8px rgba(255,107,43,0.6)':'none'}}></div>
-            </div>
-            {agentMode && <button onClick={() => setAgentPaused(p=>!p)} style={{padding:'4px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>{agentPaused?'RESUME':'PAUSE'}</button>}
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div style={{padding:'10px 20px',borderBottom:'1px solid var(--border)',display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-          {[['Queued',queuedCount,'var(--text)'],['Called',totalCalls,'var(--text)'],['Interested',interestedCalls,'var(--teal)'],['Pipeline',`$${pipeline}`,'var(--green)']].map(([label,val,color]) => (
-            <div key={label} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:2,padding:'8px 10px',textAlign:'center'}}>
-              <div style={{fontFamily:'DM Mono, monospace',fontSize:18,color,lineHeight:1}}>{val}</div>
-              <div style={{fontSize:9,color:'var(--text-dim)',letterSpacing:1,textTransform:'uppercase',marginTop:3}}>{label}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Active call */}
-        <div style={{padding:'18px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
-          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
-            <div>
-              <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:26,letterSpacing:2,color:'var(--text)',lineHeight:1}}>{activeContact?.name||'SELECT A CONTACT'}</div>
-              <div style={{fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)',marginTop:4}}>{activeContact?.business_name||'Choose from the list'}</div>
-              <div style={{fontFamily:'DM Mono, monospace',fontSize:13,color:'var(--teal)',marginTop:6}}>{activeContact?.phone||'—'}</div>
-            </div>
-            {callState !== 'idle' && <div style={{fontFamily:'DM Mono, monospace',fontSize:30,color:'var(--teal)',letterSpacing:4}}>{fmtTime(callSeconds)}</div>}
-          </div>
-          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:14,fontFamily:'DM Mono, monospace',fontSize:11}}>
-            <div style={{width:8,height:8,borderRadius:'50%',background:statusColor[callState],animation:['dialing','connected'].includes(callState)?'pulse 1s infinite':'none'}}></div>
-            <span style={{color:statusColor[callState]}}>{statusText[callState]}</span>
-            {callSid && <span style={{color:'var(--text-dim)',fontSize:9}}>SID: {callSid.slice(0,16)}...</span>}
-          </div>
-          <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-            {callState==='idle' && (
-              <div style={{display:'flex',gap:0,borderRadius:2,overflow:'hidden',border:'1px solid var(--border2)'}}>
-                <button onClick={startCall} style={{padding:'12px 20px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:3,background:aiCallMode?'rgba(20,241,198,0.15)':'var(--green)',color:aiCallMode?'var(--teal)':'var(--bg)',border:'none',cursor:'pointer'}}>
-                  {aiCallMode ? '🤖 AI DIAL' : '📞 DIAL'}
-                </button>
-                <button
-                  onClick={() => setAiCallMode(m => !m)}
-                  title={aiCallMode ? 'AI Mode ON — click to use recording' : 'Recording Mode — click to use AI agent'}
-                  style={{padding:'12px 10px',fontFamily:'DM Mono, monospace',fontSize:9,background:aiCallMode?'rgba(20,241,198,0.25)':'var(--surface3)',color:aiCallMode?'var(--teal)':'var(--text-dim)',border:'none',borderLeft:'1px solid var(--border2)',cursor:'pointer',letterSpacing:1}}
-                >{aiCallMode ? 'AI' : 'REC'}</button>
-              </div>
-            )}
-            {['dialing','connected'].includes(callState) && <>
-              <button onClick={endCall} style={{padding:'12px 24px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:3,background:'var(--red)',color:'white',border:'none',cursor:'pointer',borderRadius:2}}>🔴 END</button>
-              {!aiCallMode && <button onClick={() => setDisposition('voicemail')} style={{padding:'12px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>🎙 DROP VM</button>}
-            </>}
-            {callState==='idle' && agentMode && (
-              <button onClick={skipContact} style={{padding:'12px 14px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>⏭ SKIP</button>
-            )}
-            <button onClick={() => activeContact?setSmsModal(true):notify('Select a contact','warning')} style={{padding:'12px 16px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>💬 SMS</button>
-            {activeContact && callState==='idle' && (
-              <button onClick={() => setConfirmDelete(activeIdx)} title="Remove from queue" style={{padding:'12px 10px',fontFamily:'Barlow Condensed, sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>🗑</button>
-            )}
-          </div>
-          {['connected','ended'].includes(callState) && (
-            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:14,paddingTop:14,borderTop:'1px solid var(--border)'}}>
-              {[['answered','✅ ANSWERED','var(--green)'],['voicemail','📬 VOICEMAIL','var(--text-dim)'],['callback','🔁 CALLBACK','var(--orange)'],['interested','🔥 INTERESTED','var(--teal)'],['not-interested','❌ NOT INT.','var(--red)']].map(([outcome,label,color]) => (
-                <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 6px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,color,border:`1px solid ${color}44`,background:`${color}11`,cursor:'pointer',borderRadius:2}}>{label}</button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Script */}
-        <div style={{flex:1,overflowY:'auto',padding:'16px 20px'}}>
-          <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-            {scripts.map((s,i) => (
-              <button key={i} onClick={() => setScriptIdx(i)} style={{padding:'5px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1.5,cursor:'pointer',border:`1px solid ${scriptIdx===i?s.color:'var(--border2)'}`,background:scriptIdx===i?`${s.color}22`:'transparent',color:scriptIdx===i?s.color:'var(--text-dim)',borderRadius:2}}>{s.name}</button>
-            ))}
-          </div>
-          {scripts[scriptIdx]?.sections.map((sec,i) => (
-            <div key={i} style={{marginBottom:14,padding:'12px 14px',background:'var(--surface2)',border:'1px solid var(--border)',borderLeft:`2px solid ${scripts[scriptIdx].color}`,borderRadius:2}}>
-              <div style={{fontFamily:'DM Mono, monospace',fontSize:8,color:scripts[scriptIdx].color,letterSpacing:2,marginBottom:6}}>{sec.label}</div>
-              <div style={{fontFamily:'Barlow Condensed, sans-serif',fontSize:14,lineHeight:1.6,color:'var(--text)'}}>{sec.text}</div>
-            </div>
-          ))}
-          <div style={{marginTop:8}}>
-            <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',letterSpacing:1,marginBottom:6}}>NOTES</div>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Call notes..." style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono, monospace',fontSize:11,padding:'8px 10px',outline:'none',borderRadius:2,resize:'none',height:60}} />
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT: CALL LOG */}
-      <div style={{overflow:'hidden',display:'flex',flexDirection:'column'}}>
-        {[['TOTAL CALLS',totalCalls,'var(--teal)'],['ANSWER RATE',`${answerRate}%`,'var(--green)'],['INTERESTED',interestedCalls,'var(--orange)']].map(([label,val,color]) => (
-          <div key={label} style={{padding:'14px',borderBottom:'1px solid var(--border)'}}>
-            <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',letterSpacing:2,marginBottom:5}}>{label}</div>
-            <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:30,letterSpacing:2,color,lineHeight:1}}>{val}</div>
-          </div>
         ))}
-        <div style={{padding:'14px',borderBottom:'1px solid var(--border)',background:'rgba(20,241,198,0.03)',borderLeft:'2px solid var(--teal)'}}>
-          <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',letterSpacing:2,marginBottom:5}}>EST. PIPELINE MRR</div>
-          <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:26,color:'var(--teal)',letterSpacing:2}}>${pipeline.toLocaleString()}</div>
-          <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginTop:4}}>@ $99/mo per interested</div>
-        </div>
-        <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>CALL LOG</span>
-          <button onClick={() => exportCSV([['Name','Business','Phone','Outcome','Duration','Script','Notes','Time'],...callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'call-log.csv')} style={{padding:'4px 8px',fontFamily:'Barlow Condensed, sans-serif',fontSize:9,fontWeight:700,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>EXPORT</button>
-        </div>
-        <div style={{flex:1,overflowY:'auto'}}>
-          {callLog.length===0?<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono, monospace',fontSize:11,color:'var(--text-dim)'}}>No calls yet</div>
-          :callLog.slice(0,60).map(entry => {
-            const c={answered:'var(--green)',voicemail:'var(--text-dim)',callback:'var(--orange)',interested:'var(--teal)','not-interested':'var(--red)'}[entry.outcome]||'var(--text-dim)';
-            return (
-              <div key={entry.id} style={{padding:'9px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:8}}>
-                <div style={{width:6,height:6,borderRadius:'50%',background:c,flexShrink:0}}></div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{entry.name||'Unknown'}</div>
-                  <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginTop:2}}>{entry.outcome.toUpperCase()} · {fmtTime(entry.duration)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </div>
+
+      {/* LEADS view */}
+      {mobileView === 'list' && (
+        <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          {ContactsPanel}
+        </div>
+      )}
+
+      {/* DIAL view */}
+      {mobileView === 'dial' && (
+        <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          {DialPanel}
+        </div>
+      )}
+
+      {/* LOG view */}
+      {mobileView === 'log' && (
+        <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+          {LogPanel}
+        </div>
+      )}
     </div>
   )}
 
