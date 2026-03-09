@@ -105,14 +105,14 @@ export default async function handler(req, res) {
 
   // ── CALL: Initiate outbound call ─────────────────────────────────────────
   if (action === 'call') {
-    const { to, contactName } = body;
+    const { to, contactName, aiMode } = body;
     if (!to) return res.status(400).json({ error: 'Missing to number' });
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
       const call = await client.calls.create({
         to,
         from: FROM,
-        url: `${BASE}/api/twilio?action=twiml`,
+        url: aiMode ? `${BASE}/api/voice-agent?action=twiml&to=${encodeURIComponent(to)}` : `${BASE}/api/twilio?action=twiml`,
         statusCallback: `${BASE}/api/twilio?action=status`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
