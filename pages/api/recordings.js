@@ -189,7 +189,7 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
         <tr><td style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #eee;">
           <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5;">
             You're receiving this because you expressed interest during a recent call.
-            Reply STOP to opt out. Solana Solar Solutions · 11000 Tanton Lane, Pensacola FL 32506
+            Reply STOP to opt out. 11000 Tanton Lane, Pensacola FL 32506
           </p>
         </td></tr>
       </table>
