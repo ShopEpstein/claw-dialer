@@ -118,8 +118,94 @@ const DEFAULT_SCRIPTS = [
   }
 ];
 
-const SMS_FOLLOW_UP = (name) =>
-  `Hi ${name || 'there'}, Chase from VinHunter (VinLedger AI Live). Happy to walk you through how we get Google-indexed pages on your entire inventory overnight — and what we check that CARFAX can't. Just reply here.`;
+const SMS_TEMPLATES = {
+  'VINHUNTER / DEALER': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase here. Free lot audit: what buyers find when they Google your VINs + 4 things we check that CARFAX structurally can't. vinledgerai.live/pricing Reply STOP to opt out.`,
+  'ECONOCLAW': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase. 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app Reply STOP to opt out.`,
+  'WHITEGLOVECLAW': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase. Full white-glove AI. SetupClaw scope, 20% less. VPS $2,400, Mac Mini $4K, same-day go-live. econoclaw.vercel.app Reply STOP to opt out.`,
+  'RENTACLAW': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase. Try 21 AI agents a week, $49. Doesn't pay for itself, I refund you personally. econoclaw.vercel.app/rent Reply STOP to opt out.`,
+  'BUDGETCLAW': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase. Year 1 your way: $6,188+. Year 1 BUDGETclaw: $2,687. 21 agents from $199/mo. econoclaw.vercel.app/budget Reply STOP to opt out.`,
+  'CLAWAWAY': (name) => `Hey${name?' '+name.split(' ')[0]:''} — Chase. We build AI systems. Flexible on what, how you pay. Card, crypto, rev share, barter. econoclaw.vercel.app Reply STOP to opt out.`,
+};
+const SMS_FOLLOW_UP = (name, scriptName) => {
+  const fn = SMS_TEMPLATES[scriptName] || SMS_TEMPLATES['VINHUNTER / DEALER'];
+  return fn(name);
+};
+
+// ── SKINS ─────────────────────────────────────────────────────────────────────
+const SKINS = {
+  DEFAULT: {
+    label: 'CLAW DEFAULT', icon: '🖤',
+    accent: '#14F1C6', accentDim: '#0A9478',
+    bg: '#080A0F', surface: '#0D1017', surface2: '#121820', surface3: '#1A2230',
+    border: '#1E2D40', border2: '#243344',
+    text: '#E8EDF5', textDim: '#6B7A8D', textMid: '#9AAABB',
+    scanline: 'rgba(20,241,198,0.3)', grid: 'rgba(20,241,198,0.03)',
+    fontImport: '',
+    bodyFont: "'Barlow Condensed', sans-serif",
+    monoFont: "'DM Mono', monospace",
+    headerFont: "'Bebas Neue', sans-serif",
+  },
+  CYBERCLAW: {
+    label: 'CYBERCLAW', icon: '💜',
+    accent: '#BF00FF', accentDim: '#7A00A8',
+    bg: '#0A0010', surface: '#100020', surface2: '#160030', surface3: '#1E0040',
+    border: '#2D0060', border2: '#3D0080',
+    text: '#F0E0FF', textDim: '#7A5A9A', textMid: '#B090D0',
+    scanline: 'rgba(191,0,255,0.3)', grid: 'rgba(191,0,255,0.03)',
+    fontImport: '',
+    bodyFont: "'Barlow Condensed', sans-serif",
+    monoFont: "'DM Mono', monospace",
+    headerFont: "'Bebas Neue', sans-serif",
+  },
+  GOTHICCLAW: {
+    label: 'GOTHICCLAW', icon: '🩸',
+    accent: '#CC0000', accentDim: '#880000',
+    bg: '#0D0000', surface: '#1A0000', surface2: '#200000', surface3: '#2A0000',
+    border: '#3D0000', border2: '#550000',
+    text: '#FFDDDD', textDim: '#7A3333', textMid: '#BB7777',
+    scanline: 'rgba(204,0,0,0.3)', grid: 'rgba(204,0,0,0.03)',
+    fontImport: '',
+    bodyFont: "'Barlow Condensed', sans-serif",
+    monoFont: "'DM Mono', monospace",
+    headerFont: "'Bebas Neue', sans-serif",
+  },
+  TACTICLAW: {
+    label: 'TACTICLAW', icon: '🎯',
+    accent: '#7FFF00', accentDim: '#507A00',
+    bg: '#0A0C07', surface: '#141A0E', surface2: '#1A2214', surface3: '#202A18',
+    border: '#2A3820', border2: '#344828',
+    text: '#E8F0D0', textDim: '#5A7040', textMid: '#8AAA60',
+    scanline: 'rgba(127,255,0,0.3)', grid: 'rgba(127,255,0,0.03)',
+    fontImport: '',
+    bodyFont: "'Barlow Condensed', sans-serif",
+    monoFont: "'DM Mono', monospace",
+    headerFont: "'Bebas Neue', sans-serif",
+  },
+  ECONOSKIN: {
+    label: 'ECONOCLAW', icon: '🔥',
+    accent: '#FF6B2B', accentDim: '#A84000',
+    bg: '#0F0800', surface: '#1A0E00', surface2: '#221200', surface3: '#2C1800',
+    border: '#3D2200', border2: '#552E00',
+    text: '#FFE8D0', textDim: '#7A5030', textMid: '#BB8860',
+    scanline: 'rgba(255,107,43,0.3)', grid: 'rgba(255,107,43,0.03)',
+    fontImport: '',
+    bodyFont: "'Barlow Condensed', sans-serif",
+    monoFont: "'DM Mono', monospace",
+    headerFont: "'Bebas Neue', sans-serif",
+  },
+  BUDGETSKIN: {
+    label: 'BUDGETCLAW', icon: '📊',
+    accent: '#39FF14', accentDim: '#1A8A00',
+    bg: '#000A00', surface: '#001400', surface2: '#001C00', surface3: '#002400',
+    border: '#003800', border2: '#004A00',
+    text: '#D0FFD0', textDim: '#3A7A3A', textMid: '#70BB70',
+    scanline: 'rgba(57,255,20,0.3)', grid: 'rgba(57,255,20,0.03)',
+    fontImport: "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap');",
+    bodyFont: "'IBM Plex Mono', monospace",
+    monoFont: "'IBM Plex Mono', monospace",
+    headerFont: "'IBM Plex Mono', monospace",
+  },
+};
 
 const VINLEDGER_API = 'https://vinledgerai.live';
 
@@ -200,6 +286,8 @@ function LoginScreen({ onLogin }) {
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export default function ClawDialer() {
   const [authed, setAuthed] = useState(() => storageGet('claw_authed', false));
+  const [skinKey, setSkinKey] = useState(() => storageGet('claw_skin', 'DEFAULT'));
+  const skin = SKINS[skinKey] || SKINS.DEFAULT;
   const [contacts, setContacts] = useState(() => storageGet('claw_contacts', []));
   const [callLog, setCallLog] = useState(() => storageGet('claw_calllog', []));
   const [inboxMessages, setInboxMessages] = useState(() => storageGet('claw_inbox', []));
@@ -399,7 +487,7 @@ export default function ClawDialer() {
   function selectContact(idx) {
     setActiveIdx(idx);
     setNotes(contacts[idx]?.notes || '');
-    setSmsBody(SMS_FOLLOW_UP(contacts[idx]?.name || ''));
+    setSmsBody(SMS_FOLLOW_UP(contacts[idx]?.name || '', scripts[scriptIdxRef.current]?.name || ''));
     if (isMobile) setMobileView('dial');
   }
 
@@ -526,7 +614,7 @@ export default function ClawDialer() {
     if (outcome === 'interested') {
       notify(`🔥 HOT LEAD — auto-texting ${contact.name}`, 'success');
       try {
-        await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: contact.phone, body: SMS_FOLLOW_UP(contact.name) }) });
+        await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: contact.phone, body: SMS_FOLLOW_UP(contact.name, scripts[scriptIdxRef.current]?.name || '') }) });
       } catch {}
     }
     syncToVinLedger(contact, outcome, notesRef.current);
@@ -627,7 +715,7 @@ export default function ClawDialer() {
       setTimeout(() => {
         setActiveIdx(newIdx);
         setNotes(contact.notes || '');
-        setSmsBody(SMS_FOLLOW_UP(contact.name || ''));
+        setSmsBody(SMS_FOLLOW_UP(contact.name || '', scripts[scriptIdxRef.current]?.name || ''));
         setTimeout(() => {
           if (agentModeRef.current && !agentPausedRef.current) startCallForAgent(contact, newIdx);
         }, 800);
@@ -847,6 +935,25 @@ export default function ClawDialer() {
   const statusText = { idle:'STANDBY', dialing:'DIALING...', connected:'CONNECTED', ended:'CALL ENDED' };
 
   const tabs = ['dialer','dashboard','inbox','review','admin'];
+
+  // Inject dynamic skin CSS
+  useEffect(() => {
+    const s = skin;
+    const styleId = 'claw-skin-style';
+    let el = document.getElementById(styleId);
+    if (!el) { el = document.createElement('style'); el.id = styleId; document.head.appendChild(el); }
+    el.textContent = `
+      ${s.fontImport || ''}
+      :root {
+        --bg: ${s.bg}; --surface: ${s.surface}; --surface2: ${s.surface2}; --surface3: ${s.surface3};
+        --border: ${s.border}; --border2: ${s.border2};
+        --teal: ${s.accent}; --teal-dim: ${s.accentDim};
+        --text: ${s.text}; --text-dim: ${s.textDim}; --text-mid: ${s.textMid};
+      }
+      html, body { font-family: ${s.bodyFont}; }
+    `;
+    storageSet('claw_skin', skinKey);
+  }, [skinKey]);
 
   // ── PANEL RENDERS ─────────────────────────────────────────────────────────
   const ContactsPanel = (
@@ -1365,6 +1472,18 @@ export default function ClawDialer() {
               <input type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV} />
             </label>
           </div>
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:14,letterSpacing:3,color:'var(--text-mid)',marginBottom:14,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>SKIN / THEME</div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+              {Object.entries(SKINS).map(([key, s]) => (
+                <button key={key} onClick={() => setSkinKey(key)} style={{padding:'12px 8px',fontFamily:'DM Mono, monospace',fontSize:9,letterSpacing:1,cursor:'pointer',border:`1px solid ${skinKey===key ? s.accent : 'var(--border2)'}`,background:skinKey===key ? `${s.accent}22` : 'var(--surface2)',color:skinKey===key ? s.accent : 'var(--text-dim)',borderRadius:2,textAlign:'center',transition:'all 0.15s'}}>
+                  <div style={{fontSize:18,marginBottom:4}}>{s.icon}</div>
+                  <div style={{letterSpacing:1}}>{s.label}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={{marginBottom:28}}>
             <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:14,letterSpacing:3,color:'var(--text-mid)',marginBottom:14,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>EDIT SCRIPTS</div>
             {scripts.map((s,i) => (
