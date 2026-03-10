@@ -61,7 +61,8 @@ const DEFAULT_SCRIPTS = [
       { label: 'QUALIFY', text: "Do you have a service department, or just sales? [If sales only → pitch $99 Dealer Marketing. If service dept → pitch $249 Dealer Pro CRM.]" },
       { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? We put a Trust Score, recall info, AND check things CARFAX structurally cannot — active federal investigations, AI fraud detection — on every vehicle on your lot, overnight." },
       { label: 'DIFFERENTIATOR', text: "CARFAX charges dealers $99 to $300 a month just for reports with no marketing, no landing pages. We give you unlimited reports, SEO-indexed inventory pages, lead capture, AND a full shop CRM to replace Tekmetric — all for $249 a month. Or just the marketing package at $99." },
-      { label: 'CLOSE', text: "We're locking founding partner rates right now — whatever tier you sign up at, price never increases. Can I send you a quick walkthrough link?" }
+      { label: 'CLOSE', text: "We're locking founding partner rates right now — whatever tier you sign up at, price never increases. Can I send you a quick walkthrough link?" },
+      { label: '🔀 CROSS-SELL → CLAW', text: "[After VinHunter yes/interest]: By the way — we also deploy 21 AI agents to handle your leads, customer follow-up, and reviews automatically. $500 setup, $99/mo. Most dealers run it alongside VinHunter. Want me to include that in the walkthrough?" }
     ]
   },
   {
@@ -70,7 +71,9 @@ const DEFAULT_SCRIPTS = [
       { label: 'OPENER', text: "Hey [CONTACT_NAME], quick question — do you have anyone working your business 24/7, handling leads, answering questions, following up? Because most businesses don't." },
       { label: 'HOOK', text: "We deploy 21 specialized AI agents to your business. They handle customer service, content, research, outreach, analytics — all while you sleep. It's like hiring a full department, except it costs $99 a month." },
       { label: 'COMPARISON', text: "An agency would charge you $5,000 setup and $1,500 a month for this. We're at $500 setup and $99 a month during our launch window." },
-      { label: 'CLOSE', text: "Can I send you a 2-minute breakdown of exactly what the 21 agents do? No pitch call needed — just read it and tell me if it makes sense for your business." }
+      { label: 'CLOSE', text: "Can I send you a 2-minute breakdown of exactly what the 21 agents do? No pitch call needed — just read it and tell me if it makes sense for your business." },
+      { label: '🔀 CROSS-SELL → VINHUNTER', text: "[If they're in auto]: We also run VinHunter — free CARFAX alternative that puts a Google-indexed Trust Score page on every vehicle in your inventory overnight. $99/mo. Want me to add that to the walkthrough?" },
+      { label: '🔀 CROSS-SELL → TRANSBID', text: "[If they're a contractor]: We also run TransBid Live — public contract exchange, zero upfront, 0.5% only when you win a job. HomeAdvisor charges you whether you win or not. Want me to include that?" }
     ]
   },
   {
@@ -79,7 +82,8 @@ const DEFAULT_SCRIPTS = [
       { label: 'OPENER', text: "Good [morning/afternoon] [CONTACT_NAME], I'm reaching out because we deploy enterprise-grade AI infrastructure for executive teams and founders who want the full white-glove experience." },
       { label: 'POSITIONING', text: "SetupClaw is the market leader — we offer identical scope, identical deliverables, at 20% below their pricing. Same 24/7 infrastructure, same same-day go-live." },
       { label: 'TIERS', text: "Hosted VPS at $2,400. Mac Mini with iMessage at $4,000. In-person at $4,800. Additional agents at $1,200 each." },
-      { label: 'CLOSE', text: "I'd love to schedule a 15-minute call. What does your week look like?" }
+      { label: 'CLOSE', text: "I'd love to schedule a 15-minute call. What does your week look like?" },
+      { label: '🔀 CROSS-SELL → ECONOCLAW', text: "[If budget is a concern]: We also offer EconoClaw — same 21 agents, software-only, $500 setup and $99/mo. No hardware needed. That's the entry point if you want to test before committing to full infrastructure." }
     ]
   },
   {
@@ -88,7 +92,18 @@ const DEFAULT_SCRIPTS = [
       { label: 'OPENER', text: "Hey [CONTACT_NAME], quick question — have you looked into AI agents for your business? Not asking you to commit — we actually rent them." },
       { label: 'CONCEPT', text: "Think of it like renting a car. Daily $9, weekly $49, monthly $149. You get all 21 agents for whatever period you need." },
       { label: 'FLEXIBILITY', text: "We also accept IOU arrangements and revenue share if cash flow is tight." },
-      { label: 'CLOSE', text: "Want to try a week for $49? If it doesn't generate at least $49 in value, I'll give you your money back personally." }
+      { label: 'CLOSE', text: "Want to try a week for $49? If it doesn't generate at least $49 in value, I'll give you your money back personally." },
+      { label: '🔀 UPSELL → ECONOCLAW', text: "[After rental interest]: If you like it, we convert the rental to $500 setup + $99/mo — and your rental payments count toward the setup fee. You're not throwing money away." }
+    ]
+  },
+  {
+    name: 'BUDGETCLAW', color: '#39FF14',
+    sections: [
+      { label: 'OPENER', text: "Hey [CONTACT_NAME], I'm going to show you a spreadsheet in 30 seconds. Year 1 with what you're probably doing now: $6,188+. Year 1 with BUDGETclaw: $2,687. Same result, fraction of the cost." },
+      { label: 'HOOK', text: "BUDGETclaw is 21 AI agents — customer service, content, leads, outreach, analytics — on a budget plan. Micro at $199/mo, Standard $299/mo, Pro $499/mo. No setup fee on annual." },
+      { label: 'COMPARISON', text: "You're probably paying: Zapier $50/mo, ChatGPT $20/mo, HubSpot $45/mo, a VA $800/mo, an SEO tool $99/mo. That's $1,014/mo. We replace all of it for $199 to $499." },
+      { label: 'CLOSE', text: "Micro plan is $199 a month. No contract, cancel anytime. Can I send you the cost breakdown so you can see exactly where the savings come from?" },
+      { label: '🔀 UPSELL → ECONOCLAW', text: "[After yes]: The launch pricing on EconoClaw — our flagship tier — is $500 setup + $99/mo. If you want to lock that rate before the window closes, I can do both today." }
     ]
   },
   {
@@ -96,8 +111,9 @@ const DEFAULT_SCRIPTS = [
     sections: [
       { label: 'OPENER', text: "Hey [CONTACT_NAME] — I'm going to be straight with you. We build AI systems. We're flexible on what we build, what you pay, and how you pay it." },
       { label: 'CORE MESSAGE', text: "Tell us what you want to build. Tell us what you want to pay. Tell us how you want to pay it. Card, Zelle, crypto, rev share, barter. We'll figure it out." },
-      { label: 'PROOF', text: "We're already running 21 AI agents across five live platforms." },
-      { label: 'CLOSE', text: "What's the one thing in your business right now that's eating the most time or costing the most money? Let's start there." }
+      { label: 'PROOF', text: "We're already running 21 AI agents across five live platforms — VinHunter, TransBid Live, Memory Magnet, GUNR, MUVR." },
+      { label: 'CLOSE', text: "What's the one thing in your business right now that's eating the most time or costing the most money? Let's start there." },
+      { label: '🔀 ROUTE TO RIGHT PRODUCT', text: "[After they tell you their problem]: [Auto/dealer → VinHunter $99/mo] [AI agents/automation → EconoClaw $99/mo] [Contracting → TransBid 0.5%] [Tight budget → RentAClaw $9/day] [Enterprise → WhiteGloveClaw $2,400+] [Test drive → RentAClaw $49/week]" }
     ]
   }
 ];
@@ -763,14 +779,15 @@ export default function ClawDialer() {
   async function sendEmailFollowUp(contact) {
     if (!contact.email) return notify('No email on file for this contact', 'warning');
     setEmailSending(true);
+    const activeScriptName = scripts[scriptIdxRef.current]?.name || 'VinHunter';
     try {
       const r = await fetch('/api/recordings?action=email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: contact.email, contactName: contact.name, business: contact.business_name, product: 'VinLedger' }),
+        body: JSON.stringify({ to: contact.email, contactName: contact.name, business: contact.business_name, product: activeScriptName }),
       });
       const data = await r.json();
-      if (data.ok) notify(`Email sent to ${contact.email}`, 'success');
+      if (data.ok) notify(`Email sent to ${contact.email} [${activeScriptName}]`, 'success');
       else notify(`Email failed: ${data.error || 'Unknown error'}`, 'warning');
     } catch(e) { notify('Email send failed', 'warning'); }
     setEmailSending(false);
@@ -778,12 +795,13 @@ export default function ClawDialer() {
   }
 
   // ── SQUARE PAY LINK ───────────────────────────────────────────────────────
-  async function generatePayLink(amount) {
+  async function generatePayLink(amount, tier) {
+    const activeScriptName = scripts[scriptIdxRef.current]?.name || 'VinHunter';
     try {
       const r = await fetch('/api/recordings?action=pay-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, description: 'VinLedger Dealer Marketing', contactName: payModal?.name }),
+        body: JSON.stringify({ amount, description: tier || activeScriptName, contactName: payModal?.name, product: activeScriptName }),
       });
       const data = await r.json();
       setPayResult(data);
@@ -1419,18 +1437,36 @@ export default function ClawDialer() {
           <div style={{background:'var(--surface)',border:'1px solid var(--green)',borderRadius:2,padding:28,width:460,animation:'slideUp 0.2s ease'}}>
             <div style={{fontFamily:'Bebas Neue, sans-serif',fontSize:18,letterSpacing:3,color:'var(--green)',marginBottom:6}}>💳 COLLECT PAYMENT</div>
             <div style={{fontFamily:'DM Mono, monospace',fontSize:10,color:'var(--text-dim)',marginBottom:18}}>{payModal.name} · {payModal.business_name}</div>
-            {!payResult ? (
+            {!payResult ? (() => {
+              const sName = scripts[scriptIdx]?.name || '';
+              const isVH = sName.includes('VINHUNTER') || sName.includes('VIN');
+              const isWG = sName.includes('WHITEGLOV');
+              const isRent = sName.includes('RENTACLAW');
+              const isBudget = sName.includes('BUDGET');
+              const tiers = isWG
+                ? [['$2,400 VPS','2400','WGC Hosted VPS'],['$4,000 Mac Mini','4000','WGC Mac Mini Remote'],['$4,800 In-Person','4800','WGC Mac Mini In-Person'],['+$1,200 Agent','1200','Additional Agent']]
+                : isRent
+                ? [['$9/day','9','RentAClaw Daily'],['$49/week','49','RentAClaw Weekly'],['$149/mo','149','RentAClaw Monthly'],['$999/yr','999','RentAClaw Annual']]
+                : isBudget
+                ? [['$199/mo','199','BUDGETclaw Micro'],['$299/mo','299','BUDGETclaw Standard'],['$499/mo','499','BUDGETclaw Pro']]
+                : isVH
+                ? [['$29/mo','29','Verified Dealer'],['$49/mo','49','Dealer Reports'],['$99/mo','99','Dealer Marketing'],['$249/mo','249','Dealer Pro CRM']]
+                // EconoClaw / ClawAway / default
+                : [['$99/mo','99','EconoClaw Launch'],['$500 setup','500','EconoClaw Setup Fee'],['$249/mo','249','Agency/Multi-loc'],['$499/mo','499','White-Label']];
+              const col = scripts[scriptIdx]?.color || 'var(--green)';
+              return (
               <>
-                <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:10}}>SELECT AMOUNT</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
-                  {[['$99/mo','99','Dealer Marketing'],['$249/mo','249','Dealer Pro'],['$49/mo','49','Dealer Lite']].map(([label, amount, tier]) => (
-                    <button key={amount} onClick={() => generatePayLink(amount)} style={{padding:'14px 10px',fontFamily:'Bebas Neue, sans-serif',fontSize:16,letterSpacing:2,background:'rgba(46,255,154,0.08)',color:'var(--green)',border:'1px solid rgba(46,255,154,0.3)',cursor:'pointer',borderRadius:2,textAlign:'center'}}>
+                <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:10}}>SELECT AMOUNT — {sName || 'VINHUNTER'}</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:8,marginBottom:20}}>
+                  {tiers.map(([label, amount, tier]) => (
+                    <button key={amount} onClick={() => generatePayLink(amount, tier)} style={{padding:'14px 10px',fontFamily:'Bebas Neue, sans-serif',fontSize:15,letterSpacing:2,background:`${col}18`,color:col,border:`1px solid ${col}44`,cursor:'pointer',borderRadius:2,textAlign:'center'}}>
                       {label}<div style={{fontFamily:'DM Mono, monospace',fontSize:8,color:'var(--text-dim)',marginTop:4,fontWeight:400,letterSpacing:1}}>{tier}</div>
                     </button>
                   ))}
                 </div>
               </>
-            ) : (
+              );
+            })() : (
               <div>
                 <div style={{background:'var(--surface2)',border:'1px solid var(--border2)',borderRadius:2,padding:'14px',marginBottom:14}}>
                   <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:6}}>NEXT STEPS</div>
