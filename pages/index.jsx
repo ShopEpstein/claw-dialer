@@ -129,12 +129,76 @@ function normalizeScript(s) {
   return s;
 }
 function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() }
-function storageGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def } catch { return def } }
-function storageSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
+function storageGet(k, def) { try { if (typeof window === 'undefined') return def; return JSON.parse(localStorage.getItem(k)) ?? def } catch { return def } }
+function storageSet(k, v) { try { if (typeof window === 'undefined') return; localStorage.setItem(k, JSON.stringify(v)) } catch {} }
 function isTCPAHour() { const h = new Date().getHours(); return h >= 8 && h < 21; }
 
 const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#080A0F"/><text x="4" y="24" font-size="22" font-family="monospace" fill="#14F1C6">⚡</text></svg>`;
 const FAVICON_URL = `data:image/svg+xml,${encodeURIComponent(FAVICON_SVG)}`;
+
+// ─── AI LEARNING PANEL ────────────────────────────────────────────────────────
+function PatternsPanel({ notify, totalCalls }) {
+  const [patterns, setPatterns] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState(null);
+
+  async function loadPatterns() {
+    if (totalCalls < 3) return;
+    setLoading(true);
+    try {
+      const r = await fetch('/api/recordings?action=patterns');
+      const d = await r.json();
+      setPatterns(d.patterns);
+      setUpdatedAt(d.updatedAt);
+    } catch(e) { notify('Could not load patterns', 'warning'); }
+    setLoading(false);
+  }
+
+  useEffect(() => { if (totalCalls >= 3) loadPatterns(); }, [totalCalls]);
+
+  if (totalCalls < 3) return (
+    <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:2,padding:20,textAlign:'center'}}>
+      <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>🧠 AI LEARNING — needs 3+ transcribed calls to find patterns. Keep dialing.</div>
+    </div>
+  );
+
+  return (
+    <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--teal)33',borderRadius:2,overflow:'hidden'}}>
+      <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:10}}>
+        <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:11,letterSpacing:3,color:'var(--teal)'}}>🧠 AI LEARNING — PATTERN ANALYSIS</span>
+        {updatedAt && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',marginLeft:'auto'}}>Updated {fmtDate(updatedAt)}</span>}
+        <button onClick={loadPatterns} style={{padding:'3px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>↻</button>
+      </div>
+      {loading ? (
+        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Analyzing call patterns...</div>
+      ) : !patterns ? (
+        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Not enough transcribed calls yet — transcripts needed for pattern analysis.</div>
+      ) : (
+        <div style={{padding:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {patterns.single_best_change && (
+            <div style={{gridColumn:'1/-1',background:'var(--teal)11',border:'1px solid var(--teal)44',borderRadius:2,padding:'10px 14px'}}>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:4}}>⚡ TOP RECOMMENDATION</div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:14,color:'var(--text)',lineHeight:1.5}}>{patterns.single_best_change}</div>
+            </div>
+          )}
+          {[
+            ['TOP OBJECTIONS', (patterns.top_objections||[]).join(' · '), '#FF3B3B'],
+            ['TOP BUYING SIGNALS', (patterns.top_signals||[]).join(' · '), '#2EFF9A'],
+            ['BEST OPENING', patterns.best_opening, 'var(--teal)'],
+            ['BEST PRODUCT', patterns.best_product, '#FF6B2B'],
+            ['WIN RATE INSIGHT', patterns.win_rate_insight, 'var(--text-mid)'],
+            ['SCRIPT RECOMMENDATION', patterns.script_recommendation, 'var(--text-mid)'],
+          ].filter(([,v])=>v).map(([k,v,c]) => (
+            <div key={k} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:2,padding:'8px 10px'}}>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--text-dim)',letterSpacing:1,marginBottom:4}}>{k}</div>
+              <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,color:c,lineHeight:1.5}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
@@ -386,6 +450,15 @@ export default function ClawDialer() {
     if (outcome === 'interested') {
       notify(`🔥 HOT LEAD! Auto-texting ${activeContact.name || activeContact.phone}`, 'success');
       try { await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to:activeContact.phone, body:SMS_FOLLOW_UP(activeContact.name, scripts[scriptIdx]?.name) }) }); } catch {}
+      if (activeContact.email) {
+        try {
+          await fetch('/api/recordings?action=email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to:activeContact.email, contactName:activeContact.name, business:activeContact.business_name, script:scripts[scriptIdx]?.name }) });
+          notify(`📧 Follow-up email sent to ${activeContact.email}`, 'success');
+        } catch {}
+      }
+    }
+    if (outcome === 'answered' && activeContact.email) {
+      try { await fetch('/api/recordings?action=email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to:activeContact.email, contactName:activeContact.name, business:activeContact.business_name, script:scripts[scriptIdx]?.name }) }); } catch {}
     }
     setCallSeconds(0); setNotes('');
     if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 4000);
@@ -759,6 +832,8 @@ export default function ClawDialer() {
               })}
             </div>
           )}
+          {/* AI LEARNING PANEL */}
+          <PatternsPanel notify={notify} totalCalls={totalCalls} />
         </div>
       )}
 
@@ -784,6 +859,7 @@ export default function ClawDialer() {
                   <div style={{flex:1}}>
                     <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:14,fontWeight:600}}>{rec.contactName||'Unknown'}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginTop:2}}>{rec.outcome?.toUpperCase()} · {normalizeScript(rec.script)} · {fmtDate(rec.timestamp||rec.transcribedAt)}</div>
+                    {rec.contactPhone && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginTop:1}}>{rec.contactPhone}</div>}
                   </div>
                   {rec.transcript && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',padding:'2px 6px',border:'1px solid var(--teal)44',borderRadius:2}}>TRANSCRIPT</span>}
                   {a && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:sentColor,padding:'2px 6px',border:`1px solid ${sentColor}44`,borderRadius:2}}>{a.sentiment?.toUpperCase()}</span>}
@@ -836,6 +912,20 @@ export default function ClawDialer() {
                         {!rec.recordingUrl && <div style={{fontSize:9,opacity:0.6}}>Hit REFRESH in a few minutes to check for transcript.</div>}
                       </div>
                     )}
+                    {/* Manual action buttons */}
+                    <div style={{display:'flex',gap:8,marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+                      {rec.contactEmail && (
+                        <button onClick={async(e)=>{e.stopPropagation();try{const r=await fetch('/api/recordings?action=email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:rec.contactEmail,contactName:rec.contactName,script:rec.script})});const d=await r.json();notify(d.ok!==false?`📧 Email sent to ${rec.contactEmail}`:`Email failed`,'success');}catch{notify('Email failed','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
+                          📧 SEND FOLLOW-UP EMAIL
+                        </button>
+                      )}
+                      {rec.contactPhone && (
+                        <button onClick={(e)=>{e.stopPropagation();const c=contacts.find(x=>x.phone===rec.contactPhone);if(c){selectContact(contacts.indexOf(c));setTab('dialer');}else notify('Contact not in list — add manually','warning');}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2,letterSpacing:1}}>
+                          📞 DIAL BACK
+                        </button>
+                      )}
+                      {rec.emailSentAt && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',alignSelf:'center'}}>Email sent {fmtDate(rec.emailSentAt)}</span>}
+                    </div>
                   </div>
                 )}
               </div>
