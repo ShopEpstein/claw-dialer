@@ -42,21 +42,34 @@ Fully flexible. Build anything, pay anything, pay however — card, Zelle, crypt
 ── PRODUCT 7: TRANSBID LIVE ──
 Public contract exchange for contractors. Zero upfront — zero-point-five percent only when you win a job. HomeAdvisor charges fifteen to thirty percent hidden through inflated quotes. Veterans pay zero percent forever.
 
+── PRODUCT 4: BUDGET RENT-A-CLAW ──
+Rent all 21 agents with no setup fee, no contract. Nine dollars a day, forty-nine a week, a hundred forty-nine a month, nine ninety-nine a year. Rental payments count toward EconoClaw setup. Personal refund guarantee from Chase.
+
+── PRODUCT 4B: RETARDCLAW ──
+Same 21 agents but positioned for people who hate tech. The pitch: "The AI is smart. You don't have to be." You just text it what you want. Nine ninety-nine setup, ninety-nine a month. For people who want it to just work and don't care how. Same as EconoClaw under the hood — different brand, different vibe. The lobster does tech. 🦞
+
 ── READ THE PROSPECT — ROUTE TO RIGHT PRODUCT ──
 - Dealer/auto business (sales only) → VinHunter Dealer Marketing at ninety-nine
 - Dealer/auto with service dept → VinHunter Dealer Pro at two forty-nine
-- Any business wanting AI automation → EconoClaw at ninety-nine a month
+- Business owner who wants full control → EconoClaw at ninety-nine a month
+- Business owner who hates tech / "just make it work" → RetardClaw at ninety-nine a month
 - Executive team, funded company → WhiteGloveClaw
-- Tight budget, wants to try → RentAClaw forty-nine a week
+- Tight budget, wants to try first → Budget Rent-A-Claw forty-nine a week
 - CFO type, wants to see numbers → BUDGETclaw
 - "Tell me what you need" / unsure → ClawAway
 - Contractor / home services → TransBid Live
+
+── ECONOCLAW TIERS (if they ask about scale) ──
+- Standard: five hundred setup plus ninety-nine a month — one location, all 21 agents
+- Suite: fifteen hundred setup plus two forty-nine a month — up to five locations
+- Penthouse: twenty-five hundred setup plus four ninety-nine a month — white label, resell it yourself
 
 ── CROSS-SELL RULES ──
 - VinHunter dealer says yes → mention EconoClaw for their leads and reviews
 - EconoClaw interest from auto dealer → mention VinHunter for their inventory pages
 - Contractor → TransBid first, EconoClaw second
-- RentAClaw interest → upsell to EconoClaw after trial, rental payments count toward setup fee
+- RetardClaw interest → same product as EconoClaw, just easier framing
+- Budget Rent-A-Claw interest → upsell to EconoClaw after trial, rental payments count toward setup fee
 - BUDGETclaw → upsell to EconoClaw launch pricing before window closes
 
 ── OBJECTION HANDLERS ──
@@ -65,6 +78,7 @@ Public contract exchange for contractors. Zero upfront — zero-point-five perce
 - "Too expensive" → "We have a free tier and plans starting at twenty-nine a month. What does your lot look like?"
 - "Not interested" → "Totally fair. Can I just text you a two-minute breakdown? No commitment."
 - "Already have AI tools" → "What are you paying for them? We probably replace all of them for less than you're paying for one."
+- "I don't do tech" → "That's exactly who RetardClaw is built for. You text it what you need, it handles the rest. Ninety-nine a month."
 - "Who is this?" → "I'm an AI calling on Chase's behalf — we build AI systems and free Trust Score pages for dealers. Quick question before I let you go..."
 - "Are you a robot?" / "Are you human?" / "Is this AI?" → "Yeah, I'm an AI calling on Chase's behalf — he had me reach out first. Want me to have him follow up personally?"
 - "Call back later" → "Of course. Can I text you the link in the meantime?"
@@ -113,12 +127,13 @@ export default async function handler(req, res) {
     const script = req.query.script ? decodeURIComponent(req.query.script) : '';
 
     const openers = {
-      'ECONOCLAW': "Hey — is this the owner? Quick thing, this call may be recorded. I'm an AI reaching out on Chase's behalf from EconoClaw — quick question for you.",
-      'WHITEGLOVECLAW': "Good day — is this the decision maker? This call may be recorded. I'm an AI calling on Chase's behalf from WhiteGloveClaw — one quick question.",
-      'RENTACLAW': "Hey — is this the owner? This call may be recorded. I'm an AI reaching out on Chase's behalf about RentAClaw — quick question for you.",
-      'BUDGETCLAW': "Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from BUDGETclaw — quick one for you.",
-      'TRANSBID': "Hey — is this a contractor or do you hire contractors? This call may be recorded. I'm an AI reaching out on Chase's behalf about TransBid — quick question.",
-      'CLAWAWAY': "Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf — quick question for you.",
+      'ECONOCLAW':       "Hey — is this the owner? Quick thing, this call may be recorded. I'm an AI reaching out on Chase's behalf from EconoClaw — quick question for you.",
+      'WHITEGLOVECLAW':  "Good day — is this the decision maker? This call may be recorded. I'm an AI calling on Chase's behalf from WhiteGloveClaw — one quick question.",
+      'BUDGETRENTACLAW': "Hey — is this the owner? This call may be recorded. I'm an AI reaching out on Chase's behalf about Budget Rent-A-Claw — quick question for you.",
+      'RETARDCLAW':      "Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf — quick one-liner question for you.",
+      'BUDGETCLAW':      "Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from BUDGETclaw — quick one for you.",
+      'TRANSBID':        "Hey — is this a contractor or do you hire contractors? This call may be recorded. I'm an AI reaching out on Chase's behalf about TransBid — quick question.",
+      'CLAWAWAY':        "Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf — quick question for you.",
     };
 
     const opener = openers[script] || "Hey, is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from VinHunter — VinLedger AI Live — quick question for you.";
@@ -182,12 +197,13 @@ export default async function handler(req, res) {
           try {
             const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
             const SMS_MAP = {
-              'ECONOCLAW': `Chase here: 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app Reply STOP to opt out.`,
-              'WHITEGLOVECLAW': `Chase here: White-glove AI setup. SetupClaw scope at 20% less. VPS $2,400 · Mac Mini $4K · In-person $4,800. Same-day go-live. Reply STOP to opt out.`,
-              'RENTACLAW': `Chase here: Try 21 AI agents for $49/week. Doesn't pay for itself, I'll personally refund you. econoclaw.vercel.app/rent Reply STOP to opt out.`,
-              'BUDGETCLAW': `Chase here: Year 1 your way = $6,188+. Year 1 BUDGETclaw = $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
-              'TRANSBID': `Chase here: TransBid — post projects free, pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
-              'CLAWAWAY': `Chase here: We build AI systems. Flexible on what, flexible on payment — card, crypto, rev share, barter. econoclaw.vercel.app Reply STOP to opt out.`,
+              'ECONOCLAW':       `Chase here: 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
+              'WHITEGLOVECLAW':  `Chase here: White-glove AI setup. SetupClaw scope at 20% less. VPS $2,400 · Mac Mini $4K · In-person $4,800. Same-day go-live. Reply to talk. Reply STOP to opt out.`,
+              'BUDGETRENTACLAW': `Chase here: Rent 21 AI agents — $49/week, no contract, no setup fee. Chase personally refunds you if it doesn't pay for itself. econoclaw.vercel.app/budgetrentaclaw-landing.html Reply STOP to opt out.`,
+              'RETARDCLAW':      `Chase here: RetardClaw — 21 AI agents for people who hate tech. You just text it. The lobster handles everything else. $99/mo. 🦞 econoclaw.vercel.app/retardclaw-landing.html Reply STOP to opt out.`,
+              'BUDGETCLAW':      `Chase here: Year 1 your way = $6,188+. Year 1 BUDGETclaw = $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
+              'TRANSBID':        `Chase here: TransBid — post projects free, pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
+              'CLAWAWAY':        `Chase here: We build AI systems your way — card, crypto, rev share, barter, IOU. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
             };
             const smsBody = SMS_MAP[script] || `Chase @ VinHunter: Here's your free lot audit — see what buyers find when they Google your VINs: https://vinledgerai.live/pricing Founding rate locks forever. Reply STOP to opt out.`;
             await client.messages.create({ to, from: FROM, body: smsBody });
