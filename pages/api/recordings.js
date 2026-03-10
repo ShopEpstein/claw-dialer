@@ -2,14 +2,16 @@
 // Call recording storage, transcript webhook, AI analysis, Brevo email follow-up
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
-import path from 'path';
+import twilio from 'twilio';
 
 const STORE_PATH = '/tmp/claw_recordings.json';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = 'campaigns@transbidlive.faith';
 const BREVO_FROM_NAME = 'Chase @ VinHunter';
 
-// ── Simple JSON file store (Vercel /tmp persists within function execution) ──
+// ── Store: /tmp is ephemeral on Vercel but we use Twilio API as source of truth ──
+// /tmp stores AI analysis + transcripts + contact metadata (the enrichment layer)
+// Twilio stores the actual call records + recording URLs (the persistent layer)
 function loadStore() {
   try {
     if (fs.existsSync(STORE_PATH)) {
@@ -21,9 +23,55 @@ function loadStore() {
 
 function saveStore(data) {
   try {
+    // Keep last 500 records in /tmp
+    if (data.recordings) data.recordings = data.recordings.slice(0, 500);
     fs.writeFileSync(STORE_PATH, JSON.stringify(data));
   } catch (e) {}
 }
+
+// Fetch live call list from Twilio and merge with our enrichment store
+async function getEnrichedRecordings(limit = 50) {
+  const store = loadStore();
+  // Build a map of our enrichment data keyed by callSid
+  const enrichMap = {};
+  for (const r of store.recordings) {
+    if (r.callSid) enrichMap[r.callSid] = r;
+  }
+
+  try {
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    // Fetch recent calls from Twilio (these always exist regardless of /tmp)
+    const calls = await client.calls.list({ limit: Math.min(limit, 100) });
+    const merged = calls.map(call => {
+      const enriched = enrichMap[call.sid] || {};
+      return {
+        id: enriched.id || call.sid,
+        callSid: call.sid,
+        contactName: enriched.contactName || '',
+        contactPhone: call.to,
+        contactEmail: enriched.contactEmail || '',
+        contactId: enriched.contactId || '',
+        script: enriched.script || '',
+        outcome: enriched.outcome || (call.status === 'completed' ? (parseInt(call.duration||0) >= 15 ? 'answered' : 'voicemail') : call.status),
+        duration: call.duration || enriched.duration || 0,
+        timestamp: call.startTime || enriched.timestamp,
+        recordingUrl: enriched.recordingUrl || null,
+        transcript: enriched.transcript || null,
+        transcribedAt: enriched.transcribedAt || null,
+        analysis: enriched.analysis || null,
+        emailSentAt: enriched.emailSentAt || null,
+        notes: enriched.notes || '',
+        twilioStatus: call.status,
+      };
+    });
+    return merged;
+  } catch(e) {
+    // Twilio fetch failed — fall back to /tmp store
+    console.error('Twilio calls fetch error:', e.message);
+    return store.recordings;
+  }
+}
+
 
 // ── Brevo email sender ────────────────────────────────────────────────────────
 async function sendBrevoEmail({ to, toName, subject, html }) {
@@ -189,7 +237,7 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
         <tr><td style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #eee;">
           <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5;">
             You're receiving this because you expressed interest during a recent call.
-            Reply STOP to opt out. 11000 Tanton Lane, Pensacola FL 32506
+            Reply STOP to opt out. VinHunter · EconoClaw · TransBid Live · Pensacola, FL
           </p>
         </td></tr>
       </table>
@@ -253,41 +301,64 @@ async function analyzePatterns(recordings) {
 export default async function handler(req, res) {
   const { action } = req.query;
 
-  // ── TRANSCRIPT WEBHOOK (called by Twilio after recording completes) ─────────
+  // ── TRANSCRIPT WEBHOOK (called by Twilio after recording/transcription completes) ─────────
   if (action === 'transcript-webhook') {
     const { RecordingSid, RecordingUrl, TranscriptionText, TranscriptionStatus, CallSid } = req.body || {};
-    if (TranscriptionStatus !== 'completed' || !TranscriptionText) {
-      return res.status(200).end();
-    }
+    // Pull contact info from URL params (we now pass these in the callback URL)
+    const contactName = req.query.contactName ? decodeURIComponent(req.query.contactName) : '';
+    const contactEmail = req.query.contactEmail ? decodeURIComponent(req.query.contactEmail) : '';
+    const contactId = req.query.contactId ? decodeURIComponent(req.query.contactId) : '';
+    const script = req.query.script ? decodeURIComponent(req.query.script) : '';
+
     const store = loadStore();
-    const existing = store.recordings.find(r => r.callSid === CallSid);
-    if (existing) {
-      existing.transcript = TranscriptionText;
-      existing.recordingUrl = RecordingUrl;
-      existing.transcribedAt = new Date().toISOString();
-      // Kick off AI analysis async — don't block the webhook response
-      analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(analysis => {
-        const store2 = loadStore();
-        const rec = store2.recordings.find(r => r.callSid === CallSid);
-        if (rec) {
-          rec.analysis = analysis;
-          saveStore(store2);
+    const existingIdx = store.recordings.findIndex(r => r.callSid === CallSid);
+
+    // Always update recording URL if we have it (even if no transcript yet)
+    if (RecordingUrl) {
+      if (existingIdx >= 0) {
+        store.recordings[existingIdx].recordingUrl = RecordingUrl;
+        store.recordings[existingIdx].recordingSid = RecordingSid;
+        if (contactName && !store.recordings[existingIdx].contactName) {
+          store.recordings[existingIdx].contactName = contactName;
         }
-      });
-    } else {
-      store.recordings.unshift({
-        id: Date.now(),
-        callSid: CallSid,
-        recordingSid: RecordingSid,
-        recordingUrl: RecordingUrl,
-        transcript: TranscriptionText,
-        transcribedAt: new Date().toISOString(),
-        contactName: 'Unknown',
-        outcome: 'unknown',
-        analysis: null,
-      });
+      } else {
+        store.recordings.unshift({
+          id: Date.now(),
+          callSid: CallSid,
+          recordingSid: RecordingSid,
+          recordingUrl: RecordingUrl,
+          transcript: null,
+          transcribedAt: null,
+          contactName: contactName || 'Unknown',
+          contactEmail,
+          contactId,
+          script,
+          outcome: 'unknown',
+          analysis: null,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      saveStore(store);
     }
-    saveStore(store);
+
+    // Handle transcription when it arrives
+    if (TranscriptionStatus === 'completed' && TranscriptionText) {
+      const store2 = loadStore();
+      const existing = store2.recordings.find(r => r.callSid === CallSid);
+      if (existing) {
+        existing.transcript = TranscriptionText;
+        existing.transcribedAt = new Date().toISOString();
+        if (contactName && !existing.contactName) existing.contactName = contactName;
+        saveStore(store2);
+        // Kick off AI analysis async — don't block the webhook response
+        analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(analysis => {
+          const store3 = loadStore();
+          const rec = store3.recordings.find(r => r.callSid === CallSid);
+          if (rec) { rec.analysis = analysis; saveStore(store3); }
+        });
+      }
+    }
+
     return res.status(200).end();
   }
 
@@ -322,32 +393,37 @@ export default async function handler(req, res) {
 
   // ── LIST RECORDINGS ────────────────────────────────────────────────────────
   if (action === 'list') {
-    const store = loadStore();
     const limit = parseInt(req.query.limit || '50');
-    return res.status(200).json({ recordings: store.recordings.slice(0, limit), total: store.recordings.length });
+    const recordings = await getEnrichedRecordings(limit);
+    return res.status(200).json({ recordings, total: recordings.length });
   }
 
   // ── GET PATTERN ANALYSIS ───────────────────────────────────────────────────
   if (action === 'patterns') {
-    const store = loadStore();
-    const patterns = await analyzePatterns(store.recordings);
-    return res.status(200).json({ patterns, total: store.recordings.length });
+    const recordings = await getEnrichedRecordings(100);
+    const patterns = await analyzePatterns(recordings);
+    return res.status(200).json({ patterns, total: recordings.length });
   }
+
 
   // ── SEND BREVO EMAIL FOLLOW-UP ─────────────────────────────────────────────
   if (action === 'email' && req.method === 'POST') {
-    const { to, contactName, business, product } = req.body || {};
+    const { to, contactName, business, product, script } = req.body || {};
     if (!to) return res.status(400).json({ error: 'Missing email' });
-    const { subject, html } = buildFollowUpEmail(contactName, business, product);
+    // Accept either product or script name — normalize
+    const productName = product || script || 'VinHunter';
+    const { subject, html } = buildFollowUpEmail(contactName, business, productName);
     const result = await sendBrevoEmail({ to, toName: contactName, subject, html });
-    // Log the send
     if (result.ok) {
       const store = loadStore();
       const rec = store.recordings.find(r => r.contactEmail === to || r.contactName === contactName);
       if (rec) {
         rec.emailSentAt = new Date().toISOString();
-        saveStore(store);
+      } else {
+        // Create a stub record so we know email was sent
+        store.recordings.unshift({ id: Date.now(), contactEmail: to, contactName, script: productName, emailSentAt: new Date().toISOString(), outcome: 'email-only', timestamp: new Date().toISOString() });
       }
+      saveStore(store);
     }
     return res.status(result.ok ? 200 : 500).json(result);
   }
