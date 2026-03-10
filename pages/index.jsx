@@ -532,7 +532,7 @@ export default function ClawDialer() {
   }
 
   // ── CONTACTS PANEL ────────────────────────────────────────
-  const ContactsPanel = (
+  function renderContactsPanel() { return (
     <div style={{borderRight:'1px solid var(--border)',overflow:'hidden',display:'flex',flexDirection:'column',height:'100%'}}>
       <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)'}}>
         <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>CONTACTS</span>
@@ -594,10 +594,10 @@ export default function ClawDialer() {
         })}
       </div>
     </div>
-  );
+  ); }
 
   // ── DIALER PANEL ──────────────────────────────────────────
-  const DialerPanel = (
+  function renderDialerPanel() { return (
     <div style={{display:'flex',flexDirection:'column',overflow:'hidden',height:'100%'}}>
       {/* Agent mode toggle + stats */}
       <div style={{padding:'8px 16px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
@@ -690,10 +690,10 @@ export default function ClawDialer() {
         </div>
       </div>
     </div>
-  );
+  ); }
 
   // ── STATS/LOG PANEL ───────────────────────────────────────
-  const StatsPanel = (
+  function renderStatsPanel() { return (
     <div style={{background:'var(--surface)',overflowY:'auto',height:'100%'}}>
       <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:10}}>
         <span style={{fontFamily:'Bebas Neue, sans-serif',fontSize:12,letterSpacing:3,color:'var(--text-mid)'}}>LIVE STATS</span>
@@ -757,7 +757,7 @@ export default function ClawDialer() {
         );
       })}
     </div>
-  );
+  ); }
 
   return (
     <>
@@ -814,18 +814,18 @@ export default function ClawDialer() {
       {/* ── DIALER TAB ── */}
       {tab === 'dialer' && !isMobile && (
         <div style={{display:'grid',gridTemplateColumns:'300px 1fr 260px',height:'calc(100vh - 90px)',overflow:'hidden'}}>
-          {ContactsPanel}
-          <div style={{borderRight:'1px solid var(--border)',overflow:'hidden'}}>{DialerPanel}</div>
-          {StatsPanel}
+          {renderContactsPanel()}
+          <div style={{borderRight:'1px solid var(--border)',overflow:'hidden'}}>{renderDialerPanel()}</div>
+          {renderStatsPanel()}
         </div>
       )}
 
       {/* ── DIALER TAB (MOBILE) ── */}
       {tab === 'dialer' && isMobile && (
         <div style={{height:'calc(100vh - 90px)',overflow:'hidden'}}>
-          {mobilePanel === 'leads' && ContactsPanel}
-          {mobilePanel === 'dial' && DialerPanel}
-          {mobilePanel === 'log' && StatsPanel}
+          {mobilePanel === 'leads' && renderContactsPanel()}
+          {mobilePanel === 'dial' && renderDialerPanel()}
+          {mobilePanel === 'log' && renderStatsPanel()}
         </div>
       )}
 
