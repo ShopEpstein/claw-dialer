@@ -284,6 +284,13 @@ export default function ClawDialer() {
   const [replyTarget, setReplyTarget] = useState(null);
   // Agent confirm modal
   const [agentConfirm, setAgentConfirm] = useState(false);
+  // Queue management
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [sortBy, setSortBy] = useState('default'); // default | name | status | campaign
+  const [campaignFilter, setCampaignFilter] = useState('all');
+  const [contextMenu, setContextMenu] = useState(null); // {x,y,contactId}
+  const [bulkCampaignPicker, setBulkCampaignPicker] = useState(false);
 
   const timerRef = useRef(null);
   const agentRef = useRef(null);
@@ -377,11 +384,19 @@ export default function ClawDialer() {
   }, []);
 
   const activeContact = activeIdx !== null ? contacts[activeIdx] : null;
-  const filteredContacts = contacts.filter(c => {
-    const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
-    const mf = statusFilter === 'all' || c.status === statusFilter;
-    return ms && mf;
-  });
+  const filteredContacts = (() => {
+    let list = contacts.filter(c => {
+      const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
+      const mf = statusFilter === 'all' || c.status === statusFilter;
+      const mc = campaignFilter === 'all' || (c.campaign||'') === campaignFilter;
+      return ms && mf && mc;
+    });
+    if (sortBy === 'name') list = [...list].sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    else if (sortBy === 'status') list = [...list].sort((a,b) => (a.status||'').localeCompare(b.status||''));
+    else if (sortBy === 'campaign') list = [...list].sort((a,b) => (a.campaign||'').localeCompare(b.campaign||''));
+    return list;
+  })();
+  const allCampaigns = [...new Set(contacts.map(c => c.campaign).filter(Boolean))].sort();
 
   function selectContact(idx) {
     setActiveIdx(idx);
@@ -405,11 +420,14 @@ export default function ClawDialer() {
       const bizIdx = headers.findIndex(h => h.includes('business') || h.includes('company') || h.includes('biz'));
       const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('mobile') || h.includes('cell'));
       const emailIdx = headers.findIndex(h => h.includes('email'));
+      const campIdx = headers.findIndex(h => h.includes('campaign') || h.includes('vertical') || h.includes('product') || h.includes('type'));
+      const stateIdx = headers.findIndex(h => h === 'state' || h === 'st');
       const newOnes = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g,''));
         if (!cols[phoneIdx] && !cols[emailIdx]) continue;
-        newOnes.push({ id:Date.now()+i, name:nameIdx>=0?cols[nameIdx]:'', business_name:bizIdx>=0?cols[bizIdx]:'', phone:phoneIdx>=0?cols[phoneIdx]:'', email:emailIdx>=0?cols[emailIdx]:'', status:'new', notes:'', list_name:file.name.replace('.csv',''), created_at:new Date().toISOString() });
+        const csvCampaign = campIdx>=0 ? cols[campIdx].toUpperCase() : '';
+        newOnes.push({ id:Date.now()+i, name:nameIdx>=0?cols[nameIdx]:'', business_name:bizIdx>=0?cols[bizIdx]:'', phone:phoneIdx>=0?cols[phoneIdx]:'', email:emailIdx>=0?cols[emailIdx]:'', state:stateIdx>=0?cols[stateIdx]:'', status:'new', notes:'', campaign:csvCampaign, list_name:file.name.replace('.csv',''), created_at:new Date().toISOString() });
       }
       setContacts(prev => [...prev, ...newOnes]);
       notify(`✅ Imported ${newOnes.length} contacts`, 'success');
@@ -595,42 +613,124 @@ export default function ClawDialer() {
       {tab === 'dialer' && (
         <div style={{display:'grid',gridTemplateColumns:'280px 1fr 260px',height:'calc(100vh - 90px)',overflow:'hidden'}}>
 
-          {/* LEFT: CONTACTS */}
+          {/* LEFT: CONTACTS — QUEUE MANAGEMENT */}
           <div style={{borderRight:'1px solid var(--border)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-            <div style={{padding:'8px 10px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:5,flexDirection:'column'}}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search contacts..." style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,padding:'6px 10px',outline:'none',borderRadius:2}} />
-              <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+
+            {/* Search + filters */}
+            <div style={{padding:'8px 10px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:4,flexDirection:'column'}}>
+              <div style={{display:'flex',gap:4}}>
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search..." style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:10,padding:'5px 8px',outline:'none',borderRadius:2}} />
+                <button onClick={()=>{setSelectMode(v=>!v);setSelectedIds(new Set());}} style={{padding:'5px 8px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:`1px solid ${selectMode?'var(--teal)':'var(--border2)'}`,background:selectMode?'var(--teal)22':'transparent',color:selectMode?'var(--teal)':'var(--text-dim)',borderRadius:2,whiteSpace:'nowrap'}}>{selectMode?'✓ SELECT':'SELECT'}</button>
+              </div>
+              {/* Status filters */}
+              <div style={{display:'flex',gap:2,flexWrap:'wrap'}}>
                 {['all','new','called','callback','interested','voicemail'].map(f => (
-                  <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'3px 7px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--teal)':'var(--border2)'}`,background:statusFilter===f?'var(--teal)22':'transparent',color:statusFilter===f?'var(--teal)':'var(--text-dim)',borderRadius:2,textTransform:'uppercase'}}>
+                  <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 6px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:1,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--teal)':'var(--border2)'}`,background:statusFilter===f?'var(--teal)22':'transparent',color:statusFilter===f?'var(--teal)':'var(--text-dim)',borderRadius:2,textTransform:'uppercase'}}>
                     {f}{f==='callback'&&callbackCount>0?` (${callbackCount})`:''}
                   </button>
                 ))}
               </div>
+              {/* Campaign filter + sort */}
+              <div style={{display:'flex',gap:4}}>
+                <select value={campaignFilter} onChange={e=>setCampaignFilter(e.target.value)} style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text-dim)',fontFamily:'DM Mono,monospace',fontSize:8,padding:'3px 5px',outline:'none',borderRadius:2}}>
+                  <option value="all">ALL CAMPAIGNS</option>
+                  {allCampaigns.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="">UNTAGGED</option>
+                </select>
+                <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text-dim)',fontFamily:'DM Mono,monospace',fontSize:8,padding:'3px 5px',outline:'none',borderRadius:2}}>
+                  <option value="default">SORT: DEFAULT</option>
+                  <option value="name">SORT: NAME</option>
+                  <option value="status">SORT: STATUS</option>
+                  <option value="campaign">SORT: CAMPAIGN</option>
+                </select>
+              </div>
+              {/* Bulk action bar — only shown in select mode */}
+              {selectMode && selectedIds.size > 0 && (
+                <div style={{display:'flex',gap:3,paddingTop:3,borderTop:'1px solid var(--border)'}}>
+                  <button onClick={()=>{
+                    const allVisIds = new Set(filteredContacts.map(c=>c.id));
+                    setSelectedIds(prev => {
+                      const next = new Set(prev);
+                      allVisIds.forEach(id => next.add(id));
+                      return next;
+                    });
+                  }} style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>ALL</button>
+                  <button onClick={()=>setBulkCampaignPicker(true)} style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--teal)',background:'var(--teal)22',color:'var(--teal)',borderRadius:2}}>TAG ({selectedIds.size})</button>
+                  <button onClick={()=>{
+                    if(!confirm(`Delete ${selectedIds.size} contacts?`)) return;
+                    setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
+                    setSelectedIds(new Set()); setSelectMode(false);
+                    notify(`Deleted ${selectedIds.size} contacts`,'warning');
+                  }} style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid #FF3B3B',background:'#FF3B3B22',color:'#FF3B3B',borderRadius:2}}>DELETE ({selectedIds.size})</button>
+                  <button onClick={()=>{
+                    setContacts(prev => prev.map(c => selectedIds.has(c.id) ? {...c, status:'not-interested'} : c));
+                    notify(`Marked ${selectedIds.size} as DNC`,'warning');
+                    setSelectedIds(new Set());
+                  }} style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>DNC</button>
+                </div>
+              )}
             </div>
-            <div style={{flex:1,overflowY:'auto'}}>
+
+            {/* Contact list */}
+            <div style={{flex:1,overflowY:'auto'}} onClick={()=>contextMenu&&setContextMenu(null)}>
               {filteredContacts.length === 0 ? (
                 <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)'}}>No contacts.<br/>Upload CSV in Admin tab.</div>
               ) : filteredContacts.map((c) => {
                 const realIdx = contacts.indexOf(c);
+                const isSelected = selectedIds.has(c.id);
                 return (
-                  <div key={c.id} onClick={() => selectContact(realIdx)} style={{padding:'9px 12px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeIdx===realIdx?'var(--surface2)':'transparent',borderLeft:activeIdx===realIdx?`2px solid var(--teal)`:'2px solid transparent',transition:'all 0.1s'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{width:26,height:26,borderRadius:2,background:`${statusBadge[c.status]||'var(--teal)'}22`,border:`1px solid ${statusBadge[c.status]||'var(--teal)'}44`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Bebas Neue,sans-serif',fontSize:10,color:statusBadge[c.status]||'var(--teal)',flexShrink:0}}>
+                  <div
+                    key={c.id}
+                    onClick={(e) => {
+                      if (selectMode) {
+                        e.stopPropagation();
+                        setSelectedIds(prev => { const next = new Set(prev); isSelected ? next.delete(c.id) : next.add(c.id); return next; });
+                      } else {
+                        selectContact(realIdx);
+                      }
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ x: e.clientX, y: e.clientY, contactId: c.id });
+                    }}
+                    style={{padding:'8px 10px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:isSelected?'var(--teal)11':activeIdx===realIdx?'var(--surface2)':'transparent',borderLeft:isSelected?`2px solid var(--teal)`:activeIdx===realIdx?`2px solid var(--teal)`:'2px solid transparent',transition:'all 0.1s'}}
+                  >
+                    <div style={{display:'flex',alignItems:'center',gap:7}}>
+                      {selectMode && (
+                        <div style={{width:14,height:14,borderRadius:2,border:`1px solid ${isSelected?'var(--teal)':'var(--border2)'}`,background:isSelected?'var(--teal)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                          {isSelected && <span style={{fontSize:8,color:'var(--bg)',fontWeight:'bold'}}>✓</span>}
+                        </div>
+                      )}
+                      <div style={{width:24,height:24,borderRadius:2,background:`${statusBadge[c.status]||'var(--teal)'}22`,border:`1px solid ${statusBadge[c.status]||'var(--teal)'}44`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Bebas Neue,sans-serif',fontSize:9,color:statusBadge[c.status]||'var(--teal)',flexShrink:0}}>
                         {initials(c.name)}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'No Name'}</div>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.business_name||c.phone||''}</div>
+                        <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'No Name'}</div>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.campaign?`[${c.campaign}] `:''}{c.business_name||c.phone||''}</div>
                       </div>
-                      <div style={{width:5,height:5,borderRadius:'50%',background:statusBadge[c.status]||'var(--border2)',flexShrink:0}}></div>
+                      <div style={{width:4,height:4,borderRadius:'50%',background:statusBadge[c.status]||'var(--border2)',flexShrink:0}}></div>
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div style={{padding:'7px 10px',borderTop:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:6,alignItems:'center'}}>
-              <button onClick={() => setShowAddModal(true)} style={{flex:1,padding:'6px',fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>+ ADD</button>
-              <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)'}}>{newCount} new</span>
+
+            {/* Bottom bar */}
+            <div style={{padding:'6px 10px',borderTop:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:5,alignItems:'center'}}>
+              <button onClick={() => setShowAddModal(true)} style={{padding:'5px 8px',fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:1,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>+ ADD</button>
+              <button onClick={()=>{
+                const target = statusFilter !== 'all' ? statusFilter : null;
+                const count = target ? contacts.filter(c=>c.status===target).length : filteredContacts.length;
+                const label = target ? `all ${target}` : `${count} visible`;
+                if(!confirm(`Delete ${label} contacts?`)) return;
+                if(target) setContacts(prev => prev.filter(c => c.status !== target));
+                else {
+                  const visIds = new Set(filteredContacts.map(c=>c.id));
+                  setContacts(prev => prev.filter(c => !visIds.has(c.id)));
+                }
+                notify(`Queue cleared`,'warning');
+              }} style={{padding:'5px 8px',fontFamily:'Barlow Condensed,sans-serif',fontSize:9,fontWeight:700,letterSpacing:1,cursor:'pointer',border:'1px solid #FF3B3B44',background:'transparent',color:'#FF3B3B88',borderRadius:2}}>CLEAR</button>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',marginLeft:'auto'}}>{filteredContacts.length}/{contacts.length}</span>
             </div>
           </div>
 
@@ -1081,6 +1181,51 @@ export default function ClawDialer() {
               <button onClick={() => exportCSV([['Name','Business','Phone','Email','Status','List'],...contacts.map(c=>[c.name,c.business_name,c.phone,c.email,c.status,c.list_name])],'contacts.csv')} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>📥 EXPORT CONTACTS</button>
               <button onClick={() => { if(confirm('Clear all call log and contacts? This cannot be undone.')) { setContacts([]); setCallLog([]); notify('All data cleared','warning'); } }} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'#FF3B3B',color:'white',border:'none',cursor:'pointer',borderRadius:2,marginLeft:'auto'}}>🗑 CLEAR ALL DATA</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONTEXT MENU ── */}
+      {contextMenu && (
+        <div style={{position:'fixed',top:contextMenu.y,left:contextMenu.x,zIndex:500,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:3,boxShadow:'0 8px 24px rgba(0,0,0,0.6)',minWidth:160,animation:'slideUp 0.1s ease'}} onClick={e=>e.stopPropagation()}>
+          {[
+            ['DIAL NOW', () => { const idx = contacts.findIndex(c=>c.id===contextMenu.contactId); if(idx>=0){selectContact(idx); setTimeout(startCall,200);} setContextMenu(null); }, 'var(--teal)'],
+            ['ASSIGN CAMPAIGN', () => { setSelectedIds(new Set([contextMenu.contactId])); setBulkCampaignPicker(true); setContextMenu(null); }, 'var(--text-mid)'],
+            ['MARK CALLBACK', () => { setContacts(prev => prev.map(c => c.id===contextMenu.contactId ? {...c,status:'callback'} : c)); setContextMenu(null); }, '#FF6B2B'],
+            ['MARK DNC', () => { setContacts(prev => prev.map(c => c.id===contextMenu.contactId ? {...c,status:'not-interested'} : c)); setContextMenu(null); }, '#FF3B3B'],
+            ['DELETE', () => { setContacts(prev => prev.filter(c => c.id!==contextMenu.contactId)); setContextMenu(null); notify('Contact deleted','warning'); }, '#FF3B3B'],
+          ].map(([label, action, color]) => (
+            <button key={label} onClick={action} style={{display:'block',width:'100%',padding:'9px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:10,letterSpacing:1,cursor:'pointer',border:'none',borderBottom:'1px solid var(--border)',background:'transparent',color,textTransform:'uppercase'}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {contextMenu && <div style={{position:'fixed',inset:0,zIndex:499}} onClick={()=>setContextMenu(null)} />}
+
+      {/* ── BULK CAMPAIGN PICKER ── */}
+      {bulkCampaignPicker && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:3,padding:22,width:340,animation:'slideUp 0.2s ease'}}>
+            <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:16,letterSpacing:3,color:'var(--teal)',marginBottom:16}}>// ASSIGN CAMPAIGN</div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginBottom:12}}>Tagging {selectedIds.size} contact{selectedIds.size!==1?'s':''}:</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:14}}>
+              {['VINHUNTER','ECONOCLAW','WHITEGLOVECLAW','BUDGETRENTACLAW','RETARDCLAW','BUDGETCLAW','TRANSBID','CLAWAWAY'].map(camp => (
+                <button key={camp} onClick={()=>{
+                  setContacts(prev => prev.map(c => selectedIds.has(c.id) ? {...c, campaign:camp} : c));
+                  notify(`Tagged ${selectedIds.size} → ${camp}`,'success');
+                  setBulkCampaignPicker(false); setSelectMode(false); setSelectedIds(new Set());
+                }} style={{padding:'8px 6px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,cursor:'pointer',border:'1px solid var(--border2)',background:'var(--surface2)',color:'var(--text-mid)',borderRadius:2,textTransform:'uppercase'}}>
+                  {camp}
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>{
+              setContacts(prev => prev.map(c => selectedIds.has(c.id) ? {...c, campaign:''} : c));
+              notify(`Cleared campaign tag from ${selectedIds.size}`,'warning');
+              setBulkCampaignPicker(false); setSelectMode(false); setSelectedIds(new Set());
+            }} style={{width:'100%',padding:'7px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2,marginBottom:8}}>CLEAR TAG</button>
+            <button onClick={()=>{setBulkCampaignPicker(false);}} style={{width:'100%',padding:'7px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>CANCEL</button>
           </div>
         </div>
       )}
