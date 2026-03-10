@@ -36,15 +36,27 @@ function buildGather(sayText, history, to) {
 </Response>`;
 }
 
+async function saveCallRecord(data) {
+  try {
+    await fetch(`${BASE}/api/recordings?action=save`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (e) {
+    console.error('Failed to save call record:', e.message);
+  }
+}
+
 export default async function handler(req, res) {
   const { action } = req.query;
 
-  // ── AI TWIML: Opening line ────────────────────────────────────────────────
+  // ── AI TWIML: Opening line (includes TCPA recording disclosure) ───────────
   if (action === 'ai-twiml') {
     res.setHeader('Content-Type', 'text/xml');
     const to = req.query.to || '';
     return res.status(200).send(buildGather(
-      "Hey, is this the owner? This is Chase calling from VinLedger, quick question for you.",
+      "Hey, is this the owner? This call may be recorded for quality purposes. This is Chase calling from VinLedger, quick question for you.",
       [], to
     ));
   }
@@ -115,7 +127,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // ── TWIML: Original MP3 flow (untouched) ─────────────────────────────────
+  // ── TWIML: Original MP3 flow ──────────────────────────────────────────────
   if (action === 'twiml') {
     res.setHeader('Content-Type', 'text/xml');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
@@ -164,9 +176,33 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ── STATUS ────────────────────────────────────────────────────────────────
+  // ── STATUS: fired by Twilio on call events ────────────────────────────────
   if (action === 'status') {
-    console.log(`Call ${req.body?.CallSid} → ${req.body?.CallStatus}`);
+    const { CallSid, CallStatus, CallDuration, To } = req.body || {};
+    const contactName = req.query.contactName ? decodeURIComponent(req.query.contactName) : '';
+    const contactEmail = req.query.contactEmail ? decodeURIComponent(req.query.contactEmail) : '';
+    const contactId = req.query.contactId ? decodeURIComponent(req.query.contactId) : '';
+    const script = req.query.script ? decodeURIComponent(req.query.script) : '';
+
+    console.log(`Call ${CallSid} → ${CallStatus} (${CallDuration}s)`);
+
+    const terminal = ['completed','failed','busy','no-answer'];
+    if (terminal.includes(CallStatus)) {
+      const dur = parseInt(CallDuration || 0);
+      const outcome = CallStatus === 'completed' && dur >= 15 ? 'answered' : 'voicemail';
+      await saveCallRecord({
+        callSid: CallSid,
+        contactName,
+        contactPhone: To,
+        contactEmail,
+        contactId,
+        script,
+        outcome,
+        duration: CallDuration,
+        notes: '',
+      });
+    }
+
     return res.status(200).end();
   }
 
@@ -197,21 +233,29 @@ export default async function handler(req, res) {
 
   // ── CALL ──────────────────────────────────────────────────────────────────
   if (action === 'call') {
-    const { to, contactName, aiMode } = body;
+    const { to, contactName, contactEmail, contactId, aiMode, script } = body;
     if (!to) return res.status(400).json({ error: 'Missing to number' });
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      const nameParam = encodeURIComponent(contactName || '');
+      const emailParam = encodeURIComponent(contactEmail || '');
+      const idParam = encodeURIComponent(contactId || '');
+      const scriptParam = encodeURIComponent(script || '');
       const call = await client.calls.create({
         to,
         from: FROM,
         url: aiMode
           ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}`
           : `${BASE}/api/twilio?action=twiml`,
-        statusCallback: `${BASE}/api/twilio?action=status`,
+        record: true,
+        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
+        recordingStatusCallbackMethod: 'POST',
+        recordingChannels: 'mono',
+        statusCallback: `${BASE}/api/twilio?action=status&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
         machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${encodeURIComponent(contactName || '')}`,
+        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${nameParam}`,
         asyncAmdStatusCallbackMethod: 'POST',
       });
       return res.status(200).json({ success: true, callSid: call.sid });
