@@ -721,7 +721,7 @@ export default function ClawDialer() {
           {agentStatus.status !== 'idle' && (
             <div style={{fontFamily:'DM Mono, monospace',fontSize:9,color:'var(--text-dim)',marginBottom:6}}>{agentStatus.called}/{agentStatus.total} called · {agentStatus.queue} queued</div>
           )}
-          <div style={{display:'flex',gap:4'}}>
+          <div style={{display:'flex',gap:4}}>
             {agentStatus.status === 'idle' && (
               <button onClick={() => serverAgentAction('start', {state: vinState})} style={{padding:'4px 8px',fontSize:8,fontFamily:'Barlow Condensed, sans-serif',fontWeight:700,cursor:'pointer',border:'1px solid var(--green)',background:'transparent',color:'var(--green)',borderRadius:2}}>▶ START</button>
             )}
