@@ -122,6 +122,12 @@ const baseCss = `
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function fmtTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}` }
 function fmtDate(ts) { try { return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}); } catch { return ts; } }
+function normalizeScript(s) {
+  if (!s) return '—';
+  const n = s.toUpperCase();
+  if (n.includes('FILS') || n.includes('VINLEDGER') || n.includes('VIN')) return 'VINHUNTER';
+  return s;
+}
 function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() }
 function storageGet(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def } catch { return def } }
 function storageSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} }
@@ -658,7 +664,7 @@ export default function ClawDialer() {
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{entry.name||entry.phone||'Unknown'}</div>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',marginTop:1}}>{entry.outcome?.toUpperCase()} · {fmtTime(entry.duration||0)}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',marginTop:1}}>{entry.outcome?.toUpperCase()} · {fmtTime(entry.duration||0)} · {normalizeScript(entry.script)}</div>
                   </div>
                 </div>
               );
@@ -777,7 +783,7 @@ export default function ClawDialer() {
                   <div style={{width:6,height:6,borderRadius:'50%',background:sentColor,flexShrink:0}}></div>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:14,fontWeight:600}}>{rec.contactName||'Unknown'}</div>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginTop:2}}>{rec.outcome?.toUpperCase()} · {rec.script||'—'} · {fmtDate(rec.timestamp||rec.transcribedAt)}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginTop:2}}>{rec.outcome?.toUpperCase()} · {normalizeScript(rec.script)} · {fmtDate(rec.timestamp||rec.transcribedAt)}</div>
                   </div>
                   {rec.transcript && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',padding:'2px 6px',border:'1px solid var(--teal)44',borderRadius:2}}>TRANSCRIPT</span>}
                   {a && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:sentColor,padding:'2px 6px',border:`1px solid ${sentColor}44`,borderRadius:2}}>{a.sentiment?.toUpperCase()}</span>}
@@ -814,7 +820,22 @@ export default function ClawDialer() {
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-mid)',lineHeight:1.8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:2,padding:'10px 12px',maxHeight:200,overflowY:'auto',whiteSpace:'pre-wrap'}}>{rec.transcript}</div>
                       </div>
                     )}
-                    {!a && !rec.transcript && <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Recording in progress or transcript not yet available.</div>}
+                    {!a && !rec.transcript && (
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)',lineHeight:1.8}}>
+                        <div style={{marginBottom:6}}>⏳ Transcript not yet available — Twilio processes transcriptions within ~5 minutes after the call ends.</div>
+                        {rec.recordingUrl && (
+                          <div>
+                            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// AUDIO RECORDING</div>
+                            <audio controls style={{width:'100%',marginBottom:4}}>
+                              <source src={rec.recordingUrl+'.mp3'} type="audio/mpeg" />
+                              <source src={rec.recordingUrl} type="audio/wav" />
+                            </audio>
+                            <a href={rec.recordingUrl+'.mp3'} target="_blank" rel="noreferrer" style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--teal)',textDecoration:'none'}}>↓ Download MP3</a>
+                          </div>
+                        )}
+                        {!rec.recordingUrl && <div style={{fontSize:9,opacity:0.6}}>Hit REFRESH in a few minutes to check for transcript.</div>}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
