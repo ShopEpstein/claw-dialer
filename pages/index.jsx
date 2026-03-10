@@ -1255,5 +1255,5 @@ function InboxMessage({ msg, onReply, notify }) {
         </div>
       )}
     </div>
-  );
+  ); 
 }
