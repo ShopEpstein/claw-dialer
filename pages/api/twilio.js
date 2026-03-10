@@ -318,5 +318,16 @@ export default async function handler(req, res) {
     } catch(err) { return res.status(500).json({ error: err.message }); }
   }
 
+  // ── HANGUP: end a live call ───────────────────────────────────────────────
+  if (action === 'hangup') {
+    const { callSid } = body;
+    if (!callSid) return res.status(400).json({ error: 'Missing callSid' });
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      await client.calls(callSid).update({ status: 'completed' });
+      return res.status(200).json({ success: true });
+    } catch(err) { return res.status(500).json({ error: err.message }); }
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
