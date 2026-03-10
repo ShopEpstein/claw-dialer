@@ -410,9 +410,14 @@ export default function ClawDialer() {
     }
   }
 
-  function endCall() {
+  async function endCall() {
     clearInterval(timerRef.current);
     setCallState('ended');
+    if (callSid) {
+      try {
+        await fetch('/api/twilio?action=hangup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ callSid }) });
+      } catch {}
+    }
   }
 
   async function setDisposition(outcome) {
@@ -652,6 +657,12 @@ export default function ClawDialer() {
             </>
           )}
           <button onClick={() => activeContact ? setSmsModal(true) : notify('Select a contact','warning')} style={{padding:'10px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>💬 SMS</button>
+          {activeContact?.email && <button onClick={async () => {
+            try {
+              await fetch('/api/recordings?action=email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to: activeContact.email, contactName: activeContact.name, business: activeContact.business_name, product: scripts[scriptIdx]?.name }) });
+              notify(`📧 Email sent to ${activeContact.email}`, 'success');
+            } catch { notify('Email failed','warning'); }
+          }} style={{padding:'10px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,background:'transparent',color:'var(--teal)',border:'1px solid rgba(20,241,198,0.3)',cursor:'pointer',borderRadius:2}}>📧 EMAIL</button>}
           {activeContact && <button onClick={() => markDNC(activeIdx)} style={{padding:'10px 12px',fontFamily:'Barlow Condensed, sans-serif',fontSize:10,fontWeight:700,letterSpacing:1,background:'transparent',color:'var(--red)',border:'1px solid rgba(255,59,59,0.3)',cursor:'pointer',borderRadius:2}}>DNC</button>}
         </div>
 
