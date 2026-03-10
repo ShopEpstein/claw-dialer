@@ -55,12 +55,13 @@ function isTCPAAllowed(phone) {
 
 const DEFAULT_SCRIPTS = [
   {
-    name: 'FILS / VINLEDGER', color: '#14F1C6',
+    name: 'VINHUNTER / DEALER', color: '#14F1C6',
     sections: [
-      { label: 'OPENER', text: "Hey, is this [CONTACT_NAME]? Hey [FIRST_NAME], this is Chase calling from VinLedger — quick question for you..." },
-      { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? Because we put a Trust Score, recall info, and a branded page on every vehicle on your lot, overnight." },
-      { label: 'DIFFERENTIATOR', text: "CARFAX charges dealers $99 to $300 a month just for reports. We give you unlimited reports, SEO-indexed inventory pages, lead capture, AND a full shop CRM to replace Tekmetric — all for $249 a month." },
-      { label: 'CLOSE', text: "We're doing a founding partner rate right now — price is locked forever at whatever you sign up at. Can I send you a quick walkthrough link?" }
+      { label: 'OPENER', text: "Hey, is this [CONTACT_NAME]? Hey [FIRST_NAME], this is Chase calling from VinHunter — VinLedger AI Live — quick question for you..." },
+      { label: 'QUALIFY', text: "Do you have a service department, or just sales? [If sales only → pitch $99 Dealer Marketing. If service dept → pitch $249 Dealer Pro CRM.]" },
+      { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? We put a Trust Score, recall info, AND check things CARFAX structurally cannot — active federal investigations, AI fraud detection — on every vehicle on your lot, overnight." },
+      { label: 'DIFFERENTIATOR', text: "CARFAX charges dealers $99 to $300 a month just for reports with no marketing, no landing pages. We give you unlimited reports, SEO-indexed inventory pages, lead capture, AND a full shop CRM to replace Tekmetric — all for $249 a month. Or just the marketing package at $99." },
+      { label: 'CLOSE', text: "We're locking founding partner rates right now — whatever tier you sign up at, price never increases. Can I send you a quick walkthrough link?" }
     ]
   },
   {
@@ -102,7 +103,7 @@ const DEFAULT_SCRIPTS = [
 ];
 
 const SMS_FOLLOW_UP = (name) =>
-  `Hi ${name || 'there'}, this is Chase from VinLedger. Happy to walk you through how we get Google-indexed pages on your entire inventory overnight. Just reply here.`;
+  `Hi ${name || 'there'}, Chase from VinHunter (VinLedger AI Live). Happy to walk you through how we get Google-indexed pages on your entire inventory overnight — and what we check that CARFAX can't. Just reply here.`;
 
 const VINLEDGER_API = 'https://vinledgerai.live';
 
