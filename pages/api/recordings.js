@@ -49,53 +49,73 @@ async function sendBrevoEmail({ to, toName, subject, html }) {
   }
 }
 
-function buildFollowUpEmail(contactName, business, product = 'VinLedger') {
+function buildFollowUpEmail(contactName, business, product = 'VinLedger AI Live') {
   const subject = `Quick follow-up — ${business || contactName || 'your dealership'}`;
   const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:30px 0;">
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:30px 0;">
     <tr><td align="center">
       <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <tr><td style="background:#080A0F;padding:24px 32px;">
-          <span style="font-family:'Courier New',monospace;font-size:20px;color:#14F1C6;letter-spacing:4px;font-weight:bold;">VINLEDGER</span>
+        <tr><td style="background:#080A0F;padding:24px 32px;display:flex;align-items:center;gap:12px;">
+          <span style="font-family:'Courier New',monospace;font-size:18px;color:#14F1C6;letter-spacing:3px;font-weight:bold;">VINHUNTER</span>
+          <span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// VINLEDGER AI LIVE</span>
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="font-size:16px;color:#1a1a1a;margin:0 0 16px;">Hey ${contactName ? contactName.split(' ')[0] : 'there'},</p>
-          <p style="font-size:15px;color:#333;line-height:1.6;margin:0 0 16px;">
-            Just following up on our conversation. I wanted to make sure you had the link to see what VinLedger does for your inventory.
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
+            Good talking with you. Wanted to make sure you had everything in one place so you can take a look when you get a minute.
           </p>
-          <p style="font-size:15px;color:#333;line-height:1.6;margin:0 0 24px;">
-            Here's the short version: we put a <strong>Trust Score and a Google-indexed page</strong> on every VIN on your lot — overnight. Buyers researching your vehicles find confidence-building info before they even call you. That closes deals.
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 20px;">
+            Here's the short version of what VinHunter does that CARFAX <em>structurally cannot</em>:
           </p>
-          <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;">Active NHTSA federal investigations (CARFAX doesn't show these)</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;">Cross-model complaint patterns across similar vehicles</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;">AI fraud detection + theft databases CARFAX doesn't access</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;">Google-indexed Trust Score page for every VIN on your lot — overnight</span>
+            </td></tr>
+          </table>
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
             <tr>
-              <td style="background:#14F1C6;border-radius:3px;padding:0;">
-                <a href="https://vinledgerai.live/pricing" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See Plans &amp; Pricing</a>
+              <td style="background:#14F1C6;border-radius:3px;">
+                <a href="https://vinledgerai.live/pricing" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See All Plans &amp; Pricing</a>
               </td>
             </tr>
           </table>
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f9f9;border-left:3px solid #14F1C6;padding:16px;margin:0 0 24px;">
+          <table width="100%" cellpadding="16" cellspacing="0" style="background:#f9f9f9;border-left:3px solid #14F1C6;margin:0 0 24px;">
             <tr><td>
-              <p style="font-size:13px;color:#555;margin:0 0 8px;font-weight:bold;">FOUNDING PARTNER RATE</p>
-              <p style="font-size:13px;color:#555;margin:0;line-height:1.5;">
-                $99/mo — <strong>locks forever</strong> for anyone who signs up during our launch window. CARFAX charges $99–$300/mo just for reports with no marketing, no landing pages, no CRM.
+              <p style="font-size:12px;color:#888;margin:0 0 6px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Plans start at</p>
+              <p style="font-size:14px;color:#333;margin:0;line-height:1.6;">
+                Free · $4.99/mo · $49/mo · <strong>$99/mo Dealer Marketing</strong> · $249/mo Full CRM<br>
+                <span style="color:#14F1C6;font-weight:bold;">Founding partner rate locks forever</span> — price never increases once you're in.
               </p>
             </td></tr>
           </table>
-          <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px;">
-            Just reply to this email or text me at (850) 341-4324. No pressure — happy to answer any questions first.
+          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
+            No pressure at all — just reply here or text me at (850) 341-4324 if you have questions or want a quick walkthrough. Happy to pull up your lot and show you exactly what it looks like before you commit to anything.
           </p>
           <p style="font-size:14px;color:#333;margin:0;">
             — Chase<br>
-            <span style="color:#888;font-size:12px;">Solana Solar Solutions · VinLedger · (850) 341-4324</span>
+            <span style="color:#888;font-size:12px;">VinHunter · VinLedger AI Live · (850) 341-4324</span>
           </p>
         </td></tr>
         <tr><td style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #eee;">
           <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5;">
-            You're receiving this because you expressed interest in VinLedger during a recent call. 
+            You're receiving this because you expressed interest during a recent call.
             Reply STOP to opt out. Solana Solar Solutions · 11000 Tanton Lane, Pensacola FL 32506
           </p>
         </td></tr>
