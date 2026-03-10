@@ -294,6 +294,16 @@ export default async function handler(req, res) {
         duration: CallDuration,
         notes: '',
       });
+      // Auto-send Brevo email follow-up for any answered call where we have an email
+      if (outcome === 'answered' && contactEmail) {
+        try {
+          await fetch(`${BASE}/api/recordings?action=email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: contactEmail, contactName, script }),
+          });
+        } catch(e) { console.error('Auto-email error:', e.message); }
+      }
     }
 
     return res.status(200).end();
@@ -338,12 +348,14 @@ export default async function handler(req, res) {
         to,
         from: FROM,
         url: aiMode
-          ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&script=${encodeURIComponent(script || '')}`
+          ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&script=${encodeURIComponent(script || '')}&name=${nameParam}`
           : `${BASE}/api/twilio?action=twiml`,
         record: true,
-        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
+        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         recordingStatusCallbackMethod: 'POST',
-        recordingChannels: 'mono',
+        recordingChannels: 'dual',
+        transcribe: true,
+        transcribeCallback: `${BASE}/api/recordings?action=transcript-webhook&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         statusCallback: `${BASE}/api/twilio?action=status&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
