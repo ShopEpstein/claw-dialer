@@ -6,7 +6,7 @@ import path from 'path';
 
 const STORE_PATH = '/tmp/claw_recordings.json';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const BREVO_FROM_EMAIL = 'chase@solanasolarsolutions.com';
+const BREVO_FROM_EMAIL = 'campaigns@transbidlive.faith';
 const BREVO_FROM_NAME = 'Chase @ VinLedger';
 
 // ── Simple JSON file store (Vercel /tmp persists within function execution) ──
