@@ -7,7 +7,7 @@ import path from 'path';
 const STORE_PATH = '/tmp/claw_recordings.json';
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = 'campaigns@transbidlive.faith';
-const BREVO_FROM_NAME = 'Chase @ VinLedger';
+const BREVO_FROM_NAME = 'Chase @ VinHunter';
 
 // ── Simple JSON file store (Vercel /tmp persists within function execution) ──
 function loadStore() {
@@ -49,22 +49,20 @@ async function sendBrevoEmail({ to, toName, subject, html }) {
   }
 }
 
-function buildFollowUpEmail(contactName, business, product = 'VinLedger AI Live') {
-  const subject = `Quick follow-up — ${business || contactName || 'your dealership'}`;
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:30px 0;">
-    <tr><td align="center">
-      <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <tr><td style="background:#080A0F;padding:24px 32px;display:flex;align-items:center;gap:12px;">
-          <span style="font-family:'Courier New',monospace;font-size:18px;color:#14F1C6;letter-spacing:3px;font-weight:bold;">VINHUNTER</span>
-          <span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// VINLEDGER AI LIVE</span>
-        </td></tr>
-        <tr><td style="padding:32px;">
-          <p style="font-size:16px;color:#1a1a1a;margin:0 0 16px;">Hey ${contactName ? contactName.split(' ')[0] : 'there'},</p>
+function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
+  const isVinHunter = !product || product.toLowerCase().includes('vin') || product.toLowerCase().includes('hunter');
+  const isClaw = product.toLowerCase().includes('claw');
+  const isTransBid = product.toLowerCase().includes('transbid');
+
+  const subject = isVinHunter
+    ? `Your free lot audit — ${business || contactName || 'your dealership'}`
+    : isClaw
+    ? `Your 21-agent AI system — ${business || contactName || 'your business'}`
+    : isTransBid
+    ? `Zero-commission contracting — ${business || contactName}`
+    : `Quick follow-up — ${business || contactName || 'your business'}`;
+
+  const vinHunterBody = `
           <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
             Good talking with you. Wanted to make sure you had everything in one place so you can take a look when you get a minute.
           </p>
@@ -90,27 +88,102 @@ function buildFollowUpEmail(contactName, business, product = 'VinLedger AI Live'
             </td></tr>
           </table>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-            <tr>
-              <td style="background:#14F1C6;border-radius:3px;">
-                <a href="https://vinledgerai.live/pricing" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See All Plans &amp; Pricing</a>
-              </td>
-            </tr>
+            <tr><td style="background:#14F1C6;border-radius:3px;">
+              <a href="https://vinledgerai.live/pricing" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See All Plans &amp; Pricing</a>
+            </td></tr>
           </table>
           <table width="100%" cellpadding="16" cellspacing="0" style="background:#f9f9f9;border-left:3px solid #14F1C6;margin:0 0 24px;">
             <tr><td>
-              <p style="font-size:12px;color:#888;margin:0 0 6px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Plans start at</p>
-              <p style="font-size:14px;color:#333;margin:0;line-height:1.6;">
-                Free · $4.99/mo · $49/mo · <strong>$99/mo Dealer Marketing</strong> · $249/mo Full CRM<br>
-                <span style="color:#14F1C6;font-weight:bold;">Founding partner rate locks forever</span> — price never increases once you're in.
-              </p>
+              <p style="font-size:12px;color:#888;margin:0 0 8px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">All Plans</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>Free</strong> — NHTSA decodes, recalls, Trust Score</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$4.99/mo</strong> — Full title history (what CARFAX charges $45/report for)</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$29/mo</strong> Verified Dealer — Badge + 10 branded VIN reports + QR stickers</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$49/mo</strong> Dealer Reports — Unlimited branded reports + profit tracking</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong style="color:#14F1C6;">$99/mo</strong> Dealer Marketing — SEO pages for every VIN, lead capture, custom landing page (built free)</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;"><strong>$249/mo</strong> Dealer Pro — Full shop CRM (replaces Tekmetric), repair orders, customer portal, AI diagnostics. $499 setup.</td></tr>
+              </table>
+              <p style="font-size:12px;color:#14F1C6;margin:10px 0 0;font-weight:bold;">Founding partner rate locks forever — price never increases once you're in.</p>
+            </td></tr>
+          </table>`;
+
+  const clawBody = `
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
+            Good talking with you. Here's the full picture on what we deploy.
+          </p>
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 20px;">
+            <strong>21 specialized AI agents</strong> working your business 24/7 — handling leads, content, research, outreach, customer service, analytics, and more. While you sleep.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+            <tr><td style="background:#FF6B2B;border-radius:3px;">
+              <a href="https://econoclaw.vercel.app" style="display:block;padding:14px 28px;color:#fff;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See EconoClaw Plans</a>
             </td></tr>
           </table>
+          <table width="100%" cellpadding="16" cellspacing="0" style="background:#f9f9f9;border-left:3px solid #FF6B2B;margin:0 0 24px;">
+            <tr><td>
+              <p style="font-size:12px;color:#888;margin:0 0 8px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Pricing</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong style="color:#FF6B2B;">$500 setup + $99/mo</strong> — EconoClaw launch pricing. 21 agents, software-only. Founding rate locks forever.</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$9/day · $49/wk · $149/mo</strong> — RentAClaw. Try it before you commit.</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$2,400–$4,800</strong> — WhiteGloveClaw. Full hardware deployment (VPS/Mac Mini), same-day go-live. 20% below market leader.</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;">Agency: $5,000+ setup + $1,500/mo for the same thing. We do it for a fraction.</td></tr>
+              </table>
+            </td></tr>
+          </table>`;
+
+  const transbidBody = `
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
+            Good talking with you. Here's why TransBid is different from every other lead platform.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Zero upfront cost</strong> — no lead fees, no subscription</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>0.5% only when you win</strong> — HomeAdvisor charges 15–30% hidden through inflated quotes</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Public bidding</strong> — every bid is visible, no lead fee on unserious prospects</span>
+            </td></tr>
+            <tr><td style="padding:6px 0;">
+              <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Veteran-owned businesses pay 0%</strong> — forever</span>
+            </td></tr>
+          </table>
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+            <tr><td style="background:#14F1C6;border-radius:3px;">
+              <a href="https://transbid.live" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ Post Your First Project Free</a>
+            </td></tr>
+          </table>`;
+
+  const bodyContent = isVinHunter ? vinHunterBody : isClaw ? clawBody : isTransBid ? transbidBody : vinHunterBody;
+  const brandName = isVinHunter ? 'VinHunter' : isClaw ? 'EconoClaw' : isTransBid ? 'TransBid Live' : 'VinHunter';
+  const brandColor = isVinHunter ? '#14F1C6' : isClaw ? '#FF6B2B' : '#14F1C6';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:30px 0;">
+    <tr><td align="center">
+      <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background:#080A0F;padding:24px 32px;">
+          <span style="font-family:'Courier New',monospace;font-size:18px;color:${brandColor};letter-spacing:3px;font-weight:bold;">${brandName.toUpperCase()}</span>
+          ${isVinHunter ? '<span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// VINLEDGER AI LIVE</span>' : ''}
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <p style="font-size:16px;color:#1a1a1a;margin:0 0 16px;">Hey ${contactName ? contactName.split(' ')[0] : 'there'},</p>
+          ${bodyContent}
           <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
-            No pressure at all — just reply here or text me at (850) 341-4324 if you have questions or want a quick walkthrough. Happy to pull up your lot and show you exactly what it looks like before you commit to anything.
+            No pressure at all — just reply here or text me at (850) 341-4324 if you have questions or want a quick walkthrough.
           </p>
           <p style="font-size:14px;color:#333;margin:0;">
             — Chase<br>
-            <span style="color:#888;font-size:12px;">VinHunter · VinLedger AI Live · (850) 341-4324</span>
+            <span style="color:#888;font-size:12px;">VinHunter · VinLedger AI Live · EconoClaw · TransBid Live · (850) 341-4324</span>
           </p>
         </td></tr>
         <tr><td style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #eee;">
@@ -281,19 +354,21 @@ export default async function handler(req, res) {
 
   // ── GENERATE SQUARE PAY LINK ───────────────────────────────────────────────
   if (action === 'pay-link' && req.method === 'POST') {
-    const { amount, description, contactName } = req.body || {};
-    // Square doesn't have a simple link API without OAuth setup
-    // Return a pre-built Square checkout URL pattern or manual instructions
-    const amountCents = Math.round((parseFloat(amount) || 99) * 100);
-    // Manual Square link (until Square API is connected)
-    const squareLink = `https://square.link/u/VinLedger-${Date.now()}`;
-    const smsText = `Chase @ VinLedger: Here's your payment link for $${amount || '99'}/mo — ${squareLink} Reply STOP to opt out.`;
+    const { amount, description, contactName, product } = req.body || {};
+    const isVH = !product || product.toLowerCase().includes('vin') || product.toLowerCase().includes('hunter');
+    const isWG = product?.toLowerCase().includes('whiteglov');
+    const brandName = isWG ? 'WhiteGloveClaw' : isVH ? 'VinHunter' : 'EconoClaw';
+    const url = isVH ? 'https://vinledgerai.live/pricing' : 'https://econoclaw.vercel.app';
+    const squareLink = `https://square.link/u/${brandName.replace(/\s/g,'')}-${Date.now()}`;
+    const amt = amount || (isVH ? '99' : '99');
+    const smsText = `Chase @ ${brandName}: Here's your payment link for $${amt} — ${squareLink} · ${url} · Reply STOP to opt out.`;
     return res.status(200).json({
       ok: true,
-      note: 'Generate a manual Square payment link from your Square dashboard and paste it here, or integrate Square API with your access token.',
+      note: `Generate a manual Square payment link from your Square dashboard for $${amt} (${description || brandName}) and paste it into the SMS template below.`,
       squareDashboard: 'https://squareup.com/dashboard/items/create',
       smsTemplate: smsText,
-      amount: amount || 99,
+      amount: amt,
+      product: brandName,
     });
   }
 
