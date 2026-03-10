@@ -1,7 +1,7 @@
 import twilio from 'twilio';
 import Anthropic from '@anthropic-ai/sdk';
 
-const BASE = 'https://claw-dialer.vercel.app';
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://claw-dialer.vercel.app';
 const FROM = '+18559600110';
 const PITCH_URL = 'https://vinhunter-9518.twil.io/VinHunter.mp3';
 
