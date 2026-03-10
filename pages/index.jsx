@@ -37,13 +37,23 @@ const DEFAULT_SCRIPTS = [
     ]
   },
   {
-    name: 'RENTACLAW', color: '#3B8FFF',
+    name: 'BUDGETRENTACLAW', color: '#3B8FFF',
     sections: [
-      { label: 'OPENER', text: "Hey — AI calling on Chase's behalf from RentAClaw. This call may be recorded. Quick question — have you looked into AI agents for your business at all?" },
-      { label: 'CONCEPT', text: "Think rental car. Daily $9, weekly $49, monthly $149, annual $999. All 21 agents for whatever period you need. Campaign, product launch, busy season — then stop." },
-      { label: 'GUARANTEE', text: "Want to try a week for $49? If it doesn't generate at least $49 in value, I'll personally refund you. No commitment. Rental payments count toward EconoClaw setup if you want to keep it." },
-      { label: 'CLOSE', text: "Can I text you the link? Takes 30 seconds to sign up." },
-      { label: '🔀 UPSELL', text: "After trial: EconoClaw $500 setup + $99/mo. Their rental payment counts toward the setup fee." }
+      { label: 'OPENER', text: "Hey — AI calling on Chase's behalf from Budget Rent-A-Claw. This call may be recorded. Quick question — have you looked into AI agents for your business at all?" },
+      { label: 'CONCEPT', text: "Think rental car but for AI. Daily $9, weekly $49, monthly $149, annual $999. No setup fee, no contract. All 21 agents, the AI call center, cloud automation — full fleet from day one." },
+      { label: 'GUARANTEE', text: "Want to try a week for $49? If it doesn't generate at least $49 in value, Chase will personally refund you. And rental payments count toward EconoClaw setup if you decide to keep it." },
+      { label: 'CLOSE', text: "Can I text you the link? Zero credit card required to reserve." },
+      { label: '🔀 UPSELL', text: "After trial: EconoClaw $500 setup + $99/mo. Rental payments count toward setup fee." }
+    ]
+  },
+  {
+    name: 'RETARDCLAW', color: '#FF00AA',
+    sections: [
+      { label: 'OPENER', text: "Hey — AI calling on Chase's behalf. This call may be recorded. Quick one — do you run your own business?" },
+      { label: 'HOOK', text: "We've got something called RetardClaw. It's 21 AI agents for people who hate tech. You don't configure anything. You don't learn any software. You just text it what you need and it handles it. $99 a month." },
+      { label: 'THE PITCH', text: "It answers your phone. Calls your leads. Posts on social. Writes your emails. Watches your competitors. Sends you a weekly report. You literally just text it. The lobster does the rest." },
+      { label: 'CLOSE', text: "Can I text you the page? It's got a 🦞 on it and everything. Takes 30 seconds to look at." },
+      { label: '🔀 UPSELL', text: "If they want more control → EconoClaw full setup $500 + $99/mo. If they want no commitment → Budget Rent-A-Claw $49/week." }
     ]
   },
   {
@@ -80,12 +90,13 @@ const DEFAULT_SCRIPTS = [
 
 const SMS_TEMPLATES = {
   'VINHUNTER': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Free lot audit: what buyers find when they Google your VINs + 4 things we check that CARFAX structurally can't. vinledgerai.live/pricing Reply STOP to opt out.`,
-  'ECONOCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app Reply STOP to opt out.`,
-  'WHITEGLOVECLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. White-glove AI. SetupClaw scope, 20% less. VPS $2,400, Mac Mini $4K, same-day go-live. Reply STOP to opt out.`,
-  'RENTACLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Try 21 AI agents a week, $49. Doesn't pay for itself, I refund you personally. econoclaw.vercel.app/rent Reply STOP to opt out.`,
+  'ECONOCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
+  'WHITEGLOVECLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. White-glove AI. SetupClaw scope, 20% less. VPS $2,400, Mac Mini $4K, same-day go-live. Reply to talk. Reply STOP to opt out.`,
+  'BUDGETRENTACLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Rent 21 AI agents: $49/week, no contract, no setup fee. Chase personally refunds you if it doesn't pay for itself. econoclaw.vercel.app/budgetrentaclaw-landing.html Reply STOP to opt out.`,
+  'RETARDCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. RetardClaw: 21 AI agents for people who hate tech. You just text it. The lobster handles everything else. $99/mo. 🦞 econoclaw.vercel.app/retardclaw-landing.html Reply STOP to opt out.`,
   'BUDGETCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Year 1 your way: $6,188+. Year 1 BUDGETclaw: $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
-  'TRANSBID': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. TransBid: post projects free, zero cost until job done. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
-  'CLAWAWAY': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. We build AI systems. Flexible on what, how you pay. Card, crypto, rev share, barter. econoclaw.vercel.app Reply STOP to opt out.`,
+  'TRANSBID': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. TransBid: post projects free, pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
+  'CLAWAWAY': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. We build AI systems your way — card, crypto, rev share, barter, IOU. Tell us what you need. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
 };
 const SMS_FOLLOW_UP = (name, scriptName) => {
   const fn = SMS_TEMPLATES[scriptName] || SMS_TEMPLATES['VINHUNTER'];
@@ -100,6 +111,7 @@ const SKINS = {
   TACTICLAW:     { label:'TACTICLAW',     icon:'🎯', dark:true,  accent:'#7FFF00', bg:'#0A0C07', surface:'#141A0E', surface2:'#1A2214', surface3:'#202A18', border:'#2A3820', border2:'#344828', text:'#E8F0D0', textDim:'#5A7040', textMid:'#8AAA60' },
   ECONOSKIN:     { label:'ECONOCLAW',     icon:'🔥', dark:true,  accent:'#FF6B2B', bg:'#0F0800', surface:'#1A0E00', surface2:'#221200', surface3:'#2C1800', border:'#3D2200', border2:'#552E00', text:'#FFE8D0', textDim:'#7A5030', textMid:'#BB8860' },
   BUDGETSKIN:    { label:'BUDGETCLAW',    icon:'📊', dark:true,  accent:'#39FF14', bg:'#000A00', surface:'#001400', surface2:'#001C00', surface3:'#002400', border:'#003800', border2:'#004A00', text:'#D0FFD0', textDim:'#3A7A3A', textMid:'#70BB70' },
+  RETARDCLAW:    { label:'RETARDCLAW 🦞', icon:'🦞', dark:true,  accent:'#FF00AA', bg:'#0F0008', surface:'#1A000F', surface2:'#220018', surface3:'#2C0022', border:'#440033', border2:'#660044', text:'#FFE0F5', textDim:'#884466', textMid:'#CC88AA' },
   DEFAULT_LIGHT: { label:'CLAW LIGHT',   icon:'🤍', dark:false, accent:'#008B7A', bg:'#F0F4F8', surface:'#FFFFFF', surface2:'#E8EEF4', surface3:'#D8E4EE', border:'#C0CEDC', border2:'#A8BBCC', text:'#0D1E2E', textDim:'#5A7080', textMid:'#3A5468' },
   CYBER_LIGHT:   { label:'CYBER LIGHT',  icon:'🪻', dark:false, accent:'#7C00CC', bg:'#F5F0FF', surface:'#FFFFFF', surface2:'#EDE6FF', surface3:'#DDD0FF', border:'#C8B0EE', border2:'#B090DD', text:'#1A0A2E', textDim:'#6040A0', textMid:'#4A2080' },
   GOTHIC_LIGHT:  { label:'GOTHIC LIGHT', icon:'📜', dark:false, accent:'#8B0000', bg:'#F5F0E8', surface:'#FDF8EE', surface2:'#EDE4D4', surface3:'#DDD0BC', border:'#C8B898', border2:'#B0997A', text:'#1A0A00', textDim:'#6B4A30', textMid:'#4A2810' },
