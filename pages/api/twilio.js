@@ -431,15 +431,20 @@ export default async function handler(req, res) {
   if (action === 'inbox') {
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      const messages = await client.messages.list({ to: FROM, limit: 50 });
+      // Fetch messages TO our number (inbound from prospects)
+      // Filter out any where the sender is our own number (outbound echoes)
+      const messages = await client.messages.list({ to: FROM, limit: 100 });
+      const inbound = messages.filter(m => m.from !== FROM && m.direction !== 'outbound-api');
       return res.status(200).json({
-        messages: messages.map(m => ({
+        messages: inbound.map(m => ({
           sid: m.sid,
           from: m.from,
           body: m.body,
           dateSent: m.dateSent,
           status: m.status,
+          direction: m.direction,
         })),
+        total: inbound.length,
       });
     } catch(err) { return res.status(500).json({ error: err.message, messages: [] }); }
   }
