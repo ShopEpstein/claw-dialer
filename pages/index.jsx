@@ -378,12 +378,30 @@ export default function ClawDialer() {
         timestamp: entry.timestamp,
         transcript: cached.transcript || null,
         analysis: cached.analysis || null,
-        recordingUrl: null, // fetched on demand from Twilio
+        recordingUrl: null,
         recordingSid: null,
       };
     });
     setRecordings(fromLog);
     setRecLoading(false);
+
+    // SECONDARY: fetch real recordingSid/recordingUrl from Twilio for entries that have a callSid
+    const callSidsToFetch = fromLog.filter(r => r.callSid && r.callSid.startsWith('CA')).map(r => r.callSid);
+    if (callSidsToFetch.length === 0) return;
+    try {
+      const r = await fetch('/api/recordings?action=fetch-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callSids: callSidsToFetch.slice(0, 20) }),
+      });
+      const d = await r.json();
+      if (d.ok && d.map) {
+        setRecordings(prev => prev.map(rec => {
+          const found = rec.callSid && d.map[rec.callSid];
+          return found ? { ...rec, recordingSid: found.recordingSid, recordingUrl: found.recordingUrl } : rec;
+        }));
+      }
+    } catch(e) { /* non-fatal — recordings still show without audio */ }
   }
 
   async function loadInbox() {
