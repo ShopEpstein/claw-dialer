@@ -124,23 +124,35 @@ function buildSystemPrompt(script) {
   return `${focus}\n\n${BASE_PROMPT}`;
 }
 
-// ── HISTORY MANAGEMENT ────────────────────────────────────────────────────────
-// Keep last 10 turns, truncate each to 300 chars to prevent URL overflow
+// ── SESSION STORE: keyed by CallSid — history never touches the URL ─────────
+const SESSION_STORE = {};
+const SESSION_TTL = 10 * 60 * 1000;
+
+function sessionGet(callSid) {
+  const s = SESSION_STORE[callSid];
+  if (!s) return { history: [], script: '', to: '', name: '' };
+  if (Date.now() - s.ts > SESSION_TTL) { delete SESSION_STORE[callSid]; return { history: [], script: '', to: '', name: '' }; }
+  return s;
+}
+
+function sessionSet(callSid, data) {
+  SESSION_STORE[callSid] = { ...data, ts: Date.now() };
+  const now = Date.now();
+  for (const k of Object.keys(SESSION_STORE)) {
+    if (now - SESSION_STORE[k].ts > SESSION_TTL) delete SESSION_STORE[k];
+  }
+}
+
 function trimHistory(history) {
-  return history
-    .slice(-10)
-    .map(h => ({ role: h.role, content: (h.content || '').slice(0, 300) }));
+  return history.slice(-12).map(h => ({ role: h.role, content: (h.content || '').slice(0, 400) }));
 }
 
 function escapeXml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
 
-function buildGather(sayText, history, to, script) {
-  const trimmed = trimHistory(history);
-  const historyParam = encodeURIComponent(JSON.stringify(trimmed));
-  const scriptParam = encodeURIComponent(script || '');
-  const url = `${BASE}/api/twilio?action=ai-respond&amp;to=${encodeURIComponent(to)}&amp;history=${historyParam}&amp;script=${scriptParam}`;
+function buildGather(sayText, callSid) {
+  const url = `${BASE}/api/twilio?action=ai-respond`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Gather input="speech" action="${url}" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10">
@@ -189,6 +201,7 @@ export default async function handler(req, res) {
     const to = req.query.to || '';
     const script = req.query.script ? decodeURIComponent(req.query.script) : '';
     const name = req.query.name ? decodeURIComponent(req.query.name) : '';
+    const callSid = req.query.CallSid || req.body?.CallSid || `init_${to}_${Date.now()}`;
 
     const openers = {
       'VINHUNTER':       `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from VinHunter${name ? ` — is this ${name.split(' ')[0]}` : ''} — quick question for you.`,
@@ -202,23 +215,28 @@ export default async function handler(req, res) {
     };
 
     const opener = openers[script] || openers['VINHUNTER'];
-    return res.status(200).send(buildGather(opener, [], to, script));
+    // Seed session store so ai-respond can read context without URL params
+    sessionSet(callSid, { history: [], script, to, name });
+    return res.status(200).send(buildGather(opener, callSid));
   }
 
   // ── AI RESPOND: Claude generates next line ────────────────────────────────
   if (action === 'ai-respond') {
     res.setHeader('Content-Type', 'text/xml');
     const speech = req.body?.SpeechResult || '';
-    const to = req.query.to || '';
-    const script = req.query.script ? decodeURIComponent(req.query.script) : '';
-    const contactName = req.query.name ? decodeURIComponent(req.query.name) : '';
-    let history = [];
-    try { history = JSON.parse(decodeURIComponent(req.query.history || '[]')); } catch(e) {}
+    const callSid = req.body?.CallSid || '';
+
+    // Load session — falls back to empty if cold start
+    const sess = sessionGet(callSid);
+    const to = sess.to || req.body?.To || '';
+    const script = sess.script || '';
+    const contactName = sess.name || '';
+    let history = sess.history || [];
 
     if (!speech) {
       return res.status(200).send(buildGather(
         "Sorry, didn't catch that — are you the owner?",
-        history, to, script
+        callSid
       ));
     }
 
@@ -310,7 +328,9 @@ export default async function handler(req, res) {
 </Response>`);
       }
 
-      return res.status(200).send(buildGather(reply, history, to, script));
+      // Save updated history back to session
+      sessionSet(callSid, { history: trimHistory(history), script, to, name: contactName });
+      return res.status(200).send(buildGather(reply, callSid));
 
     } catch(err) {
       console.error('Claude error:', err.message);
@@ -471,9 +491,7 @@ export default async function handler(req, res) {
         record: true,
         recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         recordingStatusCallbackMethod: 'POST',
-        recordingChannels: 'dual',
-        transcribe: true,
-        transcribeCallback: `${BASE}/api/recordings?action=transcript-webhook&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
+        recordingChannels: 'mono',
         statusCallback: `${BASE}/api/twilio?action=status&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
