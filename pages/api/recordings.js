@@ -407,29 +407,47 @@ export default async function handler(req, res) {
   // Pulls real RecordingSid + RecordingUrl for a given CallSid or recent calls.
   // Called by the UI to hydrate recordingUrl/recordingSid on each call log entry.
   if (action === 'fetch-list') {
-    const { callSids } = req.body || {};
-    if (!callSids || !Array.isArray(callSids) || callSids.length === 0) {
-      return res.status(400).json({ error: 'Missing callSids array' });
-    }
+    const { callSids, fetchRecent } = req.body || {};
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      // Fetch recordings for each callSid in parallel (max 20 at a time)
-      const batch = callSids.filter(Boolean).slice(0, 20);
-      const results = await Promise.allSettled(
-        batch.map(sid => client.recordings.list({ callSid: sid, limit: 1 }))
-      );
-      const map = {};
-      batch.forEach((sid, i) => {
-        const r = results[i];
-        if (r.status === 'fulfilled' && r.value.length > 0) {
-          const rec = r.value[0];
-          map[sid] = {
-            recordingSid: rec.sid,
-            recordingUrl: `https://api.twilio.com${rec.uri.replace('.json', '.mp3')}`,
-          };
-        }
-      });
-      return res.status(200).json({ ok: true, map });
+
+      // MODE 1: Lookup by specific callSids
+      if (callSids && Array.isArray(callSids) && callSids.length > 0) {
+        const batch = callSids.filter(s => s && s.startsWith('CA')).slice(0, 20);
+        const results = await Promise.allSettled(
+          batch.map(sid => client.recordings.list({ callSid: sid, limit: 1 }))
+        );
+        const map = {};
+        batch.forEach((sid, i) => {
+          const r = results[i];
+          if (r.status === 'fulfilled' && r.value.length > 0) {
+            const rec = r.value[0];
+            map[sid] = {
+              recordingSid: rec.sid,
+              recordingUrl: `https://api.twilio.com${rec.uri.replace('.json', '.mp3')}`,
+              callSid: rec.callSid,
+            };
+          }
+        });
+        return res.status(200).json({ ok: true, map });
+      }
+
+      // MODE 2: fetchRecent — pull last N recordings and return a flat list
+      // Used to hydrate old call log entries that predate callSid tracking
+      if (fetchRecent) {
+        const limit = Math.min(parseInt(fetchRecent) || 50, 100);
+        const recs = await client.recordings.list({ limit });
+        const list = recs.map(r => ({
+          recordingSid: r.sid,
+          recordingUrl: `https://api.twilio.com${r.uri.replace('.json', '.mp3')}`,
+          callSid: r.callSid,
+          dateCreated: r.dateCreated,
+          duration: r.duration,
+        }));
+        return res.status(200).json({ ok: true, list });
+      }
+
+      return res.status(400).json({ error: 'Provide callSids array or fetchRecent count' });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
