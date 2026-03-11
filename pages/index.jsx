@@ -151,25 +151,32 @@ const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"
 const FAVICON_URL = `data:image/svg+xml,${encodeURIComponent(FAVICON_SVG)}`;
 
 // ─── AI LEARNING PANEL ────────────────────────────────────────────────────────
-function PatternsPanel({ notify, totalCalls }) {
+function PatternsPanel({ notify, totalCalls, callLog }) {
   const [patterns, setPatterns] = useState(null);
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
-  const [total, setTotal] = useState(0);
 
   async function loadPatterns() {
+    if (!callLog || callLog.length < 2) return;
     setLoading(true);
     try {
-      const r = await fetch('/api/recordings?action=patterns');
+      // Send callLog data TO the API — never read from /tmp which resets on Vercel
+      const summaries = callLog.slice(0, 60).map(e =>
+        `[${e.outcome}] Script:${e.script||'?'} Duration:${e.duration||0}s`
+      );
+      const r = await fetch('/api/recordings?action=patterns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summaries, total: callLog.length })
+      });
       const d = await r.json();
       setPatterns(d.patterns);
-      setTotal(d.total || 0);
       setUpdatedAt(new Date().toISOString());
     } catch(e) { notify('Could not load patterns', 'warning'); }
     setLoading(false);
   }
 
-  useEffect(() => { loadPatterns(); }, []);
+  useEffect(() => { if (callLog?.length >= 2) loadPatterns(); }, [callLog?.length]);
 
   return (
     <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--teal)33',borderRadius:2,overflow:'hidden'}}>
@@ -181,7 +188,7 @@ function PatternsPanel({ notify, totalCalls }) {
       {loading ? (
         <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Analyzing call patterns...</div>
       ) : !patterns ? (
-        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{total > 0 ? `${total} calls loaded — analyzing outcomes now...` : 'No call data yet. Run some calls and hit ↻'}</div>
+        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{(callLog?.length||0) < 2 ? `Need at least 2 calls to analyze. You have ${callLog?.length||0}.` : 'Click ↻ to analyze your call patterns.'}</div>
       ) : (
         <div style={{padding:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {patterns.single_best_change && (
@@ -934,7 +941,7 @@ export default function ClawDialer() {
               </div>
             ))}
           </div>
-          <PatternsPanel notify={notify} totalCalls={totalCalls} />
+          <PatternsPanel notify={notify} totalCalls={totalCalls} callLog={callLog} />
           {callbackCount > 0 && (
             <div style={{background:'#FF6B2B11',border:'1px solid #FF6B2B44',borderLeft:'3px solid #FF6B2B',borderRadius:2,padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
               <span style={{fontSize:18}}>🔁</span>
