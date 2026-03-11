@@ -40,10 +40,22 @@ async function getEnrichedRecordings(limit = 50) {
 
   try {
     const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    // Fetch recent calls from Twilio (these always exist regardless of /tmp)
+    // Fetch recent calls from Twilio
     const calls = await client.calls.list({ limit: Math.min(limit, 100) });
+    // Fetch recordings list once — build a map by callSid for O(1) lookup
+    const twilioRecs = await client.recordings.list({ limit: 200 });
+    const recBySid = {};
+    for (const r of twilioRecs) {
+      if (!recBySid[r.callSid]) recBySid[r.callSid] = r;
+    }
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const merged = calls.map(call => {
       const enriched = enrichMap[call.sid] || {};
+      const twilioRec = recBySid[call.sid];
+      // Build recording URL from Twilio directly if not in /tmp
+      const recordingUrl = enriched.recordingUrl ||
+        (twilioRec ? `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${twilioRec.sid}` : null);
+      const recordingSid = enriched.recordingSid || twilioRec?.sid || null;
       return {
         id: enriched.id || call.sid,
         callSid: call.sid,
@@ -55,7 +67,8 @@ async function getEnrichedRecordings(limit = 50) {
         outcome: enriched.outcome || (call.status === 'completed' ? (parseInt(call.duration||0) >= 15 ? 'answered' : 'voicemail') : call.status),
         duration: call.duration || enriched.duration || 0,
         timestamp: call.startTime || enriched.timestamp,
-        recordingUrl: enriched.recordingUrl || null,
+        recordingUrl,
+        recordingSid,
         transcript: enriched.transcript || null,
         transcribedAt: enriched.transcribedAt || null,
         analysis: enriched.analysis || null,
@@ -365,8 +378,11 @@ export default async function handler(req, res) {
       if (!audioResp.ok) return res.status(audioResp.status).end('Audio fetch failed');
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Cache-Control', 'private, max-age=3600');
-      const buffer = await audioResp.arrayBuffer();
-      return res.status(200).send(Buffer.from(buffer));
+      // Stream chunks directly — don't buffer entire file to avoid Vercel timeout
+      const { Readable } = await import('stream');
+      const nodeStream = Readable.fromWeb(audioResp.body);
+      nodeStream.pipe(res);
+      return;
     } catch(e) {
       return res.status(500).end(e.message);
     }
