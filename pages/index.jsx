@@ -132,6 +132,8 @@ const baseCss = `
 `;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
+const SCRIPTS_VERSION = 'v8'; // bump this to force script cache reset
+
 function fmtTime(s) { return `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}` }
 function fmtDate(ts) { try { return new Date(ts).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}); } catch { return ts; } }
 function normalizeScript(s) {
@@ -253,7 +255,15 @@ export default function ClawDialer() {
   const [skinKey, setSkinKey] = useState(() => storageGet('claw_skin', 'DEFAULT'));
   const [contacts, setContacts] = useState(() => storageGet('claw_contacts', []));
   const [callLog, setCallLog] = useState(() => storageGet('claw_calllog', []));
-  const [scripts, setScripts] = useState(() => storageGet('claw_scripts', DEFAULT_SCRIPTS));
+  const [scripts, setScripts] = useState(() => {
+    const saved = storageGet('claw_scripts', null);
+    const savedVer = storageGet('claw_scripts_ver', null);
+    if (saved && savedVer === SCRIPTS_VERSION) return saved;
+    // Version mismatch or first load — reset to fresh defaults
+    storageSet('claw_scripts_ver', SCRIPTS_VERSION);
+    storageSet('claw_scripts', DEFAULT_SCRIPTS);
+    return DEFAULT_SCRIPTS;
+  });
   const [activeIdx, setActiveIdx] = useState(null);
   const [tab, setTab] = useState('dialer');
   const [scriptIdx, setScriptIdx] = useState(0);
@@ -338,7 +348,23 @@ export default function ClawDialer() {
     try {
       const r = await fetch('/api/recordings?action=list&limit=100');
       const d = await r.json();
-      setRecordings(d.recordings || []);
+      // Build phonebook from contacts to resolve "Unknown" names
+      const phonebook = {};
+      contacts.forEach(c => {
+        if (c.phone) {
+          const normalized = c.phone.replace(/\D/g,'');
+          phonebook[normalized] = { name: c.name, business: c.business_name, campaign: c.campaign };
+        }
+      });
+      // Enrich recordings with contact names from our local list
+      const enriched = (d.recordings || []).map(rec => {
+        if (rec.contactName && rec.contactName !== 'Unknown') return rec;
+        const phone = (rec.contactPhone || '').replace(/\D/g,'');
+        const match = phonebook[phone] || phonebook[phone.slice(-10)] || phonebook['1'+phone.slice(-10)];
+        if (match) return { ...rec, contactName: match.name || rec.contactName, business: match.business || rec.business, campaign: match.campaign || rec.campaign };
+        return rec;
+      });
+      setRecordings(enriched);
     } catch {}
     setRecLoading(false);
   }
@@ -532,7 +558,7 @@ export default function ClawDialer() {
   }
 
   const totalCalls = callLog.length;
-  const answeredCalls = callLog.filter(c => !['voicemail','not-interested'].includes(c.outcome)).length;
+  const answeredCalls = callLog.filter(c => ['answered','called','callback','interested','book_call'].includes(c.outcome)).length;
   const interestedCalls = callLog.filter(c => c.outcome === 'interested').length;
   const callbackCalls = callLog.filter(c => c.outcome === 'callback').length;
   const pipeline = interestedCalls * 99;
@@ -903,7 +929,7 @@ export default function ClawDialer() {
                 {['OUTCOME','COUNT','%','BAR'].map(h => <th key={h} style={{padding:'7px 14px',textAlign:h==='OUTCOME'?'left':'right',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',letterSpacing:1,fontWeight:400}}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {[['INTERESTED 🔥',callLog.filter(c=>c.outcome==='interested').length,'var(--teal)'],['ANSWERED',callLog.filter(c=>c.outcome==='answered').length,'#2EFF9A'],['CALLBACK',callLog.filter(c=>c.outcome==='callback').length,'#FF6B2B'],['VOICEMAIL',callLog.filter(c=>c.outcome==='voicemail').length,'var(--text-dim)'],['NOT INTERESTED',callLog.filter(c=>c.outcome==='not-interested').length,'#FF3B3B']].map(([label,count,color]) => {
+                {[['INTERESTED 🔥',callLog.filter(c=>c.outcome==='interested').length,'var(--teal)'],['ANSWERED',callLog.filter(c=>c.outcome==='answered').length,'#2EFF9A'],['CALLBACK',callLog.filter(c=>c.outcome==='callback').length,'#FF6B2B'],['VOICEMAIL',callLog.filter(c=>['voicemail','email'].includes(c.outcome)).length,'var(--text-dim)'],['NOT INTERESTED',callLog.filter(c=>c.outcome==='not-interested').length,'#FF3B3B']].map(([label,count,color]) => {
                   const pct = totalCalls > 0 ? Math.round(count/totalCalls*100) : 0;
                   return (
                     <tr key={label} style={{borderBottom:'1px solid var(--border)'}}>
