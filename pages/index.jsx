@@ -89,18 +89,18 @@ const DEFAULT_SCRIPTS = [
 ];
 
 const SMS_TEMPLATES = {
-  'VINHUNTER': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Free lot audit: what buyers find when they Google your VINs + 4 things we check that CARFAX structurally can't. vinledgerai.live/pricing Reply STOP to opt out.`,
-  'ECONOCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. 21 AI agents, your biz, 24/7. $500 setup + $99/mo — agencies charge $5K+ for the same. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
-  'WHITEGLOVECLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. White-glove AI. SetupClaw scope, 20% less. VPS $2,400, Mac Mini $4K, same-day go-live. Reply to talk. Reply STOP to opt out.`,
-  'BUDGETRENTACLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Rent 21 AI agents: $49/week, no contract, no setup fee. Chase personally refunds you if it doesn't pay for itself. econoclaw.vercel.app/budgetrentaclaw-landing.html Reply STOP to opt out.`,
-  'RETARDCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. RetardClaw: 21 AI agents for people who hate tech. You just text it. The lobster handles everything else. $99/mo. 🦞 econoclaw.vercel.app/retardclaw-landing.html Reply STOP to opt out.`,
-  'BUDGETCLAW': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. Year 1 your way: $6,188+. Year 1 BUDGETclaw: $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
-  'TRANSBID': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. TransBid: post projects free, pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
-  'CLAWAWAY': (n) => `Hey${n?' '+n.split(' ')[0]:''} — Chase. We build AI systems your way — card, crypto, rev share, barter, IOU. Tell us what you need. econoclaw.vercel.app/econoclaw-landing.html Reply STOP to opt out.`,
+  'VINHUNTER':       () => `Chase @ VinHunter: Free lot audit — what buyers find Googling your VINs + 4 checks CARFAX can't do. vinledgerai.live/pricing — Reply STOP to opt out.`,
+  'ECONOCLAW':       () => `Chase @ EconoClaw: 21 AI agents 24/7. $500 setup + $99/mo. Agencies charge $5K+ for same. econoclaw.vercel.app — Reply STOP to opt out.`,
+  'WHITEGLOVECLAW':  () => `Chase @ WhiteGloveClaw: Full AI deployment. VPS $2,400, Mac Mini $4K, in-person $4,800. Same-day go-live. Reply to talk. Reply STOP to opt out.`,
+  'BUDGETRENTACLAW': () => `Chase @ Rent-A-Claw: $49/week, no contract, no setup. Refund guarantee. econoclaw.vercel.app/budgetrentaclaw-landing.html — Reply STOP to opt out.`,
+  'RETARDCLAW':      () => `Chase: RetardClaw 🦞 — 21 AI agents for people who hate tech. Just text it. $99/mo. econoclaw.vercel.app/retardclaw-landing.html — Reply STOP to opt out.`,
+  'BUDGETCLAW':      () => `Chase @ BUDGETclaw: Year 1 your way = $6,188+. Year 1 ours = $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
+  'TRANSBID':        () => `Chase @ TransBid: Post free, pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live — Reply STOP to opt out.`,
+  'CLAWAWAY':        () => `Chase: We build AI your way — card, crypto, rev share, barter, IOU. econoclaw.vercel.app — Reply STOP to opt out.`,
 };
 const SMS_FOLLOW_UP = (name, scriptName) => {
   const fn = SMS_TEMPLATES[scriptName] || SMS_TEMPLATES['VINHUNTER'];
-  return fn(name);
+  return fn();
 };
 
 // ─── SKINS ───────────────────────────────────────────────────────────────────
@@ -462,10 +462,11 @@ export default function ClawDialer() {
     e.target.value = '';
   }
 
-  async function startCall() {
+  async function startCall(forceManual = false) {
     if (activeIdx === null) return notify('Select a contact first', 'warning');
     if (!activeContact.phone) return notify('No phone number on this contact', 'warning');
-    if (!isTCPAHour()) return notify('⛔ Outside TCPA hours (8am–9pm local). Cannot dial.', 'warning');
+    // TCPA block only applies to AI/agent auto-dial, never to manual human calls
+    if (!forceManual && aiCallMode && !isTCPAHour()) return notify('⛔ Outside TCPA hours — AI auto-dial blocked 9pm–8am. You can still dial manually.', 'warning');
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -501,7 +502,7 @@ export default function ClawDialer() {
     setCallState('idle');
     const entry = { id:Date.now(), contact_id:activeContact.id, name:activeContact.name, business:activeContact.business_name, phone:activeContact.phone, outcome, duration:callSeconds, notes, script:scripts[scriptIdx]?.name, timestamp:new Date().toISOString() };
     setCallLog(prev => [entry, ...prev]);
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', 'book_call':'interested' };
     updateContactStatus(activeIdx, statusMap[outcome] || 'called');
     if (outcome === 'interested') {
       notify(`🔥 HOT LEAD! Auto-texting ${activeContact.name || activeContact.phone}`, 'success');
@@ -513,9 +514,7 @@ export default function ClawDialer() {
         } catch {}
       }
     }
-    if (outcome === 'answered' && activeContact.email) {
-      try { await fetch('/api/recordings?action=email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ to:activeContact.email, contactName:activeContact.name, business:activeContact.business_name, script:scripts[scriptIdx]?.name }) }); } catch {}
-    }
+    // Email only on interested/book_call — not on every answered call
     setCallSeconds(0); setNotes('');
     if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 4000);
   }
@@ -528,14 +527,15 @@ export default function ClawDialer() {
   function startAgent() {
     setAgentConfirm(false);
     setAgentMode(true); setAgentPaused(false);
-    notify('⚡ Agent ACTIVE — auto-dialing new contacts', 'info');
+    setAiCallMode(true); // Agent always runs in AI mode
+    notify('⚡ Agent ACTIVE — AI mode enabled, auto-dialing new contacts', 'info');
     setTimeout(() => agentNext(), 1000);
   }
 
   function agentNext() {
     if (!agentModeRef.current || agentPausedRef.current) return;
     if (!isTCPAHour()) { setAgentMode(false); notify('⛔ Agent stopped — outside TCPA hours (8am–9pm)', 'warning'); return; }
-    const newOnes = contacts.filter(c => c.status === 'new');
+    const newOnes = contacts.filter(c => c.status === 'new' && c.status !== 'dnc' && !c.dnc);
     if (newOnes.length === 0) { setAgentMode(false); notify('✅ Agent complete — no new contacts remaining', 'success'); return; }
     const nextIdx = contacts.indexOf(newOnes[0]);
     selectContact(nextIdx);
@@ -561,7 +561,14 @@ export default function ClawDialer() {
   const answeredCalls = callLog.filter(c => ['answered','called','callback','interested','book_call'].includes(c.outcome)).length;
   const interestedCalls = callLog.filter(c => c.outcome === 'interested').length;
   const callbackCalls = callLog.filter(c => c.outcome === 'callback').length;
-  const pipeline = interestedCalls * 99;
+  const pipeline = callLog.filter(c => ['interested','book_call'].includes(c.outcome)).reduce((sum, c) => {
+    const s = (c.script || '').toUpperCase();
+    if (s.includes('WHITEGLOV')) return sum + 2400;
+    if (s.includes('BUDGETRENTACLAW') || s.includes('RENTACLAW')) return sum + 149;
+    if (s.includes('BUDGETCLAW')) return sum + 299;
+    if (s.includes('TRANSBID')) return sum + 50;
+    return sum + 99; // VinHunter, EconoClaw, RetardClaw, ClawAway
+  }, 0);
   const answerRate = totalCalls > 0 ? Math.round(answeredCalls/totalCalls*100) : 0;
   const intRate = totalCalls > 0 ? Math.round(interestedCalls/totalCalls*100) : 0;
   const statusColor = { idle:'#6B7A8D', dialing:'#FFD600', connected:'#2EFF9A', ended:'#FF6B2B' };
@@ -601,7 +608,7 @@ export default function ClawDialer() {
           <span style={{display:'flex',alignItems:'center',gap:5,padding:'2px 8px',borderRadius:2,fontFamily:'DM Mono,monospace',fontSize:9,background:'rgba(46,255,154,0.08)',border:'1px solid rgba(46,255,154,0.2)',color:'#2EFF9A'}}>
             <span style={{width:5,height:5,borderRadius:'50%',background:'#2EFF9A',animation:'pulse 2s infinite',display:'inline-block'}}></span>LIVE
           </span>
-          {!tcpaOk && <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'#FF3B3B',border:'1px solid #FF3B3B44',padding:'2px 8px',borderRadius:2}}>⛔ OUTSIDE TCPA HOURS</span>}
+          {!tcpaOk && <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'#FF3B3B',border:'1px solid #FF3B3B44',padding:'2px 8px',borderRadius:2}}>⛔ AI/AGENT BLOCKED (TCPA)</span>}
           {tcpaOk && agentMode && <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'#2EFF9A',border:'1px solid #2EFF9A44',padding:'2px 8px',borderRadius:2,animation:'pulse 1.5s infinite'}}>⚡ AGENT RUNNING</span>}
         </div>
         <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
@@ -650,7 +657,7 @@ export default function ClawDialer() {
               </div>
               {/* Status filters */}
               <div style={{display:'flex',gap:2,flexWrap:'wrap'}}>
-                {['all','new','called','callback','interested','voicemail'].map(f => (
+                {['all','new','callback','interested','book_call','voicemail'].map(f => (
                   <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 6px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:1,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--teal)':'var(--border2)'}`,background:statusFilter===f?'var(--teal)22':'transparent',color:statusFilter===f?'var(--teal)':'var(--text-dim)',borderRadius:2,textTransform:'uppercase'}}>
                     {f}{f==='callback'&&callbackCount>0?` (${callbackCount})`:''}
                   </button>
@@ -791,7 +798,7 @@ export default function ClawDialer() {
               </div>
               <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
                 {callState === 'idle' && (
-                  <button onClick={startCall} disabled={!tcpaOk} style={{padding:'11px 22px',fontFamily:'Bebas Neue,sans-serif',fontSize:14,letterSpacing:3,background:tcpaOk?'#2EFF9A':'#2EFF9A44',color:'#080A0F',border:'none',cursor:tcpaOk?'pointer':'not-allowed',borderRadius:2}}>📞 DIAL</button>
+                  <button onClick={()=>startCall(true)} style={{padding:'11px 22px',fontFamily:'Bebas Neue,sans-serif',fontSize:14,letterSpacing:3,background:tcpaOk?'#2EFF9A':'#2EFF9A44',color:'#080A0F',border:'none',cursor:tcpaOk?'pointer':'not-allowed',borderRadius:2}}>📞 DIAL</button>
                 )}
                 {['dialing','connected'].includes(callState) && (
                   <>
@@ -929,7 +936,7 @@ export default function ClawDialer() {
                 {['OUTCOME','COUNT','%','BAR'].map(h => <th key={h} style={{padding:'7px 14px',textAlign:h==='OUTCOME'?'left':'right',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',letterSpacing:1,fontWeight:400}}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {[['INTERESTED 🔥',callLog.filter(c=>c.outcome==='interested').length,'var(--teal)'],['ANSWERED',callLog.filter(c=>c.outcome==='answered').length,'#2EFF9A'],['CALLBACK',callLog.filter(c=>c.outcome==='callback').length,'#FF6B2B'],['VOICEMAIL',callLog.filter(c=>['voicemail','email'].includes(c.outcome)).length,'var(--text-dim)'],['NOT INTERESTED',callLog.filter(c=>c.outcome==='not-interested').length,'#FF3B3B']].map(([label,count,color]) => {
+                {[['BOOK CALL 📅',callLog.filter(c=>c.outcome==='book_call').length,'var(--teal)'],['INTERESTED 🔥',callLog.filter(c=>c.outcome==='interested').length,'#2EFF9A'],['ANSWERED',callLog.filter(c=>c.outcome==='answered').length,'#2EFF9A'],['CALLBACK',callLog.filter(c=>c.outcome==='callback').length,'#FF6B2B'],['VOICEMAIL',callLog.filter(c=>['voicemail','email'].includes(c.outcome)).length,'var(--text-dim)'],['NOT INTERESTED',callLog.filter(c=>c.outcome==='not-interested').length,'#FF3B3B']].map(([label,count,color]) => {
                   const pct = totalCalls > 0 ? Math.round(count/totalCalls*100) : 0;
                   return (
                     <tr key={label} style={{borderBottom:'1px solid var(--border)'}}>
