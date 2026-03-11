@@ -308,12 +308,14 @@ export default function ClawDialer() {
   const agentRef = useRef(null);
   const agentModeRef = useRef(false);
   const agentPausedRef = useRef(false);
+  const activeIdxRef = useRef(null);
   const pollRef = useRef(null);
   const hardTimeoutRef = useRef(null);
   const callSecondsRef = useRef(0);
 
   agentModeRef.current = agentMode;
   agentPausedRef.current = agentPaused;
+  activeIdxRef.current = activeIdx;
 
   const skin = SKINS[skinKey] || SKINS.DEFAULT;
 
@@ -479,8 +481,10 @@ export default function ClawDialer() {
   }
 
   async function startCall(forceManual = false) {
-    if (activeIdx === null) return notify('Select a contact first', 'warning');
-    if (!activeContact.phone) return notify('No phone number on this contact', 'warning');
+    const idx = activeIdxRef.current;
+    if (idx === null) return notify('Select a contact first', 'warning');
+    const contact = contacts[idx] || activeContact;
+    if (!contact?.phone) return notify('No phone number on this contact', 'warning');
     if (!forceManual && aiCallMode && !isTCPAHour()) return notify('⛔ Outside TCPA hours — AI auto-dial blocked 9pm–8am. You can still dial manually.', 'warning');
     setCallState('dialing');
     setCallSeconds(0);
@@ -498,13 +502,13 @@ export default function ClawDialer() {
     try {
       const r = await fetch('/api/twilio?action=call', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: activeContact.phone, contactId: activeContact.id, contactName: activeContact.name, contactEmail: activeContact.email||'', script: scripts[scriptIdx]?.name, aiMode: aiCallMode })
+        body: JSON.stringify({ to: contact.phone, contactId: contact.id, contactName: contact.name, contactEmail: contact.email||'', script: scripts[scriptIdx]?.name, aiMode: aiCallMode })
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
       setCallSid(data.callSid);
       setCallState('connected');
-      notify(`📞 Dialing ${activeContact.name || activeContact.phone}...`, 'info');
+      notify(`📞 Dialing ${contact.name || contact.phone}...`, 'info');
       startPoll(data.callSid);
     } catch (err) {
       setCallState('idle');
@@ -582,6 +586,7 @@ export default function ClawDialer() {
       // Dial after state settles
       setTimeout(() => {
         setActiveIdx(idx);
+        activeIdxRef.current = idx;
         setNotes('');
         setSmsBody(SMS_FOLLOW_UP(target.name || '', scripts[scriptIdx]?.name || ''));
         setTimeout(() => { if (agentModeRef.current && !agentPausedRef.current) startCall(); }, 800);
