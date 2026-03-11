@@ -348,32 +348,30 @@ export default function ClawDialer() {
 
   async function loadRecordings() {
     setRecLoading(true);
-    try {
-      const r = await fetch('/api/recordings?action=list&limit=100');
-      const d = await r.json();
-      const phonebook = {};
-      contacts.forEach(c => {
-        if (c.phone) {
-          const normalized = c.phone.replace(/\D/g,'');
-          phonebook[normalized] = { name: c.name, business: c.business_name, campaign: c.campaign };
-        }
-      });
-      const transcriptCache = getCachedTranscripts();
-      const enriched = (d.recordings || []).map(rec => {
-        let enrichedRec = rec;
-        if (!rec.contactName || rec.contactName === 'Unknown') {
-          const phone = (rec.contactPhone || '').replace(/\D/g,'');
-          const match = phonebook[phone] || phonebook[phone.slice(-10)] || phonebook['1'+phone.slice(-10)];
-          if (match) enrichedRec = { ...enrichedRec, contactName: match.name || rec.contactName, business: match.business || rec.business, campaign: match.campaign || rec.campaign };
-        }
-        const cached = transcriptCache[rec.callSid];
-        if (cached && !enrichedRec.transcript) {
-          enrichedRec = { ...enrichedRec, transcript: cached.transcript, analysis: cached.analysis || enrichedRec.analysis };
-        }
-        return enrichedRec;
-      });
-      setRecordings(enriched);
-    } catch {}
+    // PRIMARY SOURCE: callLog from localStorage — always has everything
+    // This is the reliable source. /tmp on Vercel resets constantly so we never rely on it.
+    const transcriptCache = getCachedTranscripts();
+    const fromLog = callLog.map(entry => {
+      const cached = transcriptCache[entry.callSid] || {};
+      return {
+        id: entry.id,
+        callSid: entry.callSid || null,
+        contactName: entry.name || 'Unknown',
+        contactPhone: entry.phone || '',
+        contactEmail: entry.email || contacts.find(c=>c.phone===entry.phone)?.email || '',
+        business: entry.business || '',
+        outcome: entry.outcome,
+        duration: entry.duration,
+        script: entry.script,
+        notes: entry.notes,
+        timestamp: entry.timestamp,
+        transcript: cached.transcript || null,
+        analysis: cached.analysis || null,
+        recordingUrl: null, // fetched on demand from Twilio
+        recordingSid: null,
+      };
+    });
+    setRecordings(fromLog);
     setRecLoading(false);
   }
 
@@ -936,6 +934,7 @@ export default function ClawDialer() {
               </div>
             ))}
           </div>
+          <PatternsPanel notify={notify} totalCalls={totalCalls} />
           {callbackCount > 0 && (
             <div style={{background:'#FF6B2B11',border:'1px solid #FF6B2B44',borderLeft:'3px solid #FF6B2B',borderRadius:2,padding:'12px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
               <span style={{fontSize:18}}>🔁</span>
@@ -1006,7 +1005,6 @@ export default function ClawDialer() {
               })}
             </div>
           )}
-          <PatternsPanel notify={notify} totalCalls={totalCalls} />
         </div>
       )}
 
@@ -1093,11 +1091,21 @@ export default function ClawDialer() {
                           🎙 TRANSCRIBE NOW
                         </button>
                       )}
-                      {rec.contactEmail && (
-                        <button onClick={(e)=>{e.stopPropagation();setEmailModal({to:rec.contactEmail,contactName:rec.contactName,business:rec.business,script:rec.script||'VINHUNTER'});}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
-                          📧 PREVIEW + SEND EMAIL
-                        </button>
-                      )}
+                      <button
+                        onClick={(e)=>{
+                          e.stopPropagation();
+                          if (rec.contactEmail) {
+                            setEmailModal({to:rec.contactEmail,contactName:rec.contactName,business:rec.business,script:rec.script||'VINHUNTER'});
+                          } else {
+                            // No email on file — open modal pre-filled so they can type one in
+                            setEmailModal({to:'',contactName:rec.contactName,business:rec.business,script:rec.script||'VINHUNTER'});
+                          }
+                        }}
+                        style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:`1px solid ${rec.contactEmail?'var(--teal)44':'var(--border2)'}`,background:rec.contactEmail?'var(--teal)11':'transparent',color:rec.contactEmail?'var(--teal)':'var(--text-dim)',borderRadius:2,letterSpacing:1}}
+                        title={rec.contactEmail?`Send to ${rec.contactEmail}`:'No email on file — click to enter one'}
+                      >
+                        📧 {rec.contactEmail ? 'SEND EMAIL' : 'ADD EMAIL'}
+                      </button>
                       {rec.contactPhone && (
                         <button onClick={(e)=>{e.stopPropagation();const c=contacts.find(x=>x.phone===rec.contactPhone);if(c){selectContact(contacts.indexOf(c));setTab('dialer');}else notify('Contact not in list','warning');}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2,letterSpacing:1}}>
                           📞 DIAL BACK
