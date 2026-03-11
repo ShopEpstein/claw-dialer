@@ -346,9 +346,11 @@ export default function ClawDialer() {
   useEffect(() => { storageSet('claw_scripts', scripts); }, [scripts]);
 
   function getCachedTranscripts() { return storageGet('claw_transcripts', {}); }
-  function cacheTranscript(callSid, transcript, analysis) {
+  function cacheTranscript(callSid, transcript, analysis, fallbackKey) {
+    const key = callSid || fallbackKey || ('rec_' + Date.now());
+    if (!key || key === 'null') return; // safety guard
     const cache = getCachedTranscripts();
-    cache[callSid] = { transcript, analysis: analysis || null, cachedAt: new Date().toISOString() };
+    cache[key] = { transcript, analysis: analysis || null, cachedAt: new Date().toISOString() };
     storageSet('claw_transcripts', cache);
   }
 
@@ -359,11 +361,13 @@ export default function ClawDialer() {
 
   async function loadRecordings() {
     setRecLoading(true);
-    // PRIMARY SOURCE: callLog from localStorage — always has everything
-    // This is the reliable source. /tmp on Vercel resets constantly so we never rely on it.
+    // PRIMARY SOURCE: callLog from localStorage — always reliable, /tmp on Vercel resets
     const transcriptCache = getCachedTranscripts();
     const fromLog = callLog.map(entry => {
-      const cached = transcriptCache[entry.callSid] || {};
+      // Try callSid first, then phone as secondary cache key
+      const cached = (entry.callSid && transcriptCache[entry.callSid])
+        || transcriptCache['phone_' + entry.phone]
+        || {};
       return {
         id: entry.id,
         callSid: entry.callSid || null,
@@ -508,6 +512,7 @@ export default function ClawDialer() {
     if (!forceManual && aiCallMode && !isTCPAHour()) return notify('⛔ Outside TCPA hours — AI auto-dial blocked 9pm–8am. You can still dial manually.', 'warning');
     setCallState('dialing');
     setCallSeconds(0);
+    setCallSid(null);
     clearInterval(timerRef.current);
     clearTimeout(hardTimeoutRef.current);
     callSecondsRef.current = 0;
@@ -559,7 +564,7 @@ export default function ClawDialer() {
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
     setCallState('idle');
-    const entry = { id:Date.now(), contact_id:activeContact.id, name:activeContact.name, business:activeContact.business_name, phone:activeContact.phone, outcome, duration:callSeconds, notes, script:scripts[scriptIdx]?.name, timestamp:new Date().toISOString() };
+    const entry = { id:Date.now(), callSid: callSid || null, contact_id:activeContact.id, name:activeContact.name, business:activeContact.business_name, phone:activeContact.phone, email:activeContact.email||'', outcome, duration:callSecondsRef.current || callSeconds, notes, script:scripts[scriptIdx]?.name, timestamp:new Date().toISOString() };
     setCallLog(prev => [entry, ...prev]);
     const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', 'book_call':'interested', skipped:'skipped' };
     updateContactStatus(activeIdx, statusMap[outcome] || 'called');
@@ -1054,7 +1059,47 @@ export default function ClawDialer() {
         <div style={{padding:20,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
             <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:18,letterSpacing:3,color:'var(--text-mid)'}}>CALL RECORDINGS + AI ANALYSIS</div>
-            <button onClick={loadRecordings} style={{padding:'6px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>↻ REFRESH</button>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={async()=>{
+                notify('Syncing recordings from Twilio...','info');
+                try {
+                  const r = await fetch('/api/recordings?action=fetch-list', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({ fetchRecent: 50 }),
+                  });
+                  const d = await r.json();
+                  if (d.ok && d.list) {
+                    // Build callSid → recording map for exact matches
+                    const twilioMap = {};
+                    d.list.forEach(rec => { if (rec.callSid) twilioMap[rec.callSid] = rec; });
+                    // Remaining Twilio recordings not yet matched (for old entries with no callSid)
+                    const usedSids = new Set();
+                    setRecordings(prev => {
+                      // First pass: exact callSid match
+                      const updated = prev.map(rec => {
+                        if (rec.recordingSid) { usedSids.add(rec.recordingSid); return rec; }
+                        const found = rec.callSid && twilioMap[rec.callSid];
+                        if (found) { usedSids.add(found.recordingSid); return { ...rec, recordingSid: found.recordingSid, recordingUrl: found.recordingUrl }; }
+                        return rec;
+                      });
+                      // Second pass: match remaining entries (no callSid) to unused Twilio recordings by timestamp proximity
+                      const unmatched = d.list.filter(t => !usedSids.has(t.recordingSid)).sort((a,b) => new Date(b.dateCreated) - new Date(a.dateCreated));
+                      let ui = 0;
+                      return updated.map(rec => {
+                        if (rec.recordingSid || ui >= unmatched.length) return rec;
+                        if (!rec.callSid) {
+                          const tw = unmatched[ui++];
+                          return { ...rec, recordingSid: tw.recordingSid, recordingUrl: tw.recordingUrl };
+                        }
+                        return rec;
+                      });
+                    });
+                    notify(`Synced ${d.list.length} recordings from Twilio ✓`,'success');
+                  }
+                } catch(e) { notify('Sync failed: ' + e.message,'warning'); }
+              }} style={{padding:'6px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,background:'var(--teal)22',color:'var(--teal)',border:'1px solid var(--teal)44',cursor:'pointer',borderRadius:2}}>⬇ SYNC FROM TWILIO</button>
+              <button onClick={loadRecordings} style={{padding:'6px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:10,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>↻ REFRESH</button>
+            </div>
           </div>
           {recLoading ? (
             <div style={{textAlign:'center',padding:40,fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text-dim)'}}>Loading recordings...</div>
@@ -1128,7 +1173,7 @@ export default function ClawDialer() {
                     )}
                     <div style={{display:'flex',gap:8,marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
                       {rec.recordingUrl && !rec.transcript && (
-                        <button onClick={async(e)=>{e.stopPropagation();notify('Transcribing...','info');try{const r=await fetch('/api/recordings?action=transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({callSid:rec.callSid,recordingUrl:rec.recordingUrl,recordingSid:rec.recordingSid})});const d=await r.json();if(d.ok&&d.transcript){cacheTranscript(rec.callSid,d.transcript,d.analysis||null);setRecordings(prev=>prev.map(x=>x.callSid===rec.callSid?{...x,transcript:d.transcript,analysis:d.analysis||x.analysis}:x));notify('✅ Transcript saved','success');}else notify(`Transcription failed: ${d.error||'unknown'}`,'warning');}catch(err){notify('Transcription error','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
+                        <button onClick={async(e)=>{e.stopPropagation();notify('Transcribing...','info');try{const r=await fetch('/api/recordings?action=transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({callSid:rec.callSid,recordingUrl:rec.recordingUrl,recordingSid:rec.recordingSid})});const d=await r.json();if(d.ok&&d.transcript){cacheTranscript(rec.callSid,d.transcript,d.analysis||null,rec.recordingSid);setRecordings(prev=>prev.map(x=>(x.callSid&&x.callSid===rec.callSid)||(x.recordingSid&&x.recordingSid===rec.recordingSid)?{...x,transcript:d.transcript,analysis:d.analysis||x.analysis}:x));notify('✅ Transcript saved','success');}else notify(`Transcription failed: ${d.error||'unknown'}`,'warning');}catch(err){notify('Transcription error','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
                           🎙 TRANSCRIBE NOW
                         </button>
                       )}
