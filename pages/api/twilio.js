@@ -21,7 +21,20 @@ RULES:
 - If they want a human: respond only with ESCALATE
 - If they give their email address: respond only with SAVE_EMAIL:[the email address]
 - If they want the link or agree to claim profile: respond only with SEND_LINK
-- If they want to end the call: respond only with HANGUP`;
+- If they want to end the call: respond only with HANGUP
+
+IVR / PHONE DIRECTORY DETECTION — CRITICAL:
+If the speech sounds like an automated phone system, answering service, or IVR menu — examples:
+"thank you for calling", "press 1 for", "para español", "please hold", "please listen carefully",
+"dial by name", "our menu has changed", "press or say", "if you know your party's extension",
+"to reach", "our hours are", "leave a message", "after the tone", "voicemail", "not available right now"
+— respond only with: PRESS_DIGIT:1
+
+If it sounds like a live human receptionist or gatekeeper (not a menu, but a person answering),
+say: "Hi, can you connect me with whoever handles your used car inventory or marketing? Thanks."
+
+Do NOT escalate for IVR menus or answering services. Only ESCALATE when a live human explicitly
+asks to speak with a real person or your supervisor.`;
 
 function escapeXml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
@@ -34,7 +47,15 @@ function say(text) {
 function buildGather(sayText, history, to, contactId) {
   const historyParam = encodeURIComponent(JSON.stringify(history));
   const url = BASE + '/api/twilio?action=ai-respond&to=' + encodeURIComponent(to) + '&contactId=' + encodeURIComponent(contactId||'') + '&history=' + historyParam;
-  return '<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech" action="' + escapeXml(url) + '" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10">' + say(sayText) + '</Gather>' + say("I didn't catch that. No problem, have a great day.") + '<Hangup/></Response>';
+  // input="speech dtmf" so IVR keypresses also trigger the action
+  return '<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech dtmf" action="' + escapeXml(url) + '" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10" numDigits="1">' + say(sayText) + '</Gather>' + say("I didn't catch that. No problem, have a great day.") + '<Hangup/></Response>';
+}
+
+function pressDigit(digit, history, to, contactId) {
+  // Play the digit then re-enter the gather loop to catch whatever comes next
+  const historyParam = encodeURIComponent(JSON.stringify(history));
+  const url = BASE + '/api/twilio?action=ai-respond&to=' + encodeURIComponent(to) + '&contactId=' + encodeURIComponent(contactId||'') + '&history=' + historyParam;
+  return '<?xml version="1.0" encoding="UTF-8"?><Response><Play digits="' + escapeXml(String(digit)) + '"/><Gather input="speech dtmf" action="' + escapeXml(url) + '" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10" numDigits="1">' + say('') + '</Gather>' + say("I didn't catch that. No problem, have a great day.") + '<Hangup/></Response>';
 }
 
 function hangupXml(text) {
@@ -75,17 +96,28 @@ export default async function handler(req, res) {
   // AI RESPOND: Claude handles conversation
   if (action === 'ai-respond') {
     res.setHeader('Content-Type', 'text/xml');
+    // Check for DTMF input (someone pressed a key on their end)
+    const dtmf = (req.body?.Digits || '').trim();
     const speech = (req.body?.SpeechResult || '').trim();
     const to = req.query.to || '';
     const contactId = req.query.contactId || '';
     let history = [];
     try { history = JSON.parse(decodeURIComponent(req.query.history || '[]')); } catch(e) {}
 
-    if (!speech) {
+    // If they pressed a digit on their keypad (not us), treat as "yes I'm here" and pitch
+    if (dtmf && !speech) {
+      history.push({ role: 'user', content: `[pressed ${dtmf}]` });
+      return res.status(200).send(buildGather(
+        "Hey — is this the owner or manager? CARFAX charges forty-five dollars per report. We do unlimited for forty-nine a month. Got thirty seconds?",
+        history, to, contactId
+      ));
+    }
+
+    if (!speech && !dtmf) {
       return res.status(200).send(buildGather("Sorry, I didn't catch that. Are you the owner or manager?", history, to, contactId));
     }
 
-    history.push({ role: 'user', content: speech });
+    history.push({ role: 'user', content: speech || `[pressed ${dtmf}]` });
 
     try {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -98,6 +130,12 @@ export default async function handler(req, res) {
 
       const reply = response.content[0].text.trim();
       history.push({ role: 'assistant', content: reply });
+
+      // IVR: press a digit to navigate the menu
+      if (reply.startsWith('PRESS_DIGIT:')) {
+        const digit = reply.replace('PRESS_DIGIT:', '').trim().charAt(0) || '1';
+        return res.status(200).send(pressDigit(digit, history, to, contactId));
+      }
 
       if (reply.includes('SEND_LINK')) {
         await sendSMS(to, 'Chase @ VinHunter: Claim your free dealer profile + $49/mo beats CARFAX: https://vinledgerai.live/pricing — Reply STOP to opt out.');
