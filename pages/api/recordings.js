@@ -298,8 +298,115 @@ async function analyzePatterns(recordings) {
   }
 }
 
+// ── Deepgram transcription ─────────────────────────────────────────────────────
+async function transcribeWithDeepgram(audioUrl, callSid) {
+  const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+  if (!DEEPGRAM_API_KEY) return null;
+  try {
+    // Fetch audio from Twilio with auth, then send to Deepgram
+    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+    const mp3Url = audioUrl.endsWith('.mp3') ? audioUrl : audioUrl + '.mp3';
+    const r = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true&paragraphs=true', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url: mp3Url, options: { headers: { Authorization: authHeader } } }),
+    });
+    if (!r.ok) {
+      // Fallback: use audio/url passthrough with credentials embedded
+      const credUrl = mp3Url.replace('https://', `https://${accountSid}:${authToken}@`);
+      const r2 = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true', {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${DEEPGRAM_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: credUrl }),
+      });
+      if (!r2.ok) return null;
+      const d2 = await r2.json();
+      return d2?.results?.channels?.[0]?.alternatives?.[0]?.transcript || null;
+    }
+    const data = await r.json();
+    return data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || null;
+  } catch(e) {
+    console.error('Deepgram error:', e.message);
+    return null;
+  }
+}
+
 export default async function handler(req, res) {
   const { action } = req.query;
+
+  // ── STREAM PROXY: serves Twilio audio without exposing credentials to browser ──
+  if (action === 'stream') {
+    const { sid } = req.query;
+    if (!sid) return res.status(400).end('Missing sid');
+    try {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      // Fetch recordings list for this call or direct recording SID
+      const client = twilio(accountSid, authToken);
+      let recordingUrl;
+      if (sid.startsWith('RE')) {
+        // It's a recording SID directly
+        recordingUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.mp3`;
+      } else {
+        // It's a call SID — get the first recording
+        const recs = await client.recordings.list({ callSid: sid, limit: 1 });
+        if (!recs.length) return res.status(404).end('No recording found');
+        recordingUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${recs[0].sid}.mp3`;
+      }
+      const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      const audioResp = await fetch(recordingUrl, { headers: { Authorization: authHeader } });
+      if (!audioResp.ok) return res.status(audioResp.status).end('Audio fetch failed');
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      const buffer = await audioResp.arrayBuffer();
+      return res.status(200).send(Buffer.from(buffer));
+    } catch(e) {
+      return res.status(500).end(e.message);
+    }
+  }
+
+  // ── MANUAL TRANSCRIBE: trigger Deepgram on a specific recording ────────────
+  if (action === 'transcribe' && req.method === 'POST') {
+    const { callSid, recordingUrl, recordingSid } = req.body || {};
+    if (!callSid && !recordingUrl) return res.status(400).json({ error: 'Missing callSid or recordingUrl' });
+
+    let audioUrl = recordingUrl;
+    if (!audioUrl && callSid) {
+      const store = loadStore();
+      const rec = store.recordings.find(r => r.callSid === callSid);
+      audioUrl = rec?.recordingUrl;
+    }
+    if (!audioUrl && recordingSid) {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      audioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${recordingSid}`;
+    }
+    if (!audioUrl) return res.status(400).json({ error: 'No recording URL found' });
+
+    const transcript = await transcribeWithDeepgram(audioUrl, callSid);
+    if (!transcript) return res.status(500).json({ error: 'Transcription failed' });
+
+    // Save transcript and kick off AI analysis
+    const store = loadStore();
+    const existing = store.recordings.find(r => r.callSid === callSid);
+    if (existing) {
+      existing.transcript = transcript;
+      existing.transcribedAt = new Date().toISOString();
+      saveStore(store);
+      analyzeTranscript(transcript, existing.contactName, existing.outcome).then(analysis => {
+        const s2 = loadStore();
+        const r = s2.recordings.find(x => x.callSid === callSid);
+        if (r) { r.analysis = analysis; saveStore(s2); }
+      });
+    }
+    return res.status(200).json({ ok: true, transcript });
+  }
 
   // ── TRANSCRIPT WEBHOOK (called by Twilio after recording/transcription completes) ─────────
   if (action === 'transcript-webhook') {
@@ -313,7 +420,7 @@ export default async function handler(req, res) {
     const store = loadStore();
     const existingIdx = store.recordings.findIndex(r => r.callSid === CallSid);
 
-    // Always update recording URL if we have it (even if no transcript yet)
+    // Always update recording URL when we get it
     if (RecordingUrl) {
       if (existingIdx >= 0) {
         store.recordings[existingIdx].recordingUrl = RecordingUrl;
@@ -339,18 +446,37 @@ export default async function handler(req, res) {
         });
       }
       saveStore(store);
+
+      // Auto-trigger Deepgram transcription (better quality than Twilio built-in)
+      // Run async — don't block Twilio webhook response
+      const callSidForTranscript = CallSid;
+      const recUrlForTranscript = RecordingUrl;
+      transcribeWithDeepgram(recUrlForTranscript, callSidForTranscript).then(transcript => {
+        if (!transcript) return;
+        const s2 = loadStore();
+        const rec = s2.recordings.find(r => r.callSid === callSidForTranscript);
+        if (rec && !rec.transcript) {
+          rec.transcript = transcript;
+          rec.transcribedAt = new Date().toISOString();
+          saveStore(s2);
+          analyzeTranscript(transcript, rec.contactName, rec.outcome).then(analysis => {
+            const s3 = loadStore();
+            const r = s3.recordings.find(x => x.callSid === callSidForTranscript);
+            if (r) { r.analysis = analysis; saveStore(s3); }
+          });
+        }
+      });
     }
 
-    // Handle transcription when it arrives
+    // Also handle Twilio's own transcription as fallback if it arrives
     if (TranscriptionStatus === 'completed' && TranscriptionText) {
       const store2 = loadStore();
       const existing = store2.recordings.find(r => r.callSid === CallSid);
-      if (existing) {
+      if (existing && !existing.transcript) {
         existing.transcript = TranscriptionText;
         existing.transcribedAt = new Date().toISOString();
         if (contactName && !existing.contactName) existing.contactName = contactName;
         saveStore(store2);
-        // Kick off AI analysis async — don't block the webhook response
         analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(analysis => {
           const store3 = loadStore();
           const rec = store3.recordings.find(r => r.callSid === CallSid);
