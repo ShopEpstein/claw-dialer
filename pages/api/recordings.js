@@ -289,24 +289,35 @@ Format: {"summary":"2-sentence summary","sentiment":"positive|neutral|negative",
 
 // ── Pattern analysis across all calls ────────────────────────────────────────
 async function analyzePatterns(recordings) {
-  if (recordings.length < 2) return null;
-  const summaries = recordings
-    .filter(r => r.analysis)
-    .slice(0, 30)
-    .map(r => `[${r.outcome}] Objections: ${(r.analysis.objections || []).join(', ')}. Worked: ${r.analysis.what_worked}. Signal: ${(r.analysis.buying_signals || []).join(', ')}`)
+  if (!recordings || recordings.length < 2) return null;
+
+  // Include ALL calls with outcome data — no transcript required
+  const lines = recordings
+    .slice(0, 50)
+    .map(r => {
+      const objections = r.analysis?.objections?.join(', ') || '';
+      const signals = r.analysis?.buying_signals?.join(', ') || '';
+      const worked = r.analysis?.what_worked || '';
+      const script = r.script || 'VINHUNTER';
+      const dur = parseInt(r.duration || 0);
+      return `[${(r.outcome || 'unknown').toUpperCase()}] script=${script} duration=${dur}s${objections ? ' objections='+objections : ''}${signals ? ' signals='+signals : ''}${worked ? ' worked='+worked : ''}`;
+    })
     .join('\n');
-  if (!summaries) return null;
+
+  if (!lines.trim()) return null;
+
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 500,
-      system: 'You analyze patterns across multiple sales calls. Return JSON only, no markdown. Format: {"top_objections":["top 3 objections across all calls"],"top_signals":["top 3 buying signals"],"best_approach":"what is working","patterns":"key insight from the data","recommendation":"one specific change to make right now"}',
-      messages: [{ role: 'user', content: `Analyze these ${recordings.length} call outcomes:\n${summaries}` }],
+      max_tokens: 600,
+      system: 'You analyze outbound sales call data. Return JSON only, no markdown, no preamble. Exact keys: {"top_objections":["obj1","obj2","obj3"],"top_signals":["sig1","sig2","sig3"],"best_opening":"one sentence","best_product":"which script is converting best and why","win_rate_insight":"one insight about conversion","script_recommendation":"one specific script change to make","single_best_change":"the single most impactful thing to do next"}',
+      messages: [{ role: 'user', content: `${recordings.length} calls:\n${lines}` }],
     });
-    const text = response.content[0].text.trim().replace(/```json|```/g, '');
+    const text = response.content[0].text.trim().replace(/```json|```/g, '').trim();
     return JSON.parse(text);
   } catch (e) {
+    console.error('Pattern analysis error:', e.message);
     return null;
   }
 }
