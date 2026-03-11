@@ -439,7 +439,10 @@ export default function ClawDialer() {
   }
 
   function updateContactStatus(idx, status) {
-    setContacts(prev => { const next=[...prev]; next[idx]={...next[idx], status, notes}; return next; });
+    // Use contact ID for reliable sync (index can shift during agent mode)
+    const contactId = contacts[idx]?.id;
+    if (!contactId) return;
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, status, notes } : c));
   }
 
   function handleCSV(e) {
@@ -538,8 +541,8 @@ export default function ClawDialer() {
         setEmailModal({ to: activeContact.email, contactName: activeContact.name, business: activeContact.business_name, script: scripts[scriptIdx]?.name || 'VINHUNTER' });
       }
     }
-    setCallSeconds(0); setNotes('');
-    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 4000);
+    setCallSeconds(0); setNotes(''); callSecondsRef.current = 0;
+    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 3500);
   }
 
   function toggleAgent() {
@@ -558,11 +561,45 @@ export default function ClawDialer() {
   function agentNext() {
     if (!agentModeRef.current || agentPausedRef.current) return;
     if (!isTCPAHour()) { setAgentMode(false); notify('⛔ Agent stopped — outside TCPA hours (8am–9pm)', 'warning'); return; }
-    const newOnes = contacts.filter(c => c.status === 'new' && c.status !== 'dnc' && !c.dnc);
-    if (newOnes.length === 0) { setAgentMode(false); notify('✅ Agent complete — no new contacts remaining', 'success'); return; }
-    const nextIdx = contacts.indexOf(newOnes[0]);
-    selectContact(nextIdx);
-    setTimeout(() => { if (agentModeRef.current && !agentPausedRef.current) startCall(); }, 1500);
+    // Only pick contacts that are still 'new' — immediately mark as 'queued' to prevent double-dial
+    setContacts(prev => {
+      const newOnes = prev.filter(c => c.status === 'new' && !c.dnc);
+      if (newOnes.length === 0) {
+        setAgentMode(false);
+        notify('✅ Agent complete — no new contacts remaining', 'success');
+        return prev;
+      }
+      const target = newOnes[0];
+      const idx = prev.indexOf(target);
+      // Mark as queued before dialing so agent never double-picks it
+      const next = [...prev];
+      next[idx] = { ...target, status: 'queued' };
+      // Dial after state settles
+      setTimeout(() => {
+        setActiveIdx(idx);
+        setNotes('');
+        setSmsBody(SMS_FOLLOW_UP(target.name || '', scripts[scriptIdx]?.name || ''));
+        setTimeout(() => { if (agentModeRef.current && !agentPausedRef.current) startCall(); }, 800);
+      }, 200);
+      return next;
+    });
+  }
+
+  function skipContact(contactId, e) {
+    if (e) e.stopPropagation();
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, status: 'skipped' } : c));
+    if (agentModeRef.current) setTimeout(() => agentNext(), 500);
+  }
+
+  function removeContact(contactId, e) {
+    if (e) e.stopPropagation();
+    setContacts(prev => {
+      const next = prev.filter(c => c.id !== contactId);
+      // If we removed the active contact, clear selection
+      const removedIdx = prev.findIndex(c => c.id === contactId);
+      if (removedIdx === activeIdx) setActiveIdx(null);
+      return next;
+    });
   }
 
   async function sendSMS() {
@@ -591,7 +628,7 @@ export default function ClawDialer() {
   }
 
   const totalCalls = callLog.length;
-  const answeredCalls = callLog.filter(c => ['answered','called','callback','interested','book_call'].includes(c.outcome)).length;
+  const answeredCalls = callLog.filter(c => ['answered','called','callback','interested','book_call'].includes(c.outcome) && (c.duration||0) >= 8).length;
   const interestedCalls = callLog.filter(c => c.outcome === 'interested').length;
   const callbackCalls = callLog.filter(c => c.outcome === 'callback').length;
   const pipeline = callLog.filter(c => ['interested','book_call'].includes(c.outcome)).reduce((sum, c) => {
@@ -606,8 +643,8 @@ export default function ClawDialer() {
   const intRate = totalCalls > 0 ? Math.round(interestedCalls/totalCalls*100) : 0;
   const statusColor = { idle:'#6B7A8D', dialing:'#FFD600', connected:'#2EFF9A', ended:'#FF6B2B' };
   const statusText = { idle:'STANDBY', dialing:'DIALING...', connected:'CONNECTED', ended:'CALL ENDED' };
-  const statusBadge = { new:'var(--teal)', called:'var(--text-dim)', voicemail:'var(--blue)', callback:'var(--orange)', interested:'var(--green)', 'not-interested':'var(--red)' };
-  const newCount = contacts.filter(c=>c.status==='new').length;
+  const statusBadge = { new:'var(--teal)', called:'var(--text-dim)', voicemail:'var(--blue)', callback:'var(--orange)', interested:'var(--green)', 'not-interested':'var(--red)', queued:'#FFD600', skipped:'var(--text-dim)' };
+  const newCount = contacts.filter(c=>c.status==='new'||c.status==='queued').length;
   const callbackCount = contacts.filter(c=>c.status==='callback').length;
   const tcpaOk = isTCPAHour();
 
@@ -737,7 +774,18 @@ export default function ClawDialer() {
                         <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'No Name'}</div>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.campaign?`[${c.campaign}] `:''}{c.business_name||c.phone||''}</div>
                       </div>
-                      <div style={{width:4,height:4,borderRadius:'50%',background:statusBadge[c.status]||'var(--border2)',flexShrink:0}}></div>
+                      <div style={{display:'flex',alignItems:'center',gap:4,flexShrink:0}}>
+                        <div style={{width:4,height:4,borderRadius:'50%',background:statusBadge[c.status]||'var(--border2)'}}></div>
+                        {!selectMode && (
+                          <button
+                            onClick={(e) => removeContact(c.id, e)}
+                            title="Remove from list"
+                            style={{width:16,height:16,borderRadius:2,background:'transparent',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:10,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.4,lineHeight:1}}
+                            onMouseEnter={e=>e.currentTarget.style.opacity='1'}
+                            onMouseLeave={e=>e.currentTarget.style.opacity='0.4'}
+                          >✕</button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
