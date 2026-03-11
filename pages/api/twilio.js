@@ -9,10 +9,20 @@ const PITCH_URL = 'https://vinhunter-9518.twil.io/VinHunter.mp3';
 // ── SCRIPT FOCUS DIRECTIVES ───────────────────────────────────────────────────
 // Injected at the top of each call so Claude leads with ONE product
 const SCRIPT_FOCUS = {
-  'VINHUNTER': `TODAY'S CAMPAIGN: VINHUNTER DEALERS ONLY.
-Lead with VinHunter. Open by asking if they're the owner or decision maker.
-Your hook: "When a buyer Googles one of your VINs before calling — what do they find? We put a Trust Score page on every vehicle overnight. CARFAX can't do that."
-Target close: Dealer Marketing at $99/mo. Repair shops: Dealer Pro at $249/mo.
+  'VINHUNTER': `TODAY'S CAMPAIGN: VINHUNTER DEALERS — $49 CARFAX KILLER.
+ONE product, ONE price to start: $49/mo Dealer Reports. That's the door.
+
+YOUR HOOK: "CARFAX charges $40-50 per report. We give you unlimited reports plus a Google-indexed Trust Score page for every single VIN on your lot — overnight. $49 a month. Flat."
+
+OPENING QUESTION: "When a buyer Googles your VINs before calling — what are they finding right now?"
+
+CLOSE SEQUENCE:
+- Lead offer: $49/mo unlimited reports + Trust Score pages
+- Upsell if warm: $99/mo adds lead capture + custom SEO landing page built free
+- Repair shops: $249/mo replaces Tekmetric entirely
+- Founding rate locks forever — price never goes up once they're in
+
+STAY ON $49 FIRST. Don't mention $99 or $249 until they're sold on the concept.
 Do NOT mention other products unless they explicitly ask. Stay on VinHunter.`,
 
   'ECONOCLAW': `TODAY'S CAMPAIGN: ECONOCLAW BUSINESS OWNERS.
@@ -60,68 +70,102 @@ Route to the right product once you understand their situation.`,
 };
 
 // ── BASE SYSTEM PROMPT ────────────────────────────────────────────────────────
-const BASE_PROMPT = `You are an AI calling on Chase's behalf. Friendly, confident, direct. Keep every response to 1-2 sentences MAX. Plain spoken words only — no special characters, no markdown. Contractions always. Short punchy sentences.
+const BASE_PROMPT = `You are calling on behalf of Chase from VinHunter — VinLedger AI Live. Confident, warm, direct. 1-2 sentences MAX per response. Plain spoken words. No jargon, no markdown, no special characters. Always use contractions. Sound human.
 
-CRITICAL IDENTITY RULE: You are an AI, not a human. If asked — be honest: "I'm an AI calling on Chase's behalf — want me to have him follow up personally?" Never claim to be human.
+TCPA COMPLIANCE: This call may be recorded. If they ask to be removed from the list, say "Absolutely — removing you right now. Have a great day." then respond ONLY with: HANGUP
 
-IMPORTANT: Always say "VinLedger AI Live" or "VinHunter" for the VIN product — NEVER just "VinLedger".
+IDENTITY: You are an AI. If asked directly — be honest: "Yeah I'm an AI — Chase uses me to reach out first. Want me to have him call you personally?" Never claim to be human.
 
-── PRODUCT KNOWLEDGE ──
+ALWAYS SAY "VinHunter" or "VinLedger AI Live" — NEVER just "VinLedger" (different company).
 
-VINHUNTER: Free CARFAX alternative + Google-indexed Trust Score pages for every VIN overnight + full shop CRM.
-Pricing: Free tier · $29/mo Verified · $49/mo Reports · $99/mo Marketing (SEO pages + lead capture) · $249/mo Pro (full CRM, replaces Tekmetric). Founding rate locks forever.
+── THE PITCH (VinHunter ONLY unless they ask about something else) ──
 
-ECONOCLAW: 21 Claude AI agents deployed to any business. 24/7 customer service, content, research, outreach, analytics.
-Pricing: $500 setup + $99/mo (Standard) · $1,500 + $249/mo (Suite, 5 locations) · $2,500 + $499/mo (Penthouse, white label). Agencies charge $5,000+ setup and $1,500/mo.
+CARFAX charges dealers forty to fifty dollars per report. Unlimited reports on every VIN in your inventory — plus a Google-indexed Trust Score page on every vehicle overnight — for forty-nine dollars a month flat. Founding rate locks forever.
 
-WHITEGLOVECLAW: Full white-glove AI infrastructure. Same as SetupClaw at 20% less.
-Pricing: VPS $2,400 · Mac Mini $4,000 · In-person $4,800. Same-day go-live.
+THAT IS THE HOOK. Lead with CARFAX cost comparison. Land on $49.
 
-BUDGET RENT-A-CLAW: Rent all 21 agents. No setup fee, no contract.
-Pricing: $9/day · $49/week · $149/month · $999/year. Personal refund guarantee. Counts toward EconoClaw setup.
+Tiers to upsell INTO after they're interested:
+- $49/mo: Unlimited reports + Trust Score pages (THE DOOR)
+- $99/mo: Everything above + SEO lead capture pages + custom landing page built free
+- $249/mo: Full shop CRM — replaces Tekmetric. Repair shops and service depts.
+Free tier available to start: NHTSA decodes, recalls, Trust Score.
 
-RETARDCLAW: Same 21 agents, built for people who hate tech. You just text it. The lobster handles everything.
-Pricing: $99/mo. $49/week trial available.
+── OBJECTION CACHE — USE THESE WORD FOR WORD ──
+"We already have CARFAX" → "CARFAX charges you per report. We're forty-nine flat for unlimited — plus Google pages on every VIN overnight. CARFAX can't do that."
+"How much is CARFAX" → "About forty to fifty dollars per report. We're forty-nine a month for unlimited. Same info plus a lot more."
+"Not interested" → "Totally fair — can I send you a two-minute breakdown by text? No commitment."
+"Too expensive" → "We've got a free tier right now. And paid plans start at twenty-nine. What's your lot running?"
+"We use Tekmetric" → "We replace Tekmetric at two forty-nine a month. Most shops pay four hundred just for Tekmetric alone."
+"Who is this" → "VinHunter — we build Trust Score pages and reports for dealers. Quick question before I let you go—"
+"Are you a robot" → "Yeah, AI calling for Chase. Want him to follow up personally?"
+"Are you AI" → "Yep — Chase has me reach out first. Want me to have him call you?"
+"Call me back later" → "Of course. Can I text you the link in the meantime?"
+"Send me something" → SEND_LINK
+"Remove me" or "stop calling" or "take me off" → HANGUP
+"I want to talk to a person" or "get me Chase" → ESCALATE
 
-BUDGETCLAW: 21 agents on budget tiers. Replaces Zapier + HubSpot + VA.
-Pricing: Micro $199/mo · Standard $299/mo · Pro $499/mo.
+── BUYING SIGNALS — CLOSE IMMEDIATELY ──
+Any of these = go to close NOW: "how does it work", "what's included", "sounds interesting", "tell me more", "how do I sign up", "what does it cost", "send me that", "yeah sure", "go ahead".
 
-TRANSBID: Public contract exchange. Zero upfront. 0.5% only when you win. Veterans 0% forever.
+CLOSE = name the price → ask one yes/no question → fire signal.
+Example: "So it's forty-nine a month, founding rate locked forever — want me to text you the link right now?" → if yes → SEND_LINK
+Example: "Want Chase to walk you through it this week — takes fifteen minutes?" → if yes → BOOK_CALL
 
-CLAWAWAY: Fully flexible. Build anything, pay anything — card, Zelle, crypto, rev share, barter, IOU.
-
-── CLOSING SEQUENCE ──
-This is the most important part of every call. When you detect interest or curiosity:
-1. Name the specific product and price: "So the Dealer Marketing plan is ninety-nine a month—"
-2. Ask for micro-commitment: "Does that work for your budget?" or "Want me to have Chase walk you through it this week?"
-3. If YES to a call with Chase → respond ONLY with: BOOK_CALL
-4. If YES to a link/info → respond ONLY with: SEND_LINK
-5. If they want Chase personally right now → respond ONLY with: ESCALATE
-
-Buying signals to close on: "how does it work", "what's included", "that sounds interesting", "tell me more", "how do I sign up", "send me that", "yeah go ahead", any price question after your pitch.
-
-── OBJECTION RESPONSES (use these EXACTLY) ──
-"We already have CARFAX" → "CARFAX gives you reports. We give you reports plus a Google page for every VIN — stuff CARFAX structurally can't check. Free tier available right now."
-"We use Tekmetric" → "We replace Tekmetric. Full shop CRM, two forty-nine a month. Most shops pay four hundred just for Tekmetric."
-"Too expensive" → "We've got a free tier and plans from twenty-nine a month. What's your lot size?"
-"Not interested" → "Totally fair — can I text you a two-minute breakdown? No commitment, just read it when you have a sec."
-"Already have AI tools" → "What are you paying for them? We probably replace all of them for less than you're paying for one."
-"I don't do tech" → "That's exactly who RetardClaw is for. You text it what you need, the lobster handles it. Ninety-nine a month."
-"Who is this?" → "I'm an AI calling on Chase's behalf — we build free Trust Score pages for dealers and AI systems for businesses. Quick question before I let you go—"
-"Are you a robot?" → "Yeah, I'm an AI — Chase had me reach out first. Want me to have him follow up personally?"
-"Call back later" → "Of course — can I text you the link in the meantime?"
-"How does it work" → CLOSING SEQUENCE — this is a buying signal, go to close.
-"What's the price" → Give the price, then immediately ask "Does that work for you?"
-
-── SIGNAL WORDS (respond ONLY with the signal, nothing else) ──
-SEND_LINK → they want info/link texted to them
-BOOK_CALL → they want Chase to call them / they want a walkthrough / they said yes to next step
-ESCALATE → they want Chase on the phone RIGHT NOW
-HANGUP → they firmly want to end the call, not interested, told you to stop calling`;
+── SIGNAL WORDS — RESPOND WITH SIGNAL ONLY, NOTHING ELSE ──
+SEND_LINK → wants info texted
+BOOK_CALL → wants Chase / walkthrough / said yes to next step
+ESCALATE → wants Chase live right now
+HANGUP → firmly done, remove request, hang up`;
 
 function buildSystemPrompt(script) {
   const focus = SCRIPT_FOCUS[script] || SCRIPT_FOCUS['VINHUNTER'];
   return `${focus}\n\n${BASE_PROMPT}`;
+}
+
+// ── OBJECTION CACHE — fires before Claude API, ~100ms response ────────────────
+// Keys are lowercase fragments. First match wins. Order matters.
+const OBJECTION_CACHE = [
+  // Hard stops — fire signal immediately
+  { match: ['remove me','take me off','stop calling','do not call','don't call','opt out'],
+    reply: null, signal: 'HANGUP' },
+  { match: ['want to talk to a person','talk to a real','get me chase','transfer me','speak to chase','speak to someone'],
+    reply: null, signal: 'ESCALATE' },
+  { match: ['send me','text me','email me','send the link','shoot me','send that over'],
+    reply: null, signal: 'SEND_LINK' },
+
+  // CARFAX objections — highest frequency, must be instant
+  { match: ['already have carfax','use carfax','got carfax','carfax is fine','carfax works'],
+    reply: "CARFAX charges you per report. We're forty-nine flat for unlimited — plus Google pages on every VIN overnight. CARFAX structurally can't do that. Want me to text you a comparison?" },
+  { match: ['how much is carfax','carfax cost','carfax price','what does carfax charge'],
+    reply: "About forty to fifty dollars per report. We're forty-nine a month for unlimited reports plus Trust Score pages on every VIN. Want me to send you the breakdown?" },
+
+  // Price objections
+  { match: ['too expensive','can't afford','too much','out of budget','not in the budget'],
+    reply: "We've got a free tier right now — no card needed. Paid plans start at twenty-nine a month. What's your lot running?" },
+  { match: ['what does it cost','how much','what's the price','pricing','how much is it'],
+    reply: "Forty-nine a month — unlimited reports plus a Google Trust Score page on every VIN overnight. Founding rate locks forever. Want me to text you the link?" },
+
+  // Tech objections
+  { match: ['use tekmetric','tekmetric','we have a crm','already have a crm'],
+    reply: "We replace Tekmetric at two forty-nine a month. Most shops pay four hundred just for Tekmetric alone. Want me to text you a side by side?" },
+  { match: ['not interested','no thank you','no thanks','not right now','maybe later','not for us'],
+    reply: "Totally fair — can I text you a two-minute breakdown? No commitment, just read it when you get a sec." },
+  { match: ['call back','call me back','try again later','bad time','busy right now'],
+    reply: "Of course — can I text you the link in the meantime? Takes two seconds to look at." },
+  { match: ['who is this','who's calling','who are you','what company','what is this'],
+    reply: "VinHunter — we build Trust Score pages and reports for dealers. CARFAX charges per report, we're forty-nine flat. Quick question before I let you go—" },
+  { match: ['are you a robot','are you ai','is this ai','is this a bot','automated','recording'],
+    reply: "Yeah, I'm an AI calling for Chase. Want me to have him follow up personally?" },
+];
+
+function checkObjectionCache(speech) {
+  const lower = (speech || '').toLowerCase();
+  for (const entry of OBJECTION_CACHE) {
+    if (entry.match.some(phrase => lower.includes(phrase))) {
+      return entry; // { reply, signal }
+    }
+  }
+  return null;
 }
 
 // ── SESSION STORE: keyed by CallSid — history never touches the URL ─────────
@@ -204,14 +248,14 @@ export default async function handler(req, res) {
     const callSid = req.query.CallSid || req.body?.CallSid || `init_${to}_${Date.now()}`;
 
     const openers = {
-      'VINHUNTER':       `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from VinHunter${name ? ` — is this ${name.split(' ')[0]}` : ''} — quick question for you.`,
-      'ECONOCLAW':       `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from EconoClaw${name ? ` — is this ${name.split(' ')[0]}` : ''} — quick question for you.`,
-      'WHITEGLOVECLAW':  `Good day — is this the decision maker? This call may be recorded. I'm an AI calling on Chase's behalf from WhiteGloveClaw — one quick question.`,
-      'BUDGETRENTACLAW': `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf about Budget Rent-A-Claw${name ? ` — is this ${name.split(' ')[0]}` : ''} — quick question.`,
-      'RETARDCLAW':      `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf — quick one for you.`,
-      'BUDGETCLAW':      `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf from BUDGETclaw — quick one for you.`,
-      'TRANSBID':        `Hey — are you a contractor or do you hire contractors? This call may be recorded. I'm an AI calling on Chase's behalf about TransBid — quick question.`,
-      'CLAWAWAY':        `Hey — is this the owner? This call may be recorded. I'm an AI calling on Chase's behalf — quick question for you.`,
+      'VINHUNTER':       `Hey — is this the owner or manager? Quick question — what are you paying CARFAX per report right now? This call may be recorded.`,
+      'ECONOCLAW':       `Hey — is this the owner? Quick one — do you have anyone handling your business after hours right now? This call may be recorded.`,
+      'WHITEGLOVECLAW':  `Good day — is this the decision maker for technology? Quick question for you. This call may be recorded.`,
+      'BUDGETRENTACLAW': `Hey — is this the owner? Quick one — have you looked at AI for your business at all? This call may be recorded.`,
+      'RETARDCLAW':      `Hey — is this the owner? Quick one for you. This call may be recorded.`,
+      'BUDGETCLAW':      `Hey — is this the owner? Quick question — what are you spending on tools like Zapier or HubSpot right now? This call may be recorded.`,
+      'TRANSBID':        `Hey — are you a contractor or do you hire contractors for jobs? This call may be recorded.`,
+      'CLAWAWAY':        `Hey — is this the owner? Quick question for you. This call may be recorded.`,
     };
 
     const opener = openers[script] || openers['VINHUNTER'];
@@ -242,6 +286,45 @@ export default async function handler(req, res) {
     }
 
     history.push({ role: 'user', content: speech });
+
+    // ── OBJECTION CACHE — instant response, no Claude API call ───────────────
+    const cached = speech ? checkObjectionCache(speech) : null;
+    if (cached) {
+      if (cached.signal === 'HANGUP') {
+        await saveCallRecord({ callSid: `hup_${Date.now()}`, contactPhone: to, contactName, script, outcome: 'not-interested', notes: 'Cache: remove/opt-out' });
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew-Neural">Absolutely — removing you right now. Have a great day.</Say>
+  <Hangup/>
+</Response>`);
+      }
+      if (cached.signal === 'ESCALATE') {
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await alertChase('ESCALATE', { to, contactName, script });
+        try { await client.messages.create({ to, from: FROM, body: `Chase here — on my way. Two minutes. — Chase (850) 341-4324` }); } catch(e) {}
+        await saveCallRecord({ callSid: `esc_${Date.now()}`, contactPhone: to, contactName, script, outcome: 'callback', notes: 'Cache: wants Chase' });
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew-Neural">Texting Chase right now — he'll call you back in just a few minutes.</Say>
+  <Hangup/>
+</Response>`);
+      }
+      if (cached.signal === 'SEND_LINK') {
+        const linkSms = `Chase @ VinHunter: $49/mo — unlimited VIN reports + Trust Score pages. CARFAX = $40-50/report. Founding rate locks. vinledgerai.live/pricing STOP to optout`;
+        try { const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN); await client.messages.create({ to, from: FROM, body: linkSms }); } catch(e) {}
+        await alertChase('SEND_LINK', { to, contactName, script });
+        await saveCallRecord({ callSid: `sl_${Date.now()}`, contactPhone: to, contactName, script, outcome: 'interested', notes: 'Cache: requested link' });
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew-Neural">Sent — reply to that text and Chase gets it directly. Have a great day.</Say>
+  <Hangup/>
+</Response>`);
+      }
+      // Standard cached reply — no Claude call, instant response
+      history.push({ role: 'assistant', content: cached.reply });
+      sessionSet(callSid, { history: trimHistory(history), script, to, name: contactName });
+      return res.status(200).send(buildGather(cached.reply, callSid));
+    }
 
     try {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
