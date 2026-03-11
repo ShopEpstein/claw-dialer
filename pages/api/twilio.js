@@ -226,9 +226,10 @@ export default async function handler(req, res) {
     const speech = req.body?.SpeechResult || '';
     const callSid = req.body?.CallSid || '';
 
-    // Load session — falls back to empty if cold start
+    // Load session — always fall back to Twilio's own request body fields
+    // Twilio sends CallSid, To, From on EVERY request, so cold starts are safe
     const sess = sessionGet(callSid);
-    const to = sess.to || req.body?.To || '';
+    const to = sess.to || req.body?.To || req.body?.Called || '';
     const script = sess.script || '';
     const contactName = sess.name || '';
     let history = sess.history || [];
@@ -295,14 +296,14 @@ export default async function handler(req, res) {
       // ── SEND_LINK: wants the info ──
       if (reply.includes('SEND_LINK')) {
         const SMS_MAP = {
-          'VINHUNTER':       `Chase @ VinHunter: Free lot audit + Trust Score pages for every VIN overnight. See plans (free to $249/mo): https://vinledgerai.live/pricing — Founding rate locks forever. Reply STOP to opt out.`,
-          'ECONOCLAW':       `Chase @ EconoClaw: 21 AI agents, your biz, 24/7. $500 setup + $99/mo. Agencies charge $5K+ for the same. econoclaw.vercel.app/econoclaw-landing.html — Reply STOP to opt out.`,
-          'WHITEGLOVECLAW':  `Chase @ WhiteGloveClaw: Full AI deployment. SetupClaw scope, 20% less. VPS $2,400 · Mac Mini $4K · In-person $4,800. Same-day go-live. Reply to talk. Reply STOP to opt out.`,
-          'BUDGETRENTACLAW': `Chase @ Rent-A-Claw: $49/week, no contract, no setup fee. Personal refund if it doesn't pay for itself. econoclaw.vercel.app/budgetrentaclaw-landing.html — Reply STOP to opt out.`,
-          'RETARDCLAW':      `Chase: RetardClaw — 21 AI agents for people who hate tech. You just text it. 🦞 $99/mo. econoclaw.vercel.app/retardclaw-landing.html — Reply STOP to opt out.`,
-          'BUDGETCLAW':      `Chase @ BUDGETclaw: Year 1 your way = $6,188+. Year 1 BUDGETclaw = $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
-          'TRANSBID':        `Chase @ TransBid: Post projects free. Pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live — Reply STOP to opt out.`,
-          'CLAWAWAY':        `Chase: We build AI systems your way — card, crypto, rev share, barter, IOU. econoclaw.vercel.app/econoclaw-landing.html — Reply STOP to opt out.`,
+          'VINHUNTER':       `Chase @ VinHunter: Trust Score + SEO page on every VIN overnight. Free to $249/mo. Founding rate locks. vinledgerai.live/pricing Reply STOP to opt out.`,
+          'ECONOCLAW':       `Chase @ EconoClaw: 21 AI agents 24/7. $500 setup + $99/mo. Agencies charge $5K+. econoclaw.vercel.app Reply STOP to opt out.`,
+          'WHITEGLOVECLAW':  `Chase @ WhiteGloveClaw: Full AI deploy, same-day go-live. VPS $2,400, Mac Mini $4K. 20% below market. Reply to talk. Reply STOP to opt out.`,
+          'BUDGETRENTACLAW': `Chase @ RentAClaw: $49/week, no setup fee. Personal refund if it doesn't pay for itself. econoclaw.vercel.app Reply STOP to opt out.`,
+          'RETARDCLAW':      `Chase: RetardClaw — 21 AI agents, you just text it. $99/mo. econoclaw.vercel.app/retardclaw-landing.html Reply STOP to opt out.`,
+          'BUDGETCLAW':      `Chase @ BUDGETclaw: Year 1 your way $6,188+. Year 1 BUDGETclaw $2,687. 21 agents from $199/mo. Reply STOP to opt out.`,
+          'TRANSBID':        `Chase @ TransBid: Post free. Pay 0.5% only when you WIN. HomeAdvisor charges 15-30% hidden. transbid.live Reply STOP to opt out.`,
+          'CLAWAWAY':        `Chase: We build AI your way — card, crypto, rev share, barter, IOU. econoclaw.vercel.app Reply STOP to opt out.`,
         };
         const smsBody = SMS_MAP[script] || SMS_MAP['VINHUNTER'];
         try {
