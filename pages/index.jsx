@@ -257,6 +257,7 @@ export default function ClawDialer() {
   const [skinKey, setSkinKey] = useState(() => storageGet('claw_skin', 'DEFAULT'));
   const [contacts, setContacts] = useState(() => storageGet('claw_contacts', []));
   const [callLog, setCallLog] = useState(() => storageGet('claw_calllog', []));
+  const callLogRef = useRef([]);
   const [scripts, setScripts] = useState(() => {
     const saved = storageGet('claw_scripts', null);
     const savedVer = storageGet('claw_scripts_ver', null);
@@ -316,6 +317,7 @@ export default function ClawDialer() {
   agentModeRef.current = agentMode;
   agentPausedRef.current = agentPaused;
   activeIdxRef.current = activeIdx;
+  callLogRef.current = callLog;
 
   const skin = SKINS[skinKey] || SKINS.DEFAULT;
 
@@ -529,7 +531,8 @@ export default function ClawDialer() {
     clearInterval(pollRef.current);
     clearTimeout(hardTimeoutRef.current);
     const secs = callSecondsRef.current;
-    const outcome = secs >= 15 ? 'answered' : 'voicemail';
+    // 0-second calls = Twilio error or instant hangup — mark skipped, not answered
+    const outcome = secs === 0 ? 'skipped' : secs >= 15 ? 'answered' : 'voicemail';
     setDisposition(outcome);
   }
 
@@ -540,7 +543,7 @@ export default function ClawDialer() {
     setCallState('idle');
     const entry = { id:Date.now(), contact_id:activeContact.id, name:activeContact.name, business:activeContact.business_name, phone:activeContact.phone, outcome, duration:callSeconds, notes, script:scripts[scriptIdx]?.name, timestamp:new Date().toISOString() };
     setCallLog(prev => [entry, ...prev]);
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', 'book_call':'interested' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', 'book_call':'interested', skipped:'skipped' };
     updateContactStatus(activeIdx, statusMap[outcome] || 'called');
     if (outcome === 'interested') {
       notify(`🔥 HOT LEAD! Auto-texting ${activeContact.name || activeContact.phone}`, 'success');
@@ -551,7 +554,7 @@ export default function ClawDialer() {
       }
     }
     setCallSeconds(0); setNotes(''); callSecondsRef.current = 0;
-    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 3500);
+    if (agentModeRef.current && !agentPausedRef.current) agentRef.current = setTimeout(() => agentNext(), 5000);
   }
 
   function toggleAgent() {
@@ -570,9 +573,17 @@ export default function ClawDialer() {
   function agentNext() {
     if (!agentModeRef.current || agentPausedRef.current) return;
     if (!isTCPAHour()) { setAgentMode(false); notify('⛔ Agent stopped — outside TCPA hours (8am–9pm)', 'warning'); return; }
-    // Only pick contacts that are still 'new' — immediately mark as 'queued' to prevent double-dial
+    const today = new Date().toDateString();
+    // Build set of phone numbers already called today from call log
+    const calledTodayPhones = new Set(
+      callLogRef.current.filter(e => new Date(e.timestamp).toDateString() === today).map(e => e.phone)
+    );
     setContacts(prev => {
-      const newOnes = prev.filter(c => c.status === 'new' && !c.dnc);
+      const newOnes = prev.filter(c =>
+        c.status === 'new' &&
+        !c.dnc &&
+        !calledTodayPhones.has(c.phone)  // NEVER dial a number twice in one day
+      );
       if (newOnes.length === 0) {
         setAgentMode(false);
         notify('✅ Agent complete — no new contacts remaining', 'success');
