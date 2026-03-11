@@ -316,34 +316,35 @@ async function transcribeWithDeepgram(audioUrl, callSid) {
   const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
   if (!DEEPGRAM_API_KEY) return null;
   try {
-    // Fetch audio from Twilio with auth, then send to Deepgram
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
 
+    // Ensure .mp3 extension
     const mp3Url = audioUrl.endsWith('.mp3') ? audioUrl : audioUrl + '.mp3';
-    const r = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true&paragraphs=true', {
+
+    // Step 1: Fetch audio bytes from Twilio server-side (Deepgram can't auth to Twilio)
+    const audioResp = await fetch(mp3Url, { headers: { Authorization: authHeader } });
+    if (!audioResp.ok) {
+      console.error('Twilio audio fetch failed:', audioResp.status, await audioResp.text());
+      return null;
+    }
+    const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
+
+    // Step 2: POST raw audio bytes to Deepgram
+    const dgResp = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${DEEPGRAM_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'audio/mpeg',
       },
-      body: JSON.stringify({ url: mp3Url, options: { headers: { Authorization: authHeader } } }),
+      body: audioBuffer,
     });
-    if (!r.ok) {
-      // Fallback: use audio/url passthrough with credentials embedded
-      const credUrl = mp3Url.replace('https://', `https://${accountSid}:${authToken}@`);
-      const r2 = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true', {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${DEEPGRAM_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: credUrl }),
-      });
-      if (!r2.ok) return null;
-      const d2 = await r2.json();
-      return d2?.results?.channels?.[0]?.alternatives?.[0]?.transcript || null;
+    if (!dgResp.ok) {
+      console.error('Deepgram failed:', dgResp.status, await dgResp.text());
+      return null;
     }
-    const data = await r.json();
+    const data = await dgResp.json();
     return data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || null;
   } catch(e) {
     console.error('Deepgram error:', e.message);
@@ -376,12 +377,12 @@ export default async function handler(req, res) {
       const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
       const audioResp = await fetch(recordingUrl, { headers: { Authorization: authHeader } });
       if (!audioResp.ok) return res.status(audioResp.status).end('Audio fetch failed');
+      // Buffer fully — Vercel serverless doesn't support stream piping reliably
+      const audioBuffer = Buffer.from(await audioResp.arrayBuffer());
       res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', audioBuffer.length);
       res.setHeader('Cache-Control', 'private, max-age=3600');
-      // Stream chunks directly — don't buffer entire file to avoid Vercel timeout
-      const { Readable } = await import('stream');
-      const nodeStream = Readable.fromWeb(audioResp.body);
-      nodeStream.pipe(res);
+      res.status(200).end(audioBuffer);
       return;
     } catch(e) {
       return res.status(500).end(e.message);
