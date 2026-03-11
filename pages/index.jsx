@@ -156,25 +156,21 @@ function PatternsPanel({ notify, totalCalls }) {
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
 
+  const [total, setTotal] = useState(0);
+
   async function loadPatterns() {
-    if (totalCalls < 3) return;
     setLoading(true);
     try {
       const r = await fetch('/api/recordings?action=patterns');
       const d = await r.json();
       setPatterns(d.patterns);
-      setUpdatedAt(d.updatedAt);
+      setTotal(d.total || 0);
+      setUpdatedAt(new Date().toISOString());
     } catch(e) { notify('Could not load patterns', 'warning'); }
     setLoading(false);
   }
 
-  useEffect(() => { if (totalCalls >= 3) loadPatterns(); }, [totalCalls]);
-
-  if (totalCalls < 3) return (
-    <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:2,padding:20,textAlign:'center'}}>
-      <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>🧠 AI LEARNING — needs 3+ transcribed calls to find patterns. Keep dialing.</div>
-    </div>
-  );
+  useEffect(() => { loadPatterns(); }, []);
 
   return (
     <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--teal)33',borderRadius:2,overflow:'hidden'}}>
@@ -186,7 +182,7 @@ function PatternsPanel({ notify, totalCalls }) {
       {loading ? (
         <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Analyzing call patterns...</div>
       ) : !patterns ? (
-        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Not enough transcribed calls yet — transcripts needed for pattern analysis.</div>
+        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{total > 0 ? `${total} calls loaded — analyzing outcomes now...` : 'No call data yet. Run some calls and hit ↻'}</div>
       ) : (
         <div style={{padding:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {patterns.single_best_change && (
