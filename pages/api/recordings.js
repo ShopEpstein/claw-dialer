@@ -354,9 +354,7 @@ export default async function handler(req, res) {
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 600,
         system: 'You analyze sales call outcome patterns. Return JSON only, no markdown. Format: {"top_objections":["top 3 objections or reasons for failure"],"top_signals":["top 3 buying signals or success patterns"],"best_opening":"what opening approach is working","best_product":"which product/script is converting best","win_rate_insight":"one key insight about win rate","script_recommendation":"specific script change to make right now","single_best_change":"the ONE thing that would most improve results"}',
-        messages: [{ role: 'user', content: `Analyze these ${total} sales call outcomes and give actionable coaching:
-${summaries.join('
-')}` }],
+        messages: [{ role: 'user', content: 'Analyze these ' + total + ' sales call outcomes and give actionable coaching:\n' + summaries.join('\n') }],
       });
       const text = response.content[0].text.trim().replace(/```json|```/g, '');
       const patterns = JSON.parse(text);
@@ -405,4 +403,4 @@ ${summaries.join('
   }
 
   return res.status(400).json({ error: 'Unknown action' });
-} 
+}
