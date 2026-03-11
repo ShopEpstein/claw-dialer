@@ -303,6 +303,8 @@ export default function ClawDialer() {
   const agentModeRef = useRef(false);
   const agentPausedRef = useRef(false);
   const pollRef = useRef(null);
+  const hardTimeoutRef = useRef(null); // 5-min absolute kill switch
+  const callSecondsRef = useRef(0);   // mirror for use inside async poll
 
   agentModeRef.current = agentMode;
   agentPausedRef.current = agentPaused;
@@ -333,6 +335,14 @@ export default function ClawDialer() {
   useEffect(() => { storageSet('claw_calllog', callLog); }, [callLog]);
   useEffect(() => { storageSet('claw_scripts', scripts); }, [scripts]);
 
+  // Transcript cache — survives Vercel /tmp wipes by persisting to localStorage
+  function getCachedTranscripts() { return storageGet('claw_transcripts', {}); }
+  function cacheTranscript(callSid, transcript, analysis) {
+    const cache = getCachedTranscripts();
+    cache[callSid] = { transcript, analysis: analysis || null, cachedAt: new Date().toISOString() };
+    storageSet('claw_transcripts', cache);
+  }
+
   // Load recordings when tab opens
   useEffect(() => {
     if (tab === 'recordings') loadRecordings();
@@ -352,13 +362,22 @@ export default function ClawDialer() {
           phonebook[normalized] = { name: c.name, business: c.business_name, campaign: c.campaign };
         }
       });
-      // Enrich recordings with contact names from our local list
+      // Enrich recordings with contact names + cached transcripts from localStorage
+      const transcriptCache = getCachedTranscripts();
       const enriched = (d.recordings || []).map(rec => {
-        if (rec.contactName && rec.contactName !== 'Unknown') return rec;
-        const phone = (rec.contactPhone || '').replace(/\D/g,'');
-        const match = phonebook[phone] || phonebook[phone.slice(-10)] || phonebook['1'+phone.slice(-10)];
-        if (match) return { ...rec, contactName: match.name || rec.contactName, business: match.business || rec.business, campaign: match.campaign || rec.campaign };
-        return rec;
+        // Resolve name from phonebook
+        let enrichedRec = rec;
+        if (!rec.contactName || rec.contactName === 'Unknown') {
+          const phone = (rec.contactPhone || '').replace(/\D/g,'');
+          const match = phonebook[phone] || phonebook[phone.slice(-10)] || phonebook['1'+phone.slice(-10)];
+          if (match) enrichedRec = { ...enrichedRec, contactName: match.name || rec.contactName, business: match.business || rec.business, campaign: match.campaign || rec.campaign };
+        }
+        // Merge cached transcript — survives /tmp wipe
+        const cached = transcriptCache[rec.callSid];
+        if (cached && !enrichedRec.transcript) {
+          enrichedRec = { ...enrichedRec, transcript: cached.transcript, analysis: cached.analysis || enrichedRec.analysis };
+        }
+        return enrichedRec;
       });
       setRecordings(enriched);
     } catch {}
@@ -394,7 +413,8 @@ export default function ClawDialer() {
         const d = await r.json();
         if (['completed','failed','busy','no-answer'].includes(d.status)) {
           clearInterval(pollRef.current);
-          setCallState('ended');
+          // Auto-dispose: log outcome + advance agent. No manual button needed.
+          autoDispose();
         }
       } catch {}
     }, 3000);
@@ -466,7 +486,17 @@ export default function ClawDialer() {
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => setCallSeconds(s => s+1), 1000);
+    clearTimeout(hardTimeoutRef.current);
+    callSecondsRef.current = 0;
+    timerRef.current = setInterval(() => {
+      callSecondsRef.current += 1;
+      setCallSeconds(callSecondsRef.current);
+    }, 1000);
+    // Hard 5-minute kill — auto-dispose as 'answered', protect time + Twilio costs
+    hardTimeoutRef.current = setTimeout(() => {
+      notify('⏱ 5-min limit reached — call auto-ended', 'warning');
+      autoDispose();
+    }, 5 * 60 * 1000);
     try {
       const r = await fetch('/api/twilio?action=call', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -488,7 +518,19 @@ export default function ClawDialer() {
   function endCall() {
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
+    clearTimeout(hardTimeoutRef.current);
     setCallState('ended');
+  }
+
+  // Auto-disposition based on duration — called by poll and hard timeout
+  function autoDispose() {
+    clearInterval(timerRef.current);
+    clearInterval(pollRef.current);
+    clearTimeout(hardTimeoutRef.current);
+    const secs = callSecondsRef.current;
+    // ≥15s = real conversation → ANSWERED; <15s = voicemail/no-answer
+    const outcome = secs >= 15 ? 'answered' : 'voicemail';
+    setDisposition(outcome);
   }
 
   async function setDisposition(outcome) {
@@ -950,16 +992,17 @@ export default function ClawDialer() {
               </tbody>
             </table>
           </div>
-          {/* Recent call timeline */}
+          {/* Recent call timeline — click to jump to recording */}
           {callLog.length > 0 && (
             <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:2,overflow:'hidden'}}>
-              <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)'}}>
+              <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                 <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:11,letterSpacing:3,color:'var(--text-mid)'}}>RECENT CALLS</span>
+                <button onClick={()=>setTab('recordings')} style={{padding:'3px 10px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--text-dim)',borderRadius:2}}>VIEW ALL + RECORDINGS →</button>
               </div>
               {callLog.slice(0,15).map(entry => {
-                const c = {answered:'#2EFF9A',voicemail:'#6B7A8D',callback:'#FF6B2B',interested:'var(--teal)','not-interested':'#FF3B3B'}[entry.outcome]||'#6B7A8D';
+                const c = {answered:'#2EFF9A',voicemail:'#6B7A8D',callback:'#FF6B2B',interested:'var(--teal)',book_call:'var(--teal)','not-interested':'#FF3B3B'}[entry.outcome]||'#6B7A8D';
                 return (
-                  <div key={entry.id} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:10}}>
+                  <div key={entry.id} onClick={()=>setTab('recordings')} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:10,cursor:'pointer'}} onMouseEnter={e=>e.currentTarget.style.background='var(--surface2)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                     <div style={{width:6,height:6,borderRadius:'50%',background:c,flexShrink:0}}></div>
                     <div style={{flex:1}}>
                       <span style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:13,fontWeight:600}}>{entry.name||'Unknown'}</span>
@@ -968,6 +1011,7 @@ export default function ClawDialer() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:c}}>{entry.outcome?.toUpperCase()}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',minWidth:40,textAlign:'right'}}>{fmtTime(entry.duration||0)}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text-dim)',minWidth:80,textAlign:'right'}}>{fmtDate(entry.timestamp)}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--border2)'}}>▶</div>
                   </div>
                 );
               })}
@@ -1012,9 +1056,14 @@ export default function ClawDialer() {
                     {rec.recordingUrl && (
                       <div style={{marginBottom:14}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// AUDIO RECORDING</div>
-                        <audio key={rec.recordingSid||rec.callSid} controls style={{width:'100%',marginBottom:4}} preload="metadata">
+                        <audio key={rec.recordingSid||rec.callSid} controls style={{width:'100%',marginBottom:4}} preload="auto"
+                          onError={(e)=>{const p=e.target.parentNode;const fb=p.querySelector('.audio-fallback');if(fb)fb.style.display='block';}}
+                        >
                           <source src={`/api/recordings?action=stream&sid=${rec.recordingSid||rec.callSid}`} type="audio/mpeg" />
                         </audio>
+                        <div className="audio-fallback" style={{display:'none',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--text-dim)',marginTop:4}}>
+                          Audio failed to load — <a href={`/api/recordings?action=stream&sid=${rec.recordingSid||rec.callSid}`} target="_blank" rel="noreferrer" style={{color:'var(--teal)'}}>open in new tab</a>
+                        </div>
                       </div>
                     )}
                     {a && (
@@ -1054,7 +1103,7 @@ export default function ClawDialer() {
                     {/* Manual action buttons */}
                     <div style={{display:'flex',gap:8,marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
                       {rec.recordingUrl && !rec.transcript && (
-                        <button onClick={async(e)=>{e.stopPropagation();notify('Transcribing with Deepgram...','info');try{const r=await fetch('/api/recordings?action=transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({callSid:rec.callSid,recordingUrl:rec.recordingUrl,recordingSid:rec.recordingSid})});const d=await r.json();if(d.ok){notify('✅ Transcript ready — refresh to see it','success');}else notify(`Transcription failed: ${d.error}`,'warning');}catch(err){notify('Transcription error','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
+                        <button onClick={async(e)=>{e.stopPropagation();notify('Transcribing with Deepgram...','info');try{const r=await fetch('/api/recordings?action=transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({callSid:rec.callSid,recordingUrl:rec.recordingUrl,recordingSid:rec.recordingSid})});const d=await r.json();if(d.ok&&d.transcript){cacheTranscript(rec.callSid,d.transcript,d.analysis||null);setRecordings(prev=>prev.map(x=>x.callSid===rec.callSid?{...x,transcript:d.transcript,analysis:d.analysis||x.analysis}:x));notify('✅ Transcript saved','success');}else notify(`Transcription failed: ${d.error||'unknown error'}`,'warning');}catch(err){notify('Transcription error','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
                           🎙 TRANSCRIBE NOW
                         </button>
                       )}
