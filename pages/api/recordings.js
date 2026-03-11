@@ -55,7 +55,7 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
   const isTransBid = product.toLowerCase().includes('transbid');
 
   const subject = isVinHunter
-    ? `Your free lot audit — ${business || contactName || 'your dealership'}`
+    ? `4 things CARFAX can't check — ${business || contactName || 'your dealership'}`
     : isClaw
     ? `Your 21-agent AI system — ${business || contactName || 'your business'}`
     : isTransBid
@@ -64,29 +64,32 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
 
   const vinHunterBody = `
           <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
-            Good talking with you. Wanted to make sure you had everything in one place so you can take a look when you get a minute.
+            Good talking with you. Quick follow-up on what we discussed.
           </p>
-          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 20px;">
-            Here's the short version of what VinHunter does that CARFAX <em>structurally cannot</em>:
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 12px;">
+            CARFAX gives you a report. VinHunter gives you 4 things CARFAX <em>structurally cannot check</em>:
           </p>
           <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
               <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
-              <span style="font-size:14px;color:#333;margin-left:8px;">Active NHTSA federal investigations (CARFAX doesn't show these)</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Active NHTSA federal investigations</strong> — CARFAX doesn't show open investigations, only closed ones</span>
             </td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
               <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
-              <span style="font-size:14px;color:#333;margin-left:8px;">Cross-model complaint patterns across similar vehicles</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Cross-model complaint patterns</strong> — flags VINs from model lines with known hidden defects</span>
             </td></tr>
-            <tr><td style="padding:6px 0;border-bottom:1px solid #f0f0f0;">
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
               <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
-              <span style="font-size:14px;color:#333;margin-left:8px;">AI fraud detection + theft databases CARFAX doesn't access</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>AI fraud detection</strong> + theft databases CARFAX doesn't access</span>
             </td></tr>
-            <tr><td style="padding:6px 0;">
+            <tr><td style="padding:8px 0;">
               <span style="color:#14F1C6;font-weight:bold;font-size:14px;">✓</span>
-              <span style="font-size:14px;color:#333;margin-left:8px;">Google-indexed Trust Score page for every VIN on your lot — overnight</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Google-indexed Trust Score page</strong> for every VIN on your lot — built overnight, drives inbound buyers</span>
             </td></tr>
           </table>
+          <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
+            CARFAX charges <strong>$40–50 per report</strong>. Our Dealer Reports plan is <strong style="color:#14F1C6;">$49/mo flat</strong> — unlimited reports. Most dealers recoup the cost on the first report of the month.
+          </p>
           <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
             <tr><td style="background:#14F1C6;border-radius:3px;">
               <a href="https://vinledgerai.live/pricing" style="display:block;padding:14px 28px;color:#080A0F;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ See All Plans &amp; Pricing</a>
@@ -94,16 +97,14 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
           </table>
           <table width="100%" cellpadding="16" cellspacing="0" style="background:#f9f9f9;border-left:3px solid #14F1C6;margin:0 0 24px;">
             <tr><td>
-              <p style="font-size:12px;color:#888;margin:0 0 8px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">All Plans</p>
+              <p style="font-size:12px;color:#888;margin:0 0 8px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">Dealer Plans</p>
               <table width="100%" cellpadding="0" cellspacing="0">
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>Free</strong> — NHTSA decodes, recalls, Trust Score</td></tr>
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$4.99/mo</strong> — Full title history (what CARFAX charges $45/report for)</td></tr>
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$29/mo</strong> Verified Dealer — Badge + 10 branded VIN reports + QR stickers</td></tr>
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>$49/mo</strong> Dealer Reports — Unlimited branded reports + profit tracking</td></tr>
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong style="color:#14F1C6;">$99/mo</strong> Dealer Marketing — SEO pages for every VIN, lead capture, custom landing page (built free)</td></tr>
-                <tr><td style="padding:4px 0;font-size:13px;color:#333;"><strong>$249/mo</strong> Dealer Pro — Full shop CRM (replaces Tekmetric), repair orders, customer portal, AI diagnostics. $499 setup.</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong>Free</strong> — NHTSA decodes, recalls, Trust Score page</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong style="color:#14F1C6;">$49/mo</strong> — Unlimited branded VIN reports + profit tracking (replaces CARFAX)</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;border-bottom:1px solid #eee;"><strong style="color:#14F1C6;">$99/mo</strong> — SEO pages for every VIN on your lot, lead capture, custom landing page built free</td></tr>
+                <tr><td style="padding:4px 0;font-size:13px;color:#333;"><strong>$249/mo</strong> — Full shop CRM (replaces Tekmetric), repair orders, customer portal, AI diagnostics. $499 setup.</td></tr>
               </table>
-              <p style="font-size:12px;color:#14F1C6;margin:10px 0 0;font-weight:bold;">Founding partner rate locks forever — price never increases once you're in.</p>
+              <p style="font-size:12px;color:#14F1C6;margin:10px 0 0;font-weight:bold;">Founding partner rate locks forever — price never goes up once you're in.</p>
             </td></tr>
           </table>`;
 
@@ -291,15 +292,14 @@ export default async function handler(req, res) {
     return res.status(200).end();
   }
 
-  // ── SAVE CALL RECORD (called from twilio.js and agent.js) ─────────────────
+  // ── SAVE CALL RECORD (called from twilio.js on call completion) ────────────
   if (action === 'save' && req.method === 'POST') {
-    const { callSid, contactId, contactName, contactPhone, contactEmail, business, outcome, duration, script, notes } = req.body || {};
+    const { callSid, contactName, contactPhone, contactEmail, business, outcome, duration, script, notes } = req.body || {};
     const store = loadStore();
     const existing = store.recordings.findIndex(r => r.callSid === callSid);
     const record = {
       id: existing >= 0 ? store.recordings[existing].id : Date.now(),
       callSid,
-      contactId: contactId || (existing >= 0 ? store.recordings[existing].contactId : null),
       contactName,
       contactPhone,
       contactEmail,
@@ -315,29 +315,13 @@ export default async function handler(req, res) {
     };
     if (existing >= 0) store.recordings[existing] = record;
     else store.recordings.unshift(record);
+    // Keep last 500
     store.recordings = store.recordings.slice(0, 500);
     saveStore(store);
     return res.status(200).json({ ok: true });
   }
 
   // ── LIST RECORDINGS ────────────────────────────────────────────────────────
-  // ── OUTCOMES: returns call outcomes by contactId/phone for browser to sync ──
-  // Browser polls this while agent is running to update localStorage contact statuses
-  if (action === 'outcomes') {
-    const store = loadStore();
-    const since = req.query.since ? parseInt(req.query.since) : 0;
-    const recent = store.recordings
-      .filter(r => r.timestamp && new Date(r.timestamp).getTime() > since)
-      .map(r => ({
-        contactId: r.contactId || '',
-        contactPhone: r.contactPhone || '',
-        outcome: r.outcome,
-        duration: r.duration,
-        timestamp: r.timestamp,
-      }));
-    return res.status(200).json({ updates: recent, ts: Date.now() });
-  }
-
   if (action === 'list') {
     const store = loadStore();
     const limit = parseInt(req.query.limit || '50');
