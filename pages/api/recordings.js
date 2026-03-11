@@ -328,11 +328,42 @@ export default async function handler(req, res) {
     return res.status(200).json({ recordings: store.recordings.slice(0, limit), total: store.recordings.length });
   }
 
-  // ── GET PATTERN ANALYSIS ───────────────────────────────────────────────────
+  // ── GET PATTERN ANALYSIS — reads from client-sent callLog, NOT /tmp ─────────
   if (action === 'patterns') {
-    const store = loadStore();
-    const patterns = await analyzePatterns(store.recordings);
-    return res.status(200).json({ patterns, total: store.recordings.length });
+    // Accept POST with summaries from client (localStorage callLog)
+    // OR fall back to /tmp store if somehow populated
+    let summaries = [];
+    let total = 0;
+    if (req.method === 'POST' && req.body?.summaries) {
+      summaries = req.body.summaries;
+      total = req.body.total || summaries.length;
+    } else {
+      const store = loadStore();
+      total = store.recordings.length;
+      summaries = store.recordings
+        .filter(r => r.outcome)
+        .slice(0, 60)
+        .map(r => `[${r.outcome}] Script:${r.script||'?'} Duration:${r.duration||0}s`);
+    }
+    if (summaries.length < 2) {
+      return res.status(200).json({ patterns: null, total });
+    }
+    try {
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 600,
+        system: 'You analyze sales call outcome patterns. Return JSON only, no markdown. Format: {"top_objections":["top 3 objections or reasons for failure"],"top_signals":["top 3 buying signals or success patterns"],"best_opening":"what opening approach is working","best_product":"which product/script is converting best","win_rate_insight":"one key insight about win rate","script_recommendation":"specific script change to make right now","single_best_change":"the ONE thing that would most improve results"}',
+        messages: [{ role: 'user', content: `Analyze these ${total} sales call outcomes and give actionable coaching:
+${summaries.join('
+')}` }],
+      });
+      const text = response.content[0].text.trim().replace(/```json|```/g, '');
+      const patterns = JSON.parse(text);
+      return res.status(200).json({ patterns, total });
+    } catch(e) {
+      return res.status(200).json({ patterns: null, total, error: e.message });
+    }
   }
 
   // ── SEND BREVO EMAIL FOLLOW-UP ─────────────────────────────────────────────
