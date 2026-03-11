@@ -176,7 +176,7 @@ function PatternsPanel({ notify, totalCalls, callLog }) {
     setLoading(false);
   }
 
-  useEffect(() => { if (callLog?.length >= 2) loadPatterns(); }, [callLog?.length]);
+  useEffect(() => { if ((callLog?.length||0) >= 2) { loadPatterns(); } }, [callLog?.length]);
 
   return (
     <div style={{marginTop:16,background:'var(--surface)',border:'1px solid var(--teal)33',borderRadius:2,overflow:'hidden'}}>
@@ -188,7 +188,7 @@ function PatternsPanel({ notify, totalCalls, callLog }) {
       {loading ? (
         <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>Analyzing call patterns...</div>
       ) : !patterns ? (
-        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{(callLog?.length||0) < 2 ? `Need at least 2 calls to analyze. You have ${callLog?.length||0}.` : 'Click ↻ to analyze your call patterns.'}</div>
+        <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)'}}>{(callLog?.length||0) < 2 ? `Need at least 2 calls to analyze. You have ${callLog?.length||0}.` : `${callLog?.length} calls ready — hit ↻ to analyze`}</div>
       ) : (
         <div style={{padding:14,display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {patterns.single_best_change && (
