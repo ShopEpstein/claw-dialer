@@ -9,11 +9,11 @@ const DEFAULT_SCRIPTS = [
   {
     name: 'VINHUNTER', color: '#14F1C6',
     sections: [
-      { label: 'OPENER', text: "Hey — is this [CONTACT_NAME]? Real quick — AI calling on Chase's behalf from VinHunter. This call may be recorded. Quick question: are you the owner?" },
-      { label: 'HOOK', text: "Right now, when a buyer Googles one of your VINs before calling you — what do they find? We put a Trust Score and a Google-indexed page on every vehicle overnight. Stuff CARFAX structurally cannot check: active NHTSA investigations, cross-model complaint patterns, theft databases CARFAX doesn't touch." },
-      { label: 'DIFFERENTIATOR', text: "CARFAX charges $99-300/mo just for reports. We give unlimited reports, SEO pages for every VIN, lead capture, AND a full shop CRM — $249/mo. Or just the marketing tier at $99." },
-      { label: 'CLOSE', text: "Founding partner rate locks forever. Can I text you a 2-min breakdown? No call needed — just read it." },
-      { label: '🔀 CROSS-SELL → ECONOCLAW', text: "If they say yes to VinHunter: 'One more thing — we also run 21 AI agents for your business after hours. Handles lead follow-up, reviews, customer questions. $99/mo. Want me to include that in the text?'" }
+      { label: 'OPENER', text: "Hey, is this the owner or manager? Quick question about your inventory — CARFAX charges you $45 every single report. We do unlimited for $49 a month. Got 30 seconds?" },
+      { label: 'HOOK', text: "We also put a Google-indexed Trust Score page on every VIN on your lot overnight. When a buyer Googles your VIN before calling, they find YOUR page — not a competitor's. Plus we check things CARFAX structurally cannot: active federal investigations, AI fraud detection, theft databases they don't access." },
+      { label: 'FREE PROFILE', text: "Every dealer gets a free profile regardless. Takes 30 seconds to claim at vinledgerai.live. The $49/mo plan unlocks unlimited reports and the SEO pages." },
+      { label: 'CLOSE', text: "Want me to text you the free profile link right now? No commitment — just claim it and see what your lot looks like." },
+      { label: '🔀 CROSS-SELL → ECONOCLAW', text: "If they bite: 'One more thing — we also run 21 AI agents for your dealership after hours. Lead follow-up, reviews, customer questions — $99/mo. Want that in the text too?'" }
     ]
   },
   {
@@ -1271,7 +1271,8 @@ export default function ClawDialer() {
             <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
               <button onClick={() => exportCSV([['Name','Business','Phone','Outcome','Duration','Script','Notes','Time'],...callLog.map(c=>[c.name,c.business,c.phone,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'call-log.csv')} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>📥 EXPORT CALL LOG</button>
               <button onClick={() => exportCSV([['Name','Business','Phone','Email','Status','List'],...contacts.map(c=>[c.name,c.business_name,c.phone,c.email,c.status,c.list_name])],'contacts.csv')} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'transparent',color:'var(--text-dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:2}}>📥 EXPORT CONTACTS</button>
-              <button onClick={() => { if(confirm('Clear all call log and contacts? This cannot be undone.')) { setContacts([]); setCallLog([]); notify('All data cleared','warning'); } }} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'#FF3B3B',color:'white',border:'none',cursor:'pointer',borderRadius:2,marginLeft:'auto'}}>🗑 CLEAR ALL DATA</button>
+              <button onClick={() => { const cleaned = callLog.filter(e => parseInt(e.duration||0) > 0 || ['interested','callback','not-interested','book_call'].includes(e.outcome)); const removed = callLog.length - cleaned.length; setCallLog(cleaned); notify('Removed ' + removed + ' zero-duration junk entries','success'); }} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'#FF6B2B',color:'white',border:'none',cursor:'pointer',borderRadius:2,marginLeft:'auto'}}>🧹 CLEAR JUNK</button>
+              <button onClick={() => { if(confirm('Clear all call log and contacts? This cannot be undone.')) { setContacts([]); setCallLog([]); notify('All data cleared','warning'); } }} style={{padding:'8px 14px',fontFamily:'Barlow Condensed,sans-serif',fontSize:11,fontWeight:700,background:'#FF3B3B',color:'white',border:'none',cursor:'pointer',borderRadius:2}}>🗑 CLEAR ALL DATA</button>
             </div>
           </div>
         </div>
