@@ -1,6 +1,7 @@
 // pages/api/recordings.js
 // Call recording storage, transcript webhook, AI analysis, Brevo email follow-up
 import Anthropic from '@anthropic-ai/sdk';
+import twilio from 'twilio';
 import fs from 'fs';
 import path from 'path';
 
@@ -402,5 +403,123 @@ export default async function handler(req, res) {
     });
   }
 
+  // ── FETCH RECORDING LIST FROM TWILIO ──────────────────────────────────────
+  // Pulls real RecordingSid + RecordingUrl for a given CallSid or recent calls.
+  // Called by the UI to hydrate recordingUrl/recordingSid on each call log entry.
+  if (action === 'fetch-list') {
+    const { callSids } = req.body || {};
+    if (!callSids || !Array.isArray(callSids) || callSids.length === 0) {
+      return res.status(400).json({ error: 'Missing callSids array' });
+    }
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      // Fetch recordings for each callSid in parallel (max 20 at a time)
+      const batch = callSids.filter(Boolean).slice(0, 20);
+      const results = await Promise.allSettled(
+        batch.map(sid => client.recordings.list({ callSid: sid, limit: 1 }))
+      );
+      const map = {};
+      batch.forEach((sid, i) => {
+        const r = results[i];
+        if (r.status === 'fulfilled' && r.value.length > 0) {
+          const rec = r.value[0];
+          map[sid] = {
+            recordingSid: rec.sid,
+            recordingUrl: `https://api.twilio.com${rec.uri.replace('.json', '.mp3')}`,
+          };
+        }
+      });
+      return res.status(200).json({ ok: true, map });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── STREAM: Proxy Twilio audio to browser (Twilio requires auth) ───────────
+  if (action === 'stream') {
+    const { sid } = req.query; // recordingSid
+    if (!sid) return res.status(400).json({ error: 'Missing sid' });
+    try {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${sid}.mp3`;
+      const audioRes = await fetch(url, {
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        },
+      });
+      if (!audioRes.ok) {
+        return res.status(audioRes.status).json({ error: `Twilio returned ${audioRes.status}` });
+      }
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      const buffer = Buffer.from(await audioRes.arrayBuffer());
+      return res.status(200).send(buffer);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // ── TRANSCRIBE: Deepgram STT → Claude AI analysis ─────────────────────────
+  if (action === 'transcribe' && req.method === 'POST') {
+    const { callSid, recordingSid, recordingUrl, contactName, outcome } = req.body || {};
+    if (!recordingSid && !recordingUrl) return res.status(400).json({ error: 'Missing recordingSid or recordingUrl' });
+    try {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      // Build the MP3 URL from recordingSid if needed
+      const mp3Url = recordingUrl
+        ? (recordingUrl.endsWith('.mp3') ? recordingUrl : recordingUrl.replace('.json', '.mp3'))
+        : `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${recordingSid}.mp3`;
+
+      // 1. Fetch audio bytes from Twilio
+      const audioRes = await fetch(mp3Url, {
+        headers: {
+          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+        },
+      });
+      if (!audioRes.ok) throw new Error(`Twilio audio fetch failed: ${audioRes.status}`);
+      const audioBuffer = Buffer.from(await audioRes.arrayBuffer());
+
+      // 2. Send to Deepgram
+      const deepgramKey = process.env.DEEPGRAM_API_KEY;
+      if (!deepgramKey) throw new Error('DEEPGRAM_API_KEY not set');
+      const dgRes = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&punctuate=true&paragraphs=true&diarize=true&smart_format=true', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${deepgramKey}`,
+          'Content-Type': 'audio/mpeg',
+        },
+        body: audioBuffer,
+      });
+      if (!dgRes.ok) {
+        const errText = await dgRes.text();
+        throw new Error(`Deepgram error ${dgRes.status}: ${errText.slice(0, 200)}`);
+      }
+      const dgData = await dgRes.json();
+      const transcript = dgData?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs?.transcript
+        || dgData?.results?.channels?.[0]?.alternatives?.[0]?.transcript
+        || '';
+      if (!transcript) throw new Error('Deepgram returned empty transcript');
+
+      // 3. Claude AI analysis
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const aiRes = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 500,
+        system: `You analyze sales call transcripts. Return JSON only, no markdown.
+Format: {"summary":"2-sentence summary","sentiment":"positive|neutral|negative","objections":["list of objections raised"],"buying_signals":["list of buying signals"],"what_worked":"one thing that worked","what_to_improve":"one thing to improve","follow_up_action":"specific next step"}`,
+        messages: [{ role: 'user', content: `Outcome: ${outcome || 'unknown'}\nContact: ${contactName || 'unknown'}\n\nTranscript:\n${transcript}` }],
+      });
+      const analysisRaw = aiRes.content[0].text.trim().replace(/```json|```/g, '');
+      let analysis = null;
+      try { analysis = JSON.parse(analysisRaw); } catch(e) {}
+
+      return res.status(200).json({ ok: true, transcript, analysis });
+    } catch (err) {
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
-} 
+}
