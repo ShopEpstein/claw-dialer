@@ -1005,6 +1005,15 @@ export default function ClawDialer() {
                 </div>
                 {isOpen && (
                   <div style={{padding:'12px 14px',borderTop:'1px solid var(--border)',background:'var(--surface2)'}}>
+                    {/* Audio player — always show when recording exists */}
+                    {rec.recordingUrl && (
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// AUDIO RECORDING</div>
+                        <audio controls style={{width:'100%',marginBottom:4}}>
+                          <source src={`/api/recordings?action=stream&sid=${rec.recordingSid||rec.callSid}`} type="audio/mpeg" />
+                        </audio>
+                      </div>
+                    )}
                     {a && (
                       <div style={{marginBottom:14}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:8}}>// AI ANALYSIS</div>
@@ -1029,29 +1038,23 @@ export default function ClawDialer() {
                       </div>
                     )}
                     {rec.transcript && (
-                      <div>
+                      <div style={{marginBottom:14}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// TRANSCRIPT</div>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-mid)',lineHeight:1.8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:2,padding:'10px 12px',maxHeight:200,overflowY:'auto',whiteSpace:'pre-wrap'}}>{rec.transcript}</div>
                       </div>
                     )}
-                    {!a && !rec.transcript && (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)',lineHeight:1.8}}>
-                        <div style={{marginBottom:6}}>⏳ Transcript not yet available — Twilio processes transcriptions within ~5 minutes after the call ends.</div>
-                        {rec.recordingUrl && (
-                          <div>
-                            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// AUDIO RECORDING</div>
-                            <audio controls style={{width:'100%',marginBottom:4}}>
-                              <source src={rec.recordingUrl+'.mp3'} type="audio/mpeg" />
-                              <source src={rec.recordingUrl} type="audio/wav" />
-                            </audio>
-                            <a href={rec.recordingUrl+'.mp3'} target="_blank" rel="noreferrer" style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--teal)',textDecoration:'none'}}>↓ Download MP3</a>
-                          </div>
-                        )}
-                        {!rec.recordingUrl && <div style={{fontSize:9,opacity:0.6}}>Hit REFRESH in a few minutes to check for transcript.</div>}
+                    {!rec.transcript && (
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--text-dim)',marginBottom:10}}>
+                        {rec.recordingUrl ? '⏳ No transcript yet.' : '⏳ Recording processing — check back in a few minutes.'}
                       </div>
                     )}
                     {/* Manual action buttons */}
-                    <div style={{display:'flex',gap:8,marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)'}}>
+                    <div style={{display:'flex',gap:8,marginTop:10,paddingTop:10,borderTop:'1px solid var(--border)',flexWrap:'wrap'}}>
+                      {rec.recordingUrl && !rec.transcript && (
+                        <button onClick={async(e)=>{e.stopPropagation();notify('Transcribing with Deepgram...','info');try{const r=await fetch('/api/recordings?action=transcribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({callSid:rec.callSid,recordingUrl:rec.recordingUrl,recordingSid:rec.recordingSid})});const d=await r.json();if(d.ok){notify('✅ Transcript ready — refresh to see it','success');}else notify(`Transcription failed: ${d.error}`,'warning');}catch(err){notify('Transcription error','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
+                          🎙 TRANSCRIBE NOW
+                        </button>
+                      )}
                       {rec.contactEmail && (
                         <button onClick={async(e)=>{e.stopPropagation();try{const r=await fetch('/api/recordings?action=email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:rec.contactEmail,contactName:rec.contactName,script:rec.script})});const d=await r.json();notify(d.ok!==false?`📧 Email sent to ${rec.contactEmail}`:`Email failed`,'success');}catch{notify('Email failed','warning');}}} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--teal)44',background:'var(--teal)11',color:'var(--teal)',borderRadius:2,letterSpacing:1}}>
                           📧 SEND FOLLOW-UP EMAIL
