@@ -798,7 +798,7 @@ export default function ClawDialer() {
               </div>
               <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
                 {callState === 'idle' && (
-                  <button onClick={()=>startCall(true)} style={{padding:'11px 22px',fontFamily:'Bebas Neue,sans-serif',fontSize:14,letterSpacing:3,background:tcpaOk?'#2EFF9A':'#2EFF9A44',color:'#080A0F',border:'none',cursor:tcpaOk?'pointer':'not-allowed',borderRadius:2}}>📞 DIAL</button>
+                  <button onClick={()=>startCall(true)} style={{padding:'11px 22px',fontFamily:'Bebas Neue,sans-serif',fontSize:14,letterSpacing:3,background:'#2EFF9A',color:'#080A0F',border:'none',cursor:'pointer',borderRadius:2}}>📞 DIAL</button>
                 )}
                 {['dialing','connected'].includes(callState) && (
                   <>
@@ -1016,7 +1016,7 @@ export default function ClawDialer() {
                     {rec.recordingUrl && (
                       <div style={{marginBottom:14}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:2,marginBottom:6}}>// AUDIO RECORDING</div>
-                        <audio controls style={{width:'100%',marginBottom:4}}>
+                        <audio key={rec.recordingSid||rec.callSid} controls style={{width:'100%',marginBottom:4}} preload="metadata">
                           <source src={`/api/recordings?action=stream&sid=${rec.recordingSid||rec.callSid}`} type="audio/mpeg" />
                         </audio>
                       </div>
