@@ -597,15 +597,20 @@ export default function ClawDialer() {
     if (!agentModeRef.current || agentPausedRef.current) return;
     if (!isTCPAHour()) { setAgentMode(false); notify('⛔ Agent stopped — outside TCPA hours (8am–9pm)', 'warning'); return; }
     const today = new Date().toDateString();
-    // Build set of phone numbers already called today from call log
+    // Phones already called today from call log
     const calledTodayPhones = new Set(
       callLogRef.current.filter(e => new Date(e.timestamp).toDateString() === today).map(e => e.phone)
     );
     setContacts(prev => {
+      // Also block phones currently queued or in any non-new status (already handled this session)
+      const alreadyHandled = new Set(
+        prev.filter(c => c.status !== 'new' && c.status !== 'skipped').map(c => c.phone)
+      );
       const newOnes = prev.filter(c =>
         c.status === 'new' &&
         !c.dnc &&
-        !calledTodayPhones.has(c.phone)  // NEVER dial a number twice in one day
+        !calledTodayPhones.has(c.phone) &&
+        !alreadyHandled.has(c.phone)
       );
       if (newOnes.length === 0) {
         setAgentMode(false);
@@ -614,10 +619,9 @@ export default function ClawDialer() {
       }
       const target = newOnes[0];
       const idx = prev.indexOf(target);
-      // Mark as queued before dialing so agent never double-picks it
+      // Mark as queued immediately so no second agentNext can pick same contact
       const next = [...prev];
       next[idx] = { ...target, status: 'queued' };
-      // Dial after state settles
       setTimeout(() => {
         setActiveIdx(idx);
         activeIdxRef.current = idx;
