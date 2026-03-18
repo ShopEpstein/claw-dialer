@@ -3,127 +3,136 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const BASE = 'https://claw-dialer.vercel.app';
 const FROM = '+18559600110';
-const PITCH_URL = 'https://claw-dialer.vercel.app/CarFaxKillerf49.mp3';
-const CHASE_CELL = '+18503414324';
+const PITCH_URL = 'https://vinhunter-9518.twil.io/VinHunter.mp3';
 
-const SYSTEM_PROMPT = `You are calling auto dealerships on behalf of Chase Epstein to pitch VinHunter.
+const SYSTEM_PROMPT = `You are Chase, calling from Solana Solar Solutions. Friendly, confident, straight-talking. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
 
-PITCH: CARFAX charges $45 per report. VinHunter is $49 a month — unlimited reports, plus Google-indexed Trust Score pages for every VIN on their lot overnight, plus things CARFAX cannot check: active federal investigations, AI fraud detection, theft databases CARFAX doesn't access. Every dealer gets a free profile regardless.
+IMPORTANT: Always say "VinLedger AI Live" or "VinHunter" when discussing the VIN product — NEVER just "VinLedger" (that is a different company).
 
-GOAL: Get them to claim their free profile or agree to receive a text link. That's it.
+── PRODUCT 1: VINHUNTER (VinLedger AI Live) ──
+Free CARFAX alternative that checks things CARFAX structurally cannot — active NHTSA investigations, cross-model complaint patterns, AI fraud detection, theft databases CARFAX doesn't access. Also builds Google-indexed Trust Score pages for every VIN on a dealer's lot overnight, plus a full shop CRM.
+PRICING:
+- Free: NHTSA decodes, recalls, trust score
+- Pro Consumer: four ninety-nine a month — full title history (CARFAX charges forty-five per report)
+- Dealer Verified: twenty-nine a month — badge, 10 branded reports, QR stickers
+- Dealer Reports: forty-nine a month — unlimited reports, profit tracking
+- Dealer Marketing: ninety-nine a month — SEO pages every VIN, lead capture, custom landing page built free (PITCH THIS to pure dealerships)
+- Dealer Pro: two forty-nine plus four ninety-nine setup — full CRM replacing Tekmetric (PITCH THIS to repair shops and dealers with service dept)
+- Founding Partner rate locks forever at whatever tier they sign up at
 
-RULES:
-- 1-2 short sentences max per response. Plain spoken words only.
-- If asked if you are human or AI: say "I'm a voice assistant calling on Chase's behalf."
-- If asked who Chase is: "Chase runs VinHunter — free dealer profiles, forty-nine a month beats CARFAX."
-- If they already have CARFAX: "CARFAX charges per report. We are forty-nine a month unlimited, plus Google pages for every VIN they do not offer."
-- If not interested: "Totally fair — can I text you the free profile link? Takes thirty seconds to claim, no commitment."
-- If they want a human: respond only with ESCALATE
-- If they give their email address: respond only with SAVE_EMAIL:[the email address]
-- If they want the link or agree to claim profile: respond only with SEND_LINK
-- If they want to end the call: respond only with HANGUP
+── PRODUCT 2: ECONOCLAW ──
+21 specialized AI agents deployed to any business: customer service, content, research, outreach, analytics — working 24/7.
+PRICING: Five hundred setup plus ninety-nine a month (launch pricing). Agencies charge five thousand setup and fifteen hundred a month for the same thing.
 
-IVR / PHONE DIRECTORY DETECTION — CRITICAL:
-If the speech sounds like an automated phone system, answering service, or IVR menu — examples:
-"thank you for calling", "press 1 for", "para español", "please hold", "please listen carefully",
-"dial by name", "our menu has changed", "press or say", "if you know your party's extension",
-"to reach", "our hours are", "leave a message", "after the tone", "voicemail", "not available right now"
-— respond only with: PRESS_DIGIT:1
+── PRODUCT 3: WHITEGLOVECLAW ──
+Full white-glove AI infrastructure deployment. Identical to SetupClaw (market leader) at 20% less.
+PRICING: Hosted VPS twenty-four hundred. Mac Mini remote four thousand. In-person forty-eight hundred. Additional agents twelve hundred each.
 
-If it sounds like a live human receptionist or gatekeeper (not a menu, but a person answering),
-say: "Hi, can you connect me with whoever handles your used car inventory or marketing? Thanks."
+── PRODUCT 4: RENTACLAW ──
+Rent AI agents instead of committing. Nine dollars a day, forty-nine a week, a hundred forty-nine a month, nine ninety-nine a year. Also accepts IOU and revenue share.
 
-Do NOT escalate for IVR menus or answering services. Only ESCALATE when a live human explicitly
-asks to speak with a real person or your supervisor.`;
+── PRODUCT 5: BUDGETCLAW ──
+Same 21 agents on budget plans. Micro one ninety-nine, Standard two ninety-nine, Pro four ninety-nine a month. No setup fee on annual. Replaces Zapier, HubSpot, ChatGPT, VA costs.
+
+── PRODUCT 6: CLAWAWAY ──
+Fully flexible. Build anything, pay anything, pay however — card, Zelle, crypto, rev share, barter, equity. No rigid packages.
+
+── PRODUCT 7: TRANSBID LIVE ──
+Public contract exchange for contractors. Zero upfront — zero-point-five percent only when you win a job. HomeAdvisor charges fifteen to thirty percent hidden through inflated quotes. Veterans pay zero percent forever.
+
+── READ THE PROSPECT — ROUTE TO RIGHT PRODUCT ──
+- Dealer/auto business (sales only) → VinHunter Dealer Marketing at ninety-nine
+- Dealer/auto with service dept → VinHunter Dealer Pro at two forty-nine
+- Any business wanting AI automation → EconoClaw at ninety-nine a month
+- Executive team, funded company → WhiteGloveClaw
+- Tight budget, wants to try → RentAClaw forty-nine a week
+- CFO type, wants to see numbers → BUDGETclaw
+- "Tell me what you need" / unsure → ClawAway
+- Contractor / home services → TransBid Live
+
+── CROSS-SELL RULES ──
+- VinHunter dealer says yes → mention EconoClaw for their leads and reviews
+- EconoClaw interest from auto dealer → mention VinHunter for their inventory pages
+- Contractor → TransBid first, EconoClaw second
+- RentAClaw interest → upsell to EconoClaw after trial, rental payments count toward setup fee
+- BUDGETclaw → upsell to EconoClaw launch pricing before window closes
+
+── OBJECTION HANDLERS ──
+- "We already have CARFAX" → "CARFAX gives you reports. VinHunter gives you reports plus Google pages for every VIN, plus things CARFAX structurally cannot check."
+- "We use Tekmetric" → "We replace Tekmetric. Full shop CRM, two forty-nine a month. Most shops pay four hundred plus for Tekmetric alone."
+- "Too expensive" → "We have a free tier and plans starting at twenty-nine a month. What does your lot look like?"
+- "Not interested" → "Totally fair. Can I just text you a two-minute breakdown? No commitment."
+- "Already have AI tools" → "What are you paying for them? We probably replace all of them for less than you're paying for one."
+- "Who is this?" → "This is Chase — we build AI systems and free Trust Score pages for dealers. Quick question before I let you go..."
+- "Call back later" → "Of course. Can I text you the link in the meantime?"
+
+When they agree to receive a link respond with only: SEND_LINK
+When they firmly want to end the call respond with only: HANGUP`;
 
 function escapeXml(str) {
   return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 }
 
-function say(text) {
-  return '<Say voice="Polly.Matthew-Neural">' + escapeXml(text) + '</Say>';
-}
-
-function buildGather(sayText, history, to, contactId) {
+function buildGather(sayText, history, to) {
   const historyParam = encodeURIComponent(JSON.stringify(history));
-  const url = BASE + '/api/twilio?action=ai-respond&to=' + encodeURIComponent(to) + '&contactId=' + encodeURIComponent(contactId||'') + '&history=' + historyParam;
-  // input="speech dtmf" so IVR keypresses also trigger the action
-  return '<?xml version="1.0" encoding="UTF-8"?><Response><Gather input="speech dtmf" action="' + escapeXml(url) + '" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10" numDigits="1">' + say(sayText) + '</Gather>' + say("I didn't catch that. No problem, have a great day.") + '<Hangup/></Response>';
-}
-
-function pressDigit(digit, history, to, contactId) {
-  // Play the digit then re-enter the gather loop to catch whatever comes next
-  const historyParam = encodeURIComponent(JSON.stringify(history));
-  const url = BASE + '/api/twilio?action=ai-respond&to=' + encodeURIComponent(to) + '&contactId=' + encodeURIComponent(contactId||'') + '&history=' + historyParam;
-  return '<?xml version="1.0" encoding="UTF-8"?><Response><Play digits="' + escapeXml(String(digit)) + '"/><Gather input="speech dtmf" action="' + escapeXml(url) + '" method="POST" speechTimeout="3" speechModel="phone_call" enhanced="true" timeout="10" numDigits="1">' + say('') + '</Gather>' + say("I didn't catch that. No problem, have a great day.") + '<Hangup/></Response>';
-}
-
-function hangupXml(text) {
-  return '<?xml version="1.0" encoding="UTF-8"?><Response>' + say(text) + '<Hangup/></Response>';
-}
-
-async function sendSMS(to, body) {
-  try {
-    const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    await client.messages.create({ to, from: FROM, body });
-  } catch(e) { console.error('SMS error:', e.message); }
+  const url = `${BASE}/api/twilio?action=ai-respond&amp;to=${encodeURIComponent(to)}&amp;history=${historyParam}`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Gather input="speech" action="${url}" method="POST" speechTimeout="2" speechModel="phone_call" enhanced="true" timeout="8">
+    <Say voice="Polly.Matthew">${escapeXml(sayText)}</Say>
+  </Gather>
+  <Say voice="Polly.Matthew">I didn't catch that. No problem, have a great day.</Say>
+  <Hangup/>
+</Response>`;
 }
 
 async function saveCallRecord(data) {
   try {
-    await fetch(BASE + '/api/recordings?action=save', {
+    await fetch(`${BASE}/api/recordings?action=save`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-  } catch(e) { console.error('Save record error:', e.message); }
+  } catch (e) {
+    console.error('Failed to save call record:', e.message);
+  }
 }
 
 export default async function handler(req, res) {
   const { action } = req.query;
 
-  // AI TWIML: opening pitch
+  // ── AI TWIML: Opening line (includes TCPA recording disclosure) ───────────
   if (action === 'ai-twiml') {
     res.setHeader('Content-Type', 'text/xml');
     const to = req.query.to || '';
-    const contactId = req.query.contactId || '';
     return res.status(200).send(buildGather(
-      "Hey, is this the owner or manager? Quick question about your inventory — CARFAX charges you forty-five dollars every single report. We do unlimited for forty-nine a month. Got thirty seconds?",
-      [], to, contactId
+      "Hey, is this the owner? This call may be recorded for quality purposes. This is Chase calling from VinHunter — VinLedger AI Live — quick question for you.",
+      [], to
     ));
   }
 
-  // AI RESPOND: Claude handles conversation
+  // ── AI RESPOND: Claude generates next line ────────────────────────────────
   if (action === 'ai-respond') {
     res.setHeader('Content-Type', 'text/xml');
-    // Check for DTMF input (someone pressed a key on their end)
-    const dtmf = (req.body?.Digits || '').trim();
-    const speech = (req.body?.SpeechResult || '').trim();
+    const speech = req.body?.SpeechResult || '';
     const to = req.query.to || '';
-    const contactId = req.query.contactId || '';
     let history = [];
     try { history = JSON.parse(decodeURIComponent(req.query.history || '[]')); } catch(e) {}
 
-    // If they pressed a digit on their keypad (not us), treat as "yes I'm here" and pitch
-    if (dtmf && !speech) {
-      history.push({ role: 'user', content: `[pressed ${dtmf}]` });
+    if (speech) history.push({ role: 'user', content: speech });
+
+    if (!speech) {
       return res.status(200).send(buildGather(
-        "Hey — is this the owner or manager? CARFAX charges forty-five dollars per report. We do unlimited for forty-nine a month. Got thirty seconds?",
-        history, to, contactId
+        "Sorry, I didn't catch that. Are you the owner of the dealership?",
+        history, to
       ));
     }
-
-    if (!speech && !dtmf) {
-      return res.status(200).send(buildGather("Sorry, I didn't catch that. Are you the owner or manager?", history, to, contactId));
-    }
-
-    history.push({ role: 'user', content: speech || `[pressed ${dtmf}]` });
 
     try {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 100,
+        max_tokens: 120,
         system: SYSTEM_PROMPT,
         messages: history,
       });
@@ -131,89 +140,123 @@ export default async function handler(req, res) {
       const reply = response.content[0].text.trim();
       history.push({ role: 'assistant', content: reply });
 
-      // IVR: press a digit to navigate the menu
-      if (reply.startsWith('PRESS_DIGIT:')) {
-        const digit = reply.replace('PRESS_DIGIT:', '').trim().charAt(0) || '1';
-        return res.status(200).send(pressDigit(digit, history, to, contactId));
-      }
-
       if (reply.includes('SEND_LINK')) {
-        await sendSMS(to, 'Chase @ VinHunter: Claim your free dealer profile + $49/mo beats CARFAX: https://vinledgerai.live/pricing — Reply STOP to opt out.');
-        return res.status(200).send(buildGather(
-          "Perfect, just texted you the link. What is the best email to send you the full breakdown?",
-          history, to, contactId
-        ));
-      }
-
-      if (reply.includes('SAVE_EMAIL:')) {
-        const email = reply.replace('SAVE_EMAIL:', '').trim();
-        if (email) {
+        if (to) {
           try {
-            await fetch(BASE + '/api/recordings?action=email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ to: email, contactName: '', business: '', product: 'VINHUNTER', contactId }),
+            const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+            await client.messages.create({
+              to, from: FROM,
+              body: `Chase @ VinHunter: Here's your free lot audit — see what buyers find when they Google your VINs: https://vinledgerai.live/pricing Founding rate locks forever. Reply STOP to opt out.`
             });
-          } catch(e) {}
+          } catch(e) { console.error('SMS error:', e.message); }
         }
-        return res.status(200).send(hangupXml("Perfect. Sending that over now. Have a great day."));
-      }
-
-      if (reply.includes('ESCALATE')) {
-        await sendSMS(CHASE_CELL, '🔥 ESCALATE: ' + to + ' wants to speak with you now — VinHunter call.');
-        return res.status(200).send(hangupXml("Absolutely. I will have Chase call you right back. Have a great day."));
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew">Perfect, sending that to you now. Talk soon.</Say>
+  <Hangup/>
+</Response>`);
       }
 
       if (reply.includes('HANGUP')) {
-        return res.status(200).send(hangupXml("No problem at all. Have a great day."));
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew">No problem at all. Have a great day.</Say>
+  <Hangup/>
+</Response>`);
       }
 
-      return res.status(200).send(buildGather(reply, history, to, contactId));
+      return res.status(200).send(buildGather(reply, history, to));
 
     } catch(err) {
       console.error('Claude error:', err.message);
-      return res.status(200).send(hangupXml("Sorry about that. Have a great day."));
+      return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew">Sorry about that. Have a great day.</Say>
+  <Hangup/>
+</Response>`);
     }
   }
 
-  // TWIML: MP3 robocall — play once, hang up, wait for them to text back
+  // ── TWIML: Original MP3 flow ──────────────────────────────────────────────
   if (action === 'twiml') {
     res.setHeader('Content-Type', 'text/xml');
-    return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response><Play>' + PITCH_URL + '</Play><Hangup/></Response>');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Play>${PITCH_URL}</Play>
+  <Gather numDigits="1" action="${BASE}/api/twilio?action=gather" method="POST" timeout="8">
+    <Play>${PITCH_URL}</Play>
+  </Gather>
+  <Say voice="Polly.Matthew">No problem. Have a great day.</Say>
+  <Hangup/>
+</Response>`);
   }
 
-  // AMD: voicemail detected — drop MP3
+  // ── GATHER: Press 1 → SMS ─────────────────────────────────────────────────
+  if (action === 'gather') {
+    const digit = req.body?.Digits;
+    const customerPhone = req.body?.To || req.body?.Called || req.body?.From;
+    if (digit === '1' && customerPhone) {
+      try {
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await client.messages.create({
+          to: customerPhone, from: FROM,
+          body: `Chase @ VinHunter: Free audit shows what buyers find when they Google your VINs. See all plans (free to $249/mo): https://vinledgerai.live/pricing Reply STOP to opt out.`
+        });
+      } catch(err) { console.error('SMS error:', err.message); }
+    }
+    res.setHeader('Content-Type', 'text/xml');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Matthew">${digit === '1' ? 'Perfect. Check your texts in just a moment. Talk soon.' : 'No problem. Have a great day.'}</Say>
+  <Hangup/>
+</Response>`);
+  }
+
+  // ── AMD: Voicemail drop ───────────────────────────────────────────────────
   if (action === 'amd') {
     const { CallSid, AnsweredBy } = req.body || {};
-    const isVM = ['machine_end_beep','machine_end_silence','machine_end_other'].includes(AnsweredBy);
-    if (isVM && CallSid) {
+    if (AnsweredBy === 'machine_end_beep' || AnsweredBy === 'machine_end_silence' || AnsweredBy === 'machine_end_other') {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.calls(CallSid).update({
-          twiml: '<?xml version="1.0" encoding="UTF-8"?><Response><Play>' + PITCH_URL + '</Play><Hangup/></Response>'
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Play>${PITCH_URL}</Play><Hangup/></Response>`
         });
-      } catch(err) { console.error('AMD error:', err.message); }
+      } catch(err) { console.error('Voicemail drop error:', err.message); }
     }
     return res.status(200).end();
   }
 
-  // STATUS: call completed — log outcome once
+  // ── STATUS: fired by Twilio on call events ────────────────────────────────
   if (action === 'status') {
     const { CallSid, CallStatus, CallDuration, To } = req.body || {};
     const contactName = req.query.contactName ? decodeURIComponent(req.query.contactName) : '';
     const contactEmail = req.query.contactEmail ? decodeURIComponent(req.query.contactEmail) : '';
     const contactId = req.query.contactId ? decodeURIComponent(req.query.contactId) : '';
     const script = req.query.script ? decodeURIComponent(req.query.script) : '';
+
+    console.log(`Call ${CallSid} → ${CallStatus} (${CallDuration}s)`);
+
     const terminal = ['completed','failed','busy','no-answer'];
     if (terminal.includes(CallStatus)) {
       const dur = parseInt(CallDuration || 0);
-      const outcome = CallStatus === 'completed' && dur >= 8 ? 'answered' : 'voicemail';
-      await saveCallRecord({ callSid: CallSid, contactName, contactPhone: To, contactEmail, contactId, script, outcome, duration: CallDuration, notes: '' });
+      const outcome = CallStatus === 'completed' && dur >= 15 ? 'answered' : 'voicemail';
+      await saveCallRecord({
+        callSid: CallSid,
+        contactName,
+        contactPhone: To,
+        contactEmail,
+        contactId,
+        script,
+        outcome,
+        duration: CallDuration,
+        notes: '',
+      });
     }
+
     return res.status(200).end();
   }
 
-  // CALLSTATUS: browser polls this to detect call end
+  // ── CALLSTATUS ────────────────────────────────────────────────────────────
   if (action === 'callstatus') {
     const { sid } = req.query;
     if (!sid) return res.status(400).json({ error: 'Missing sid' });
@@ -224,19 +267,7 @@ export default async function handler(req, res) {
     } catch(err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // INBOUND SMS
-  if (action === 'inbound-sms') {
-    const { From, Body } = req.body || {};
-    const upper = (Body || '').trim().toUpperCase();
-    console.log('Inbound SMS from ' + From + ': ' + Body);
-    if (['STOP','STOPALL','UNSUBSCRIBE','CANCEL','END','QUIT'].includes(upper)) {
-      console.log('DNC: ' + From);
-    }
-    res.setHeader('Content-Type', 'text/xml');
-    return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
-  }
-
-  // INBOX
+  // ── INBOX ─────────────────────────────────────────────────────────────────
   if (action === 'inbox') {
     try {
       const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
@@ -250,7 +281,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const body = req.body || {};
 
-  // CALL: initiate outbound
+  // ── CALL ──────────────────────────────────────────────────────────────────
   if (action === 'call') {
     const { to, contactName, contactEmail, contactId, aiMode, script } = body;
     if (!to) return res.status(400).json({ error: 'Missing to number' });
@@ -264,24 +295,24 @@ export default async function handler(req, res) {
         to,
         from: FROM,
         url: aiMode
-          ? BASE + '/api/twilio?action=ai-twiml&to=' + encodeURIComponent(to) + '&contactId=' + idParam
-          : BASE + '/api/twilio?action=twiml',
+          ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}`
+          : `${BASE}/api/twilio?action=twiml`,
         record: true,
-        recordingStatusCallback: BASE + '/api/recordings?action=transcript-webhook',
+        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
         recordingStatusCallbackMethod: 'POST',
         recordingChannels: 'mono',
-        statusCallback: BASE + '/api/twilio?action=status&contactName=' + nameParam + '&contactEmail=' + emailParam + '&contactId=' + idParam + '&script=' + scriptParam,
+        statusCallback: `${BASE}/api/twilio?action=status&contactName=${nameParam}&contactEmail=${emailParam}&contactId=${idParam}&script=${scriptParam}`,
         statusCallbackMethod: 'POST',
-        statusCallbackEvent: ['completed','failed','busy','no-answer'],
+        statusCallbackEvent: ['completed', 'failed', 'busy', 'no-answer'],
         machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: BASE + '/api/twilio?action=amd',
+        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactName=${nameParam}`,
         asyncAmdStatusCallbackMethod: 'POST',
       });
       return res.status(200).json({ success: true, callSid: call.sid });
     } catch(err) { return res.status(500).json({ error: err.message }); }
   }
 
-  // SMS: send outbound
+  // ── SMS ───────────────────────────────────────────────────────────────────
   if (action === 'sms') {
     const { to, body: smsBody } = body;
     if (!to || !smsBody) return res.status(400).json({ error: 'Missing to or body' });
@@ -290,6 +321,28 @@ export default async function handler(req, res) {
       const message = await client.messages.create({ to, from: FROM, body: smsBody });
       return res.status(200).json({ success: true, messageSid: message.sid, status: message.status });
     } catch(err) { return res.status(500).json({ error: err.message }); }
+  }
+
+  // ── SAVE CARECIRCLE LEAD ──────────────────────────────────────────────────
+  if (action === 'save-carecircle-lead') {
+    const { name, phone, email, business_name, notes } = body;
+    if (!phone) return res.status(400).json({ error: 'Missing phone' });
+    try {
+      await saveCallRecord({
+        callSid: null,
+        contactName: name || '',
+        contactPhone: phone,
+        contactEmail: email || '',
+        business: business_name || '',
+        outcome: 'new-lead',
+        duration: 0,
+        script: 'CareCircle',
+        notes: notes || '',
+      });
+      return res.status(200).json({ ok: true, message: 'CareCircle lead saved' });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   }
 
   return res.status(400).json({ error: 'Unknown action' });
