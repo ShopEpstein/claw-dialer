@@ -6,9 +6,9 @@ const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
   ? JSON.parse(process.env.NEXT_PUBLIC_REPS)
   : [
       { id: 'chase',    name: 'Chase Turnquest',       pin: '5325', role: 'admin' },
-      { id: 'shawn',    name: 'Shawn Rogers',           pin: '5768', role: 'admin' },
-      { id: 'malik',    name: 'Malik McCauley',         pin: '8322', role: 'admin' },
-      { id: 'sagar',    name: 'Sagar Kapoor',           pin: '4719', role: 'admin' },
+      { id: 'shawn',    name: 'Shawn Rogers',           pin: '5768', role: 'rep'   },
+      { id: 'malik',    name: 'Malik McCauley',         pin: '8322', role: 'rep'   },
+      { id: 'sagar',    name: 'Sagar Kapoor',           pin: '4719', role: 'rep'   },
       { id: 'karen',    name: 'Karen Wince',            pin: '6048', role: 'rep'   },
       { id: 'shannon',  name: 'Shannon Jones',          pin: '8921', role: 'rep'   },
       { id: 'christian',name: 'Christian Daniel Loeza', pin: '7245', role: 'rep'   },
