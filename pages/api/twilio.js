@@ -269,5 +269,20 @@ export default async function handler(req, res) {
 </Response>`);
   }
 
+  if (action === 'inbound') {
+    const caller = req.body?.From || req.body?.Caller || 'unknown';
+    res.setHeader('Content-Type', 'text/xml');
+    // Fire SMS notification async — don't await so TwiML responds immediately
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      client.messages.create({
+        to: '+18503414324',
+        from: FROM,
+        body: `📞 INBOUND CALL: ${caller} just called CareCircle. Call them back now.`,
+      }).catch(() => {});
+    } catch {}
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Thanks for calling CareCircle Network. We connect families with independent care advocates across Florida. Someone from our team will call you right back — we're noting your number now.</Say><Hangup/></Response>`);
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
