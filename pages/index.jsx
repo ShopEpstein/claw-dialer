@@ -509,6 +509,7 @@ export default function CareCircleDialer() {
     if (!activeContact) return;
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
+    if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('idle');
     const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
     const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null };
