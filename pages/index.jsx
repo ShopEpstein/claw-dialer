@@ -8,12 +8,16 @@ const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
       { id: 'chase',    name: 'Chase Turnquest',       pin: '5325', role: 'admin' },
       { id: 'shawn',    name: 'Shawn Rogers',           pin: '5768', role: 'admin' },
       { id: 'malik',    name: 'Malik McCauley',         pin: '8322', role: 'admin' },
+      { id: 'sagar',    name: 'Sagar Kapoor',           pin: '4719', role: 'admin' },
       { id: 'karen',    name: 'Karen Wince',            pin: '6048', role: 'rep'   },
-      { id: 'shannon',  name: 'Shannon Joned',          pin: '8921', role: 'rep'   },
+      { id: 'shannon',  name: 'Shannon Jones',          pin: '8921', role: 'rep'   },
       { id: 'christian',name: 'Christian Daniel Loeza', pin: '7245', role: 'rep'   },
       { id: 'brittany', name: 'Brittany Lasley',        pin: '3648', role: 'rep'   },
       { id: 'jessica',  name: 'Jessica Blazer',         pin: '5976', role: 'rep'   },
       { id: 'chenice',  name: 'Chenice Griffith-Turney',pin: '5978', role: 'rep'   },
+      { id: 'erica',    name: 'Erica Leverett',         pin: '3817', role: 'rep'   },
+      { id: 'lisa',     name: 'Lisa Johnston',          pin: '7153', role: 'rep'   },
+      { id: 'megan',    name: 'Megan Harris',           pin: '2946', role: 'rep'   },
     ];
 
 // ─── SCRIPTS ──────────────────────────────────────────────────────────────────
