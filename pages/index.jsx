@@ -737,39 +737,117 @@ export default function CareCircleDialer() {
 
           {/* LEFT: CONTACTS */}
           <div style={{borderRight:'1px solid var(--border)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-            <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',flexDirection:'column',gap:6}}>
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
-                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
-              <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                {['new','all','called','callback','interested','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
-                  <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
-                    {f}
-                  </button>
-                ))}
-              </div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{allFiltered.length} contacts · {contactType==='b2b'?'Providers':'Families'}</div>
-            </div>
-            <div style={{flex:1,overflowY:'auto'}}>
-              {allFiltered.length === 0 ? (
-                <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',lineHeight:2}}>{contactsLoading ? 'Loading contacts...' : 'No contacts.'}<br/>{!contactsLoading && 'Upload CSV in Admin tab.'}</div>
-              ) : allFiltered.map(c => (
-                <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?'2px solid var(--green)':'2px solid transparent',transition:'all 0.1s'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    <div style={{width:26,height:26,borderRadius:3,background:`${statusColor[c.status]||'var(--green)'}18`,border:`1px solid ${statusColor[c.status]||'var(--green)'}33`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:statusColor[c.status]||'var(--green)',flexShrink:0}}>
-                      {(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'No Name'}</div>
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.business_name||c.phone||''}</div>
-                    </div>
-                    <div style={{width:5,height:5,borderRadius:'50%',background:statusColor[c.status]||'var(--border2)',flexShrink:0}}></div>
+            {isAdmin ? (
+              // ── ADMIN: full scrollable list ──────────────────────────────
+              <>
+                <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',flexDirection:'column',gap:6}}>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
+                    style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
+                  <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                    {['new','all','called','callback','interested','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
+                      <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
+                        {f}
+                      </button>
+                    ))}
                   </div>
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{allFiltered.length} contacts · {contactType==='b2b'?'Providers':'Families'}</div>
                 </div>
-              ))}
-            </div>
-            <div style={{padding:'8px 12px',borderTop:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:6}}>
-              <button onClick={() => setShowAddModal(true)} style={{flex:1,padding:'6px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:500,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:3}}>+ Add Contact</button>
-            </div>
+                <div style={{flex:1,overflowY:'auto'}}>
+                  {allFiltered.length === 0 ? (
+                    <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',lineHeight:2}}>{contactsLoading ? 'Loading contacts...' : 'No contacts.'}<br/>{!contactsLoading && 'Upload CSV in Admin tab.'}</div>
+                  ) : allFiltered.map(c => (
+                    <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?'2px solid var(--green)':'2px solid transparent',transition:'all 0.1s'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <div style={{width:26,height:26,borderRadius:3,background:`${statusColor[c.status]||'var(--green)'}18`,border:`1px solid ${statusColor[c.status]||'var(--green)'}33`,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:statusColor[c.status]||'var(--green)',flexShrink:0}}>
+                          {(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||'No Name'}</div>
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.business_name||c.phone||''}</div>
+                        </div>
+                        <div style={{width:5,height:5,borderRadius:'50%',background:statusColor[c.status]||'var(--border2)',flexShrink:0}}></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{padding:'8px 12px',borderTop:'1px solid var(--border)',background:'var(--surface)',display:'flex',gap:6}}>
+                  <button onClick={() => setShowAddModal(true)} style={{flex:1,padding:'6px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:500,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:3}}>+ Add Contact</button>
+                </div>
+              </>
+            ) : (
+              // ── REP: bucket counts + next lead + follow-up queue ─────────
+              <>
+                {/* Search */}
+                <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',background:'var(--surface)'}}>
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or number..."
+                    style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
+                </div>
+
+                {/* Search results (only when searching) */}
+                {search && (
+                  <div style={{flex:1,overflowY:'auto',borderBottom:'1px solid var(--border)'}}>
+                    {allFiltered.length === 0
+                      ? <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No results</div>
+                      : allFiltered.map(c => (
+                        <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?'2px solid var(--green)':'2px solid transparent'}}>
+                          <div style={{fontSize:12,fontWeight:500}}>{c.name||c.phone}</div>
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:1}}>{c.phone} · <span style={{color:statusColor[c.status]||'var(--dim)'}}>{c.status}</span></div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+
+                {!search && (
+                  <div style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:0}}>
+                    {/* Bucket counts */}
+                    <div style={{padding:'12px 12px 8px',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:8}}>Lead Queue</div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                        {[
+                          ['New', contacts.filter(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--green)'],
+                          ['Callback', contacts.filter(c => c.status==='callback').length, 'var(--orange)'],
+                          ['Interested', contacts.filter(c => c.status==='interested').length, 'var(--gl)'],
+                          ['Voicemail', contacts.filter(c => c.status==='voicemail' && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--blue)'],
+                        ].map(([label, count, color]) => (
+                          <div key={label} style={{padding:'8px 10px',background:'var(--surface2)',border:`1px solid ${color}22`,borderRadius:3,textAlign:'center'}}>
+                            <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color}}>{count}</div>
+                            <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:2,textTransform:'uppercase',letterSpacing:1}}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Next Lead button */}
+                    <div style={{padding:'12px'}}>
+                      <button onClick={() => {
+                        const next = contacts.find(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000));
+                        if (next) selectContact(next);
+                        else notify('No new leads available', 'warning');
+                      }} style={{width:'100%',padding:'11px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5}}>
+                        → Next Lead
+                      </button>
+                    </div>
+
+                    {/* Follow-up queue: callback + interested */}
+                    {contacts.filter(c => ['callback','interested'].includes(c.status)).length > 0 && (
+                      <div style={{borderTop:'1px solid var(--border)'}}>
+                        <div style={{padding:'8px 12px',fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase'}}>My Follow-ups</div>
+                        {contacts.filter(c => ['callback','interested'].includes(c.status)).map(c => (
+                          <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?`2px solid ${statusColor[c.status]}`:'2px solid transparent'}}>
+                            <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||c.phone}</div>
+                            <div style={{display:'flex',gap:6,marginTop:2,alignItems:'center'}}>
+                              <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:statusColor[c.status],textTransform:'uppercase'}}>{c.status}</span>
+                              {c.notes && <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.notes.slice(0,30)}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* CENTER: DIALER */}
