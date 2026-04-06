@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 
 // ─── REPS — edit here or via REPS env variable ────────────────────────────────
@@ -217,6 +217,30 @@ function LoginScreen({ onLogin }) {
   );
 }
 
+// Small component: fetches + plays a recording by callSid
+function InterestedRecording({ callSid }) {
+  const [state, setState] = React.useState('idle'); // idle | loading | found | none | error
+  const [recordingSid, setRecordingSid] = React.useState(null);
+  const load = async () => {
+    setState('loading');
+    try {
+      const r = await fetch('/api/recordings?action=fetch-list', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ callSids: [callSid] }),
+      });
+      const d = await r.json();
+      const match = (d.list || []).find(x => x.callSid === callSid);
+      if (match) { setRecordingSid(match.recordingSid); setState('found'); }
+      else setState('none');
+    } catch { setState('error'); }
+  };
+  if (state === 'idle') return <button onClick={load} style={{fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.08)',color:'var(--green)',borderRadius:2,padding:'4px 10px',letterSpacing:0.5}}>▶ LOAD RECORDING</button>;
+  if (state === 'loading') return <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>Loading…</span>;
+  if (state === 'none') return <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>No recording found</span>;
+  if (state === 'error') return <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--red)'}}>Error loading</span>;
+  return <audio controls src={`/api/recordings?action=stream&sid=${recordingSid}`} style={{width:'100%',height:32,marginTop:4}} />;
+}
+
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function CareCircleDialer() {
   const [rep, setRep] = useState(null);
@@ -257,6 +281,7 @@ export default function CareCircleDialer() {
   const [recordings, setRecordings] = useState([]);
   const [recordingsLoading, setRecordingsLoading] = useState(false);
   const [playingSid, setPlayingSid] = useState(null);
+  const [interestedModal, setInterestedModal] = useState(null); // { repName, entries }
   const [onlineReps, setOnlineReps] = useState([]);
 
   const timerRef = useRef(null);
@@ -560,7 +585,7 @@ export default function CareCircleDialer() {
       contactName: activeContact.name, contactBusiness: activeContact.business_name,
       contactPhone: activeContact.phone, contactType,
       outcome, duration: callSeconds, script: SCRIPTS[contactType].name, notes,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString(), callSid: callSid || null,
     };
     try { await fetch('/api/kv?action=save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) }); } catch {}
     setMyLog(prev => [record, ...prev]);
@@ -1086,7 +1111,14 @@ export default function CareCircleDialer() {
                             </td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.interested>0?'var(--gl)':'var(--dim)',fontWeight:s.interested>0?600:400}}>{s.interested}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.interested>0?'var(--gl)':'var(--dim)',fontWeight:s.interested>0?600:400}}>
+                              {s.interested > 0
+                                ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {
+                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'interested' && new Date(e.timestamp).toDateString() === today);
+                                    setInterestedModal({ repName: r.name, entries });
+                                  }}>{s.interested}</span>
+                                : s.interested}
+                            </td>
                           </tr>
                         );
                       })}
@@ -1482,6 +1514,39 @@ export default function CareCircleDialer() {
                 })}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* INTERESTED LEADS DRILL-DOWN MODAL */}
+      {interestedModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.82)',zIndex:350,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={() => setInterestedModal(null)}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:540,maxHeight:'80vh',overflowY:'auto',animation:'slideUp 0.2s ease'}} onClick={e => e.stopPropagation()}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+              <div>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)'}}>Interested Leads</div>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginTop:2}}>{interestedModal.repName} · today</div>
+              </div>
+              <button onClick={() => setInterestedModal(null)} style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕ CLOSE</button>
+            </div>
+            {interestedModal.entries.length === 0 ? (
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No interested leads found.</div>
+            ) : interestedModal.entries.map((e, i) => (
+              <div key={i} style={{marginBottom:14,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,padding:'12px 14px'}}>
+                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--text)',cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => { setInterestedModal(null); openLifecycle(e.contactPhone, e.contactName); }}>{e.contactName || 'Unknown'}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--green)',marginTop:2}}>{e.contactPhone}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3}}>{fmtTime(e.duration)} · {new Date(e.timestamp).toLocaleTimeString()}{e.notes ? ` · "${e.notes}"` : ''}</div>
+                  </div>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--gl)',border:'1px solid rgba(74,155,74,0.3)',borderRadius:2,padding:'2px 6px',flexShrink:0}}>INTERESTED</span>
+                </div>
+                {e.callSid
+                  ? <InterestedRecording callSid={e.callSid} />
+                  : <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>No recording linked (call predates tracking)</div>
+                }
+              </div>
+            ))}
           </div>
         </div>
       )}
