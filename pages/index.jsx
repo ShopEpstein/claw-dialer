@@ -251,9 +251,12 @@ export default function CareCircleDialer() {
   const [editingContact, setEditingContact] = useState(null);
   const [adminSearch, setAdminSearch] = useState('');
   const [expandedLog, setExpandedLog] = useState(null);
+  const [autoDial, setAutoDial] = useState(false);
+  const [autoDialCountdown, setAutoDialCountdown] = useState(null);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
+  const countdownRef = useRef(null);
   const syncRef = useRef(null);
   const twilioConnRef = useRef(null);
   const twilioDeviceRef = useRef(null);
@@ -530,6 +533,37 @@ export default function CareCircleDialer() {
     setCallSeconds(0);
     setNotes('');
     setActiveContact(null);
+
+    if (autoDial) {
+      const next = contacts.find(c =>
+        c.status === 'new' &&
+        !c.claimedBy &&
+        !['dnc','disconnected','wrong-number'].includes(c.status) &&
+        c.id !== activeContact.id
+      );
+      if (next) {
+        let secs = 3;
+        setAutoDialCountdown(secs);
+        countdownRef.current = setInterval(() => {
+          secs--;
+          if (secs <= 0) {
+            clearInterval(countdownRef.current);
+            setAutoDialCountdown(null);
+            selectContact(next);
+            setTimeout(() => startCall(), 100);
+          } else {
+            setAutoDialCountdown(secs);
+          }
+        }, 1000);
+      } else {
+        notify('No more unclaimed leads in queue', 'warning');
+      }
+    }
+  }
+
+  function cancelAutoDial() {
+    clearInterval(countdownRef.current);
+    setAutoDialCountdown(null);
   }
 
   async function sendSMS() {
@@ -671,6 +705,9 @@ export default function CareCircleDialer() {
           <button onClick={() => setAiCallMode(v => !v)} style={{padding:'4px 9px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:`1px solid ${aiCallMode?'var(--green)':'var(--border2)'}`,background:aiCallMode?'rgba(74,155,74,0.12)':'transparent',color:aiCallMode?'var(--green)':'var(--dim)',borderRadius:2}}>
             {aiCallMode?'🤖 AI ON':'🤖 AI'}
           </button>
+          <button onClick={() => { setAutoDial(v => !v); cancelAutoDial(); }} style={{padding:'4px 9px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:`1px solid ${autoDial?'var(--teal)':'var(--border2)'}`,background:autoDial?'rgba(61,139,122,0.12)':'transparent',color:autoDial?'var(--teal)':'var(--dim)',borderRadius:2}}>
+            {autoDial?'⚡ AUTO ON':'⚡ AUTO'}
+          </button>
         </div>
       </div>
 
@@ -776,6 +813,12 @@ export default function CareCircleDialer() {
                     style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'4px 7px',outline:'none',borderRadius:3,cursor:'pointer'}}>
                     {audioDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${d.deviceId.slice(0,6)}`}</option>)}
                   </select>
+                </div>
+              )}
+              {autoDialCountdown !== null && (
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:12,padding:'10px 14px',background:'rgba(61,139,122,0.1)',border:'1px solid var(--teal)',borderRadius:3}}>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--teal)'}}>⚡ Auto-dialing next lead in {autoDialCountdown}s...</span>
+                  <button onClick={cancelAutoDial} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--teal)',background:'transparent',color:'var(--teal)',borderRadius:2,letterSpacing:0.5}}>CANCEL</button>
                 </div>
               )}
               {['connected','ended'].includes(callState)&&(
