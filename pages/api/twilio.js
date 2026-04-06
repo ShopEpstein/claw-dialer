@@ -261,5 +261,17 @@ export default async function handler(req, res) {
     } catch(err) { return res.status(500).json({ error: err.message }); }
   }
 
+  if (action === 'browser-call') {
+    const { To } = body;
+    res.setHeader('Content-Type', 'text/xml');
+    if (!To) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
+    <Number>${escapeXml(To)}</Number>
+  </Dial>
+</Response>`);
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
