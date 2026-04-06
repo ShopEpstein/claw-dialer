@@ -220,7 +220,8 @@ function LoginScreen({ onLogin }) {
 export default function CareCircleDialer() {
   const [rep, setRep] = useState(null);
   const [contactType, setContactType] = useState('b2b');
-  const [contacts, setContacts] = useState(() => lGet('cc_contacts_b2b', []));
+  const [contacts, setContacts] = useState([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
   const [activeContact, setActiveContact] = useState(null);
   const [tab, setTab] = useState('dialer');
   const [statusFilter, setStatusFilter] = useState('new');
@@ -276,16 +277,34 @@ export default function CareCircleDialer() {
     return () => clearInterval(t);
   }, []);
 
-  // Contacts — localStorage per type, shared key so all reps see same pool
-  const contactKey = `cc_contacts_${contactType}`;
+  // Contacts — stored in KV so all reps share the same pool
+  async function loadContacts(pool) {
+    setContactsLoading(true);
+    try {
+      const r = await fetch(`/api/kv?action=contacts&pool=${pool}`);
+      const d = await r.json();
+      setContacts(d.contacts || []);
+    } catch { setContacts([]); }
+    setContactsLoading(false);
+  }
+
+  async function saveContacts(pool, updated) {
+    try {
+      await fetch(`/api/kv?action=contacts-save&pool=${pool}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contacts: updated }),
+      });
+    } catch {}
+  }
+
   useEffect(() => {
-    setContacts(lGet(contactKey, []));
+    if (!rep) return;
+    loadContacts(contactType);
     setActiveContact(null);
     setStatusFilter('new');
     setActiveScriptId(DEFAULT_SCRIPT[contactType]);
-  }, [contactType]);
-
-  useEffect(() => { lSet(contactKey, contacts); }, [contacts]);
+  }, [contactType, rep]);
 
   // Load call logs from KV
   async function loadLogs() {
@@ -532,7 +551,11 @@ export default function CareCircleDialer() {
           status:'new', notes:'', list_name: file.name.replace('.csv','')
         });
       }
-      setContacts(prev => [...prev, ...newOnes]);
+      setContacts(prev => {
+        const updated = [...prev, ...newOnes];
+        saveContacts(contactType, updated);
+        return updated;
+      });
       notify(`Imported ${newOnes.length} contacts to ${contactType.toUpperCase()} pool`, 'success');
     };
     reader.readAsText(file);
@@ -541,7 +564,11 @@ export default function CareCircleDialer() {
 
   function addContact() {
     if (!newContact.name && !newContact.phone) { notify('Need name or phone', 'warning'); return; }
-    setContacts(prev => [...prev, { ...newContact, id: `manual-${Date.now()}`, status:'new', notes:'' }]);
+    setContacts(prev => {
+      const updated = [...prev, { ...newContact, id: `manual-${Date.now()}`, status:'new', notes:'' }];
+      saveContacts(contactType, updated);
+      return updated;
+    });
     setNewContact({ name:'', business_name:'', phone:'', email:'' });
     setShowAddModal(false);
     notify('Contact added', 'success');
@@ -628,7 +655,7 @@ export default function CareCircleDialer() {
             </div>
             <div style={{flex:1,overflowY:'auto'}}>
               {allFiltered.length === 0 ? (
-                <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',lineHeight:2}}>No contacts.<br/>Upload CSV in Admin tab.</div>
+                <div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',lineHeight:2}}>{contactsLoading ? 'Loading contacts...' : 'No contacts.'}<br/>{!contactsLoading && 'Upload CSV in Admin tab.'}</div>
               ) : allFiltered.map(c => (
                 <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?'2px solid var(--green)':'2px solid transparent',transition:'all 0.1s'}}>
                   <div style={{display:'flex',alignItems:'center',gap:8}}>
@@ -863,54 +890,44 @@ export default function CareCircleDialer() {
 
           {/* Lists */}
           <div style={{marginBottom:28}}>
-            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>Uploaded Lists</div>
-            {['b2b','b2c'].map(pool => {
-              const poolContacts = lGet(`cc_contacts_${pool}`, []);
-              const lists = [...new Set(poolContacts.map(c => c.list_name).filter(Boolean))];
-              if (!poolContacts.length) return null;
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
+              Uploaded Lists — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
+              <span style={{color:'var(--dim)',marginLeft:6}}>(toggle B2B/B2C above to manage the other pool)</span>
+            </div>
+            {contacts.length === 0 && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts in this pool yet.</div>}
+            {[...new Set(contacts.map(c => c.list_name).filter(Boolean))].map(listName => {
+              const count = contacts.filter(c => c.list_name === listName).length;
               return (
-                <div key={pool} style={{marginBottom:16}}>
-                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:pool==='b2b'?'var(--green)':'var(--teal)',letterSpacing:1,marginBottom:8}}>{pool.toUpperCase()} POOL — {poolContacts.length} total contacts</div>
-                  {lists.length === 0 && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No named lists (manually added contacts)</div>}
-                  {lists.map(listName => {
-                    const count = poolContacts.filter(c => c.list_name === listName).length;
-                    return (
-                      <div key={listName} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
-                        <div>
-                          <div style={{fontSize:12,fontWeight:500,color:'var(--text)'}}>{listName}</div>
-                          <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{count} contacts</div>
-                        </div>
-                        <button onClick={() => {
-                          if (!confirm(`Delete "${listName}" and remove all ${count} contacts from the ${pool.toUpperCase()} pool?`)) return;
-                          const updated = poolContacts.filter(c => c.list_name !== listName);
-                          lSet(`cc_contacts_${pool}`, updated);
-                          if (contactType === pool) setContacts(updated);
-                          notify(`Deleted list "${listName}" (${count} contacts removed)`, 'success');
-                        }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
-                      </div>
-                    );
-                  })}
-                  {poolContacts.filter(c => !c.list_name).length > 0 && (
-                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:500,color:'var(--dim)'}}>Manually added</div>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{poolContacts.filter(c => !c.list_name).length} contacts</div>
-                      </div>
-                      <button onClick={() => {
-                        const count = poolContacts.filter(c => !c.list_name).length;
-                        if (!confirm(`Delete all ${count} manually-added contacts from the ${pool.toUpperCase()} pool?`)) return;
-                        const updated = poolContacts.filter(c => c.list_name);
-                        lSet(`cc_contacts_${pool}`, updated);
-                        if (contactType === pool) setContacts(updated);
-                        notify(`Deleted ${count} manually-added contacts`, 'success');
-                      }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
-                    </div>
-                  )}
+                <div key={listName} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
+                  <div>
+                    <div style={{fontSize:12,fontWeight:500,color:'var(--text)'}}>{listName}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{count} contacts</div>
+                  </div>
+                  <button onClick={() => {
+                    if (!confirm(`Delete "${listName}" and remove all ${count} contacts from the ${contactType.toUpperCase()} pool?`)) return;
+                    const updated = contacts.filter(c => c.list_name !== listName);
+                    setContacts(updated);
+                    saveContacts(contactType, updated);
+                    notify(`Deleted list "${listName}" (${count} contacts removed)`, 'success');
+                  }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
                 </div>
               );
             })}
-            {lGet('cc_contacts_b2b',[]).length===0 && lGet('cc_contacts_b2c',[]).length===0 && (
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts uploaded yet.</div>
+            {contacts.filter(c => !c.list_name).length > 0 && (
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
+                <div>
+                  <div style={{fontSize:12,fontWeight:500,color:'var(--dim)'}}>Manually added</div>
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{contacts.filter(c => !c.list_name).length} contacts</div>
+                </div>
+                <button onClick={() => {
+                  const count = contacts.filter(c => !c.list_name).length;
+                  if (!confirm(`Delete all ${count} manually-added contacts from the ${contactType.toUpperCase()} pool?`)) return;
+                  const updated = contacts.filter(c => c.list_name);
+                  setContacts(updated);
+                  saveContacts(contactType, updated);
+                  notify(`Deleted ${count} manually-added contacts`, 'success');
+                }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
+              </div>
             )}
           </div>
 

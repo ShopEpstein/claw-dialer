@@ -41,5 +41,20 @@ export default async function handler(req, res) {
       return res.status(200).json({ calls });
     } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
   }
+  if (action === 'contacts') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const raw = await kv('GET', `contacts:${pool}`);
+      const contacts = raw ? JSON.parse(raw) : [];
+      return res.status(200).json({ contacts });
+    } catch(e) { return res.status(500).json({ contacts: [], error: e.message }); }
+  }
+  if (action === 'contacts-save') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      await kv('SET', `contacts:${pool}`, JSON.stringify(req.body.contacts || []));
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
   return res.status(400).json({ error: 'Unknown action' });
 }
