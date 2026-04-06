@@ -254,6 +254,9 @@ export default function CareCircleDialer() {
   const [autoDial, setAutoDial] = useState(false);
   const [autoDialCountdown, setAutoDialCountdown] = useState(null);
   const [lifecycleContact, setLifecycleContact] = useState(null); // { contact, history }
+  const [recordings, setRecordings] = useState([]);
+  const [recordingsLoading, setRecordingsLoading] = useState(false);
+  const [playingSid, setPlayingSid] = useState(null);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -1114,6 +1117,56 @@ export default function CareCircleDialer() {
               </table>
             </div>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:8}}>To add/change reps: update the REPS array in index.jsx and redeploy.</div>
+          </div>
+
+          {/* Recordings */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>Call Recordings</span>
+              <button onClick={async () => {
+                setRecordingsLoading(true);
+                try {
+                  const r = await fetch('/api/recordings?action=fetch-list', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fetchRecent: 50 }) });
+                  const d = await r.json();
+                  // Cross-reference with allLog by callSid where possible
+                  setRecordings((d.list || []).map(rec => {
+                    const match = allLog.find(e => e.callSid === rec.callSid);
+                    return { ...rec, contactName: match?.contactName, repName: match?.repName };
+                  }));
+                } catch { notify('Failed to load recordings', 'warning'); }
+                setRecordingsLoading(false);
+              }} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2,letterSpacing:0.5}}>
+                {recordingsLoading ? 'LOADING...' : '↺ LOAD'}
+              </button>
+            </div>
+            {recordings.length === 0 && !recordingsLoading && (
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>Click LOAD to fetch the last 50 recordings from Twilio.</div>
+            )}
+            <div style={{display:'flex',flexDirection:'column',gap:6}}>
+              {recordings.map((rec, i) => (
+                <div key={rec.recordingSid} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,fontWeight:500,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{rec.contactName || <span style={{color:'var(--dim)'}}>Unknown caller</span>}</div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3,display:'flex',gap:12'}}>
+                      <span>{rec.repName || '—'}</span>
+                      <span>{rec.duration ? `${rec.duration}s` : '—'}</span>
+                      <span>{rec.dateCreated ? new Date(rec.dateCreated).toLocaleString() : '—'}</span>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0,marginLeft:12}}>
+                    {playingSid === rec.recordingSid ? (
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                        <audio autoPlay controls src={`/api/recordings?action=stream&sid=${rec.recordingSid}`}
+                          style={{height:28,width:220}} onEnded={() => setPlayingSid(null)} />
+                        <button onClick={() => setPlayingSid(null)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕ CLOSE</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setPlayingSid(rec.recordingSid)} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--green)',borderRadius:2,letterSpacing:0.5}}>▶ PLAY</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Export */}
