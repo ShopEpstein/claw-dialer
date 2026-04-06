@@ -414,7 +414,12 @@ export default function CareCircleDialer() {
     const mc = !c.claimedBy || c.claimedBy === rep?.id;
     // DNC / disconnected / wrong-number are permanently hidden unless explicitly filtered
     const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
-    return ms && mf && mc && notDead;
+    // Hide contacts called in the last 24h (callbacks/interested are intentional re-dials)
+    const notCalledToday = !c.lastCalledAt
+      || ['callback','interested'].includes(c.status)
+      || statusFilter === c.status  // show if explicitly filtering for that status
+      || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000;
+    return ms && mf && mc && notDead && notCalledToday;
   });
 
   function selectContact(c) {
@@ -516,7 +521,7 @@ export default function CareCircleDialer() {
     if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('idle');
     const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
-    const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null };
+    const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null, lastCalledAt: new Date().toISOString() };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
     // Save to KV
