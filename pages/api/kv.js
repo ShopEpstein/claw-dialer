@@ -79,6 +79,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ online });
     } catch(e) { return res.status(500).json({ online: [], error: e.message }); }
   }
+  if (action === 'contact-delete') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const { id } = req.body;
+      const raw = await kv('GET', `contacts:${pool}`);
+      const contacts = raw ? JSON.parse(raw) : [];
+      await kv('SET', `contacts:${pool}`, JSON.stringify(contacts.filter(c => c.id !== id)));
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
   if (action === 'contact-update') {
     try {
       const pool = req.query.pool || 'b2b';
