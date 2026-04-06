@@ -239,6 +239,7 @@ export default function CareCircleDialer() {
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
+  const twilioConnRef = useRef(null);
 
   // Session restore
   useEffect(() => {
@@ -294,6 +295,14 @@ export default function CareCircleDialer() {
 
   useEffect(() => { if (rep) loadLogs(); }, [rep]);
 
+  useEffect(() => {
+    if (!rep) return;
+    fetch(`/api/token?repId=${rep.id}`)
+      .then(r => r.json())
+      .then(({ token }) => { if (typeof Twilio !== 'undefined') Twilio.Device.setup(token); })
+      .catch(() => {});
+  }, [rep]);
+
   const notify = useCallback((msg, type='info') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 3500);
@@ -342,26 +351,42 @@ export default function CareCircleDialer() {
     clearInterval(timerRef.current);
     timerRef.current = setInterval(() => setCallSeconds(s => s+1), 1000);
     try {
-      const r = await fetch('/api/twilio?action=call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: activeContact.phone,
+      if (aiCallMode) {
+        const r = await fetch('/api/twilio?action=call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: activeContact.phone,
+            contactName: activeContact.name || '',
+            contactBusiness: activeContact.business_name || '',
+            contactType,
+            repId: rep.id,
+            repName: rep.name,
+            script: SCRIPTS[contactType].name,
+            aiMode: true,
+          })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error);
+        setCallSid(data.callSid);
+        setCallState('connected');
+        notify(`Dialing ${activeContact.name || activeContact.phone}...`);
+        startPoll(data.callSid);
+      } else {
+        if (typeof Twilio === 'undefined' || !Twilio.Device) throw new Error('Phone not ready. Please wait a moment and try again.');
+        const conn = Twilio.Device.connect({
+          To: activeContact.phone,
           contactName: activeContact.name || '',
-          contactBusiness: activeContact.business_name || '',
-          contactType,
           repId: rep.id,
-          repName: rep.name,
+          contactType,
           script: SCRIPTS[contactType].name,
-          aiMode: aiCallMode,
-        })
-      });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error);
-      setCallSid(data.callSid);
-      setCallState('connected');
-      notify(`Dialing ${activeContact.name || activeContact.phone}...`);
-      startPoll(data.callSid);
+        });
+        twilioConnRef.current = conn;
+        conn.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
+        conn.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        setCallState('connected');
+        notify(`Dialing ${activeContact.name || activeContact.phone}...`);
+      }
     } catch(err) {
       setCallState('idle');
       clearInterval(timerRef.current);
@@ -373,6 +398,7 @@ export default function CareCircleDialer() {
   function endCall() {
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
+    if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('ended');
   }
 
@@ -474,6 +500,7 @@ export default function CareCircleDialer() {
         <link rel="icon" href={FAVICON} />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <style>{CSS}</style>
+        <script src="https://sdk.twilio.com/js/client/v1.14/twilio.js" />
       </Head>
 
       {/* TOP BAR */}
