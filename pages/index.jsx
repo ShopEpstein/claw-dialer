@@ -305,13 +305,22 @@ export default function CareCircleDialer() {
     fetch(`/api/token?repId=${rep.id}`)
       .then(r => r.json())
       .then(({ token }) => {
-        if (typeof Twilio === 'undefined') return;
         navigator.mediaDevices.getUserMedia({ audio: true })
           .then(() => {
             navigator.mediaDevices.enumerateDevices()
               .then(devices => setAudioDevices(devices.filter(d => d.kind === 'audioinput')));
-            Twilio.Device.on('ready', () => setSdkReady(true));
-            Twilio.Device.setup(token, { codecPreferences: ['opus', 'pcmu'] });
+            const setup = () => {
+              Twilio.Device.on('ready', () => setSdkReady(true));
+              Twilio.Device.setup(token, { codecPreferences: ['opus', 'pcmu'] });
+            };
+            if (typeof Twilio !== 'undefined') {
+              setup();
+            } else {
+              const s = document.createElement('script');
+              s.src = 'https://sdk.twilio.com/js/client/v1.14/twilio.js';
+              s.onload = setup;
+              document.head.appendChild(s);
+            }
           })
           .catch(() => setMicBlocked(true));
       })
@@ -396,7 +405,7 @@ export default function CareCircleDialer() {
         notify(`Dialing ${name}...`);
         startPoll(data.callSid);
       } else {
-        if (typeof Twilio === 'undefined' || !Twilio.Device) throw new Error('Phone not ready. Please wait a moment and try again.');
+        if (!sdkReady) throw new Error('Phone not ready — wait for the READY badge before dialing.');
         const conn = Twilio.Device.connect({
           To: phone,
           contactName: name,
