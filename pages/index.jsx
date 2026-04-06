@@ -169,7 +169,7 @@ const CSS = `
   }
 `;
 
-const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',partner:'var(--teal)' };
+const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)',partner:'var(--teal)' };
 const callStateColor = { idle:'var(--dim)',dialing:'var(--yellow)',connected:'var(--gl)',ended:'var(--orange)' };
 const callStateText = { idle:'STANDBY',dialing:'DIALING...',connected:'CONNECTED',ended:'CALL ENDED' };
 
@@ -500,7 +500,7 @@ export default function CareCircleDialer() {
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
     setCallState('idle');
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc' };
     const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
@@ -677,7 +677,7 @@ export default function CareCircleDialer() {
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
                 style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
               <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                {['new','all','called','callback','interested','voicemail','not-interested'].map(f => (
+                {['new','all','called','callback','interested','voicemail','not-interested','disconnected','dnc'].map(f => (
                   <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
                     {f}
                   </button>
@@ -772,8 +772,8 @@ export default function CareCircleDialer() {
                 </div>
               )}
               {['connected','ended'].includes(callState)&&(
-                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
-                  {[['answered','✓ Answered','var(--green)'],['voicemail','📬 Left VM','var(--dim)'],['callback','↩ Call Back','var(--orange)'],['interested','★ Interested','var(--gl)'],['not-interested','✕ Not Int.','var(--red)']].map(([outcome,label,color]) => (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
+                  {[['answered','✓ Answered','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['callback','↩ Call Back','var(--orange)'],['interested','★ Interested','var(--gl)'],['not-interested','✕ Not Int.','var(--red)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
                     <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
                       {label}
                     </button>
@@ -835,7 +835,7 @@ export default function CareCircleDialer() {
             {myLog.length===0 ? (
               <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No calls yet</div>
             ) : myLog.slice(0,60).map((entry,i) => {
-              const c = {answered:'var(--green)',voicemail:'var(--dim)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)'}[entry.outcome]||'var(--dim)';
+              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)'}[entry.outcome]||'var(--dim)';
               return (
                 <div key={i} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
@@ -881,7 +881,7 @@ export default function CareCircleDialer() {
                   </tr></thead>
                   <tbody>
                     {allLog.slice(0,150).map((entry,i) => {
-                      const c = {answered:'var(--green)',voicemail:'var(--dim)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)'}[entry.outcome]||'var(--dim)';
+                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)'}[entry.outcome]||'var(--dim)';
                       return (
                         <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
                           <td style={{padding:'8px 14px',fontSize:12,color:'var(--teal)',fontWeight:500}}>{entry.repName}</td>
