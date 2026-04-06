@@ -163,15 +163,11 @@ export default async function handler(req, res) {
 
   if (action === 'amd') {
     const { CallSid, AnsweredBy } = req.body || {};
-    const ct = req.query.contactType || 'b2b';
     if (['machine_end_beep','machine_end_silence','machine_end_other'].includes(AnsweredBy)) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-        const vmText = ct === 'b2c'
-          ? "Hi, this is CareCircle Network. We work with families who have a loved one in a senior care facility. Please visit carecircle dot fit or call 850-341-4324. Have a great day."
-          : "Hi, this is CareCircle Network. We run the transparency scanner for senior care facilities in Northwest Florida. Please visit carecircle dot fit or call 850-341-4324. Thank you.";
         await client.calls(CallSid).update({
-          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">${escapeXml(vmText)}</Say><Hangup/></Response>`
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://carecirclenetwork-9181.twil.io/carecirclevoicedrop.mp3</Play><Hangup/></Response>`
         });
       } catch(err) { console.error('VM drop error:', err.message); }
     }
