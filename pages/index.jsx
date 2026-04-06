@@ -907,6 +907,20 @@ export default function CareCircleDialer() {
               ) : (
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--dim)'}}>← Select a contact to begin</div>
               )}
+              {activeContact && rep?.id === 'chase' && (
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Delete ${activeContact.name || activeContact.phone} permanently?`)) return;
+                    await fetch(`/api/kv?action=contact-delete&pool=${contactType}`, {
+                      method: 'POST', headers: {'Content-Type':'application/json'},
+                      body: JSON.stringify({ id: activeContact.id })
+                    });
+                    setContacts(prev => prev.filter(c => c.id !== activeContact.id));
+                    setActiveContact(null);
+                  }}
+                  style={{marginTop:10,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--red)',background:'transparent',border:'1px solid rgba(220,50,50,0.3)',borderRadius:3,padding:'3px 10px',cursor:'pointer',letterSpacing:'0.05em'}}
+                >DELETE LEAD</button>
+              )}
             </div>
 
             {/* Call controls */}
