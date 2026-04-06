@@ -489,16 +489,44 @@ export default function CareCircleDialer() {
       const lines = ev.target.result.split('\n').filter(l => l.trim());
       if (lines.length < 2) { notify('CSV appears empty', 'warning'); return; }
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g,''));
-      const nameIdx = headers.findIndex(h => h.includes('name') && !h.includes('business') && !h.includes('company'));
+      const nameIdx = headers.findIndex(h => h === 'name' || (h.includes('name') && !h.includes('business') && !h.includes('company') && !h.includes('first') && !h.includes('last')));
+      const firstNameIdx = headers.findIndex(h => h === 'firstname' || h === 'first_name' || h === 'first name');
+      const lastNameIdx = headers.findIndex(h => h === 'lastname' || h === 'last_name' || h === 'last name');
       const bizIdx = headers.findIndex(h => h.includes('business') || h.includes('company') || h.includes('facility'));
       const phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('mobile') || h.includes('cell'));
       const emailIdx = headers.findIndex(h => h.includes('email'));
       const cityIdx = headers.findIndex(h => h.includes('city'));
+      const addressIdx = headers.findIndex(h => h.includes('address'));
+      const stateIdx = headers.findIndex(h => h === 'state' || h === 'st');
+      const zipIdx = headers.findIndex(h => h.includes('zip') || h.includes('postal'));
+      const ageIdx = headers.findIndex(h => h === 'age');
+      const incomeIdx = headers.findIndex(h => h.includes('income'));
+      const networthIdx = headers.findIndex(h => h.includes('networth') || h.includes('net_worth') || h.includes('net worth'));
       const newOnes = [];
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim().replace(/^["']|["']$/g,''));
         if (!cols[phoneIdx] && !cols[emailIdx]) continue;
-        newOnes.push({ id: `${Date.now()}-${i}`, name: nameIdx>=0?cols[nameIdx]:'', business_name: bizIdx>=0?cols[bizIdx]:'', phone: phoneIdx>=0?cols[phoneIdx]:'', email: emailIdx>=0?cols[emailIdx]:'', city: cityIdx>=0?cols[cityIdx]:'', status:'new', notes:'', list_name: file.name.replace('.csv','') });
+        let name = '';
+        if (firstNameIdx >= 0 || lastNameIdx >= 0) {
+          name = [firstNameIdx>=0?cols[firstNameIdx]:'', lastNameIdx>=0?cols[lastNameIdx]:''].filter(Boolean).join(' ');
+        } else if (nameIdx >= 0) {
+          name = cols[nameIdx] || '';
+        }
+        newOnes.push({
+          id: `${Date.now()}-${i}`,
+          name,
+          business_name: bizIdx>=0?cols[bizIdx]:'',
+          phone: phoneIdx>=0?cols[phoneIdx]:'',
+          email: emailIdx>=0?cols[emailIdx]:'',
+          city: cityIdx>=0?cols[cityIdx]:'',
+          address: addressIdx>=0?cols[addressIdx]:'',
+          state: stateIdx>=0?cols[stateIdx]:'',
+          zip: zipIdx>=0?cols[zipIdx]:'',
+          age: ageIdx>=0?cols[ageIdx]:'',
+          income: incomeIdx>=0?cols[incomeIdx]:'',
+          networth: networthIdx>=0?cols[networthIdx]:'',
+          status:'new', notes:'', list_name: file.name.replace('.csv','')
+        });
       }
       setContacts(prev => [...prev, ...newOnes]);
       notify(`Imported ${newOnes.length} contacts to ${contactType.toUpperCase()} pool`, 'success');
@@ -630,7 +658,15 @@ export default function CareCircleDialer() {
                     <div style={{fontFamily:'Playfair Display,serif',fontSize:17,fontWeight:600,color:'var(--text)'}}>{activeContact.name||'Unknown'}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--green)',marginTop:2}}>{activeContact.phone}</div>
                     {activeContact.business_name&&<div style={{fontSize:11,color:'var(--dim)',marginTop:2}}>{activeContact.business_name}</div>}
-                    {activeContact.city&&<div style={{fontSize:10,color:'var(--dim)'}}>{activeContact.city}, FL</div>}
+                    {activeContact.city&&<div style={{fontSize:10,color:'var(--dim)'}}>{[activeContact.city, activeContact.state, activeContact.zip].filter(Boolean).join(', ')}</div>}
+                    {activeContact.address&&<div style={{fontSize:10,color:'var(--dim)'}}>{activeContact.address}</div>}
+                    {contactType==='b2c'&&(activeContact.age||activeContact.income||activeContact.networth)&&(
+                      <div style={{display:'flex',gap:10,marginTop:4,flexWrap:'wrap'}}>
+                        {activeContact.age&&<span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',background:'var(--surface2)',padding:'2px 6px',borderRadius:2}}>AGE {activeContact.age}</span>}
+                        {activeContact.income&&<span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',background:'var(--surface2)',padding:'2px 6px',borderRadius:2}}>INC ${Number(activeContact.income).toLocaleString()}</span>}
+                        {activeContact.networth&&<span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',background:'var(--surface2)',padding:'2px 6px',borderRadius:2}}>NW ${Number(activeContact.networth).toLocaleString()}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
