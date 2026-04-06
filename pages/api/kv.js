@@ -56,6 +56,29 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+  if (action === 'rep-online') {
+    try {
+      const { repId, repName } = req.body;
+      await kv('SET', `presence:${repId}`, JSON.stringify({ repId, repName, lastSeen: Date.now() }));
+      await kv('EXPIRE', `presence:${repId}`, '150');
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+  if (action === 'rep-offline') {
+    try {
+      const { repId } = req.body;
+      await kv('DEL', `presence:${repId}`);
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+  if (action === 'presence') {
+    try {
+      const ids = (req.query.repIds || '').split(',').filter(Boolean);
+      const results = await Promise.all(ids.map(id => kv('GET', `presence:${id}`)));
+      const online = results.map((r, i) => r ? JSON.parse(r) : null).filter(Boolean);
+      return res.status(200).json({ online });
+    } catch(e) { return res.status(500).json({ online: [], error: e.message }); }
+  }
   if (action === 'contact-update') {
     try {
       const pool = req.query.pool || 'b2b';

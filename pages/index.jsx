@@ -257,30 +257,60 @@ export default function CareCircleDialer() {
   const [recordings, setRecordings] = useState([]);
   const [recordingsLoading, setRecordingsLoading] = useState(false);
   const [playingSid, setPlayingSid] = useState(null);
+  const [onlineReps, setOnlineReps] = useState([]);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
   const countdownRef = useRef(null);
   const syncRef = useRef(null);
+  const heartbeatRef = useRef(null);
+  const presencePollRef = useRef(null);
   const twilioConnRef = useRef(null);
   const twilioDeviceRef = useRef(null);
 
   // Session restore
   useEffect(() => {
     const saved = sGet('cc_rep', null);
-    if (saved) setRep(saved);
+    if (saved) { setRep(saved); startHeartbeat(saved); }
   }, []);
+
+  // Admin: poll presence every 30s
+  useEffect(() => {
+    if (!rep?.role === 'admin') return;
+    const repIds = REPS.map(r => r.id).join(',');
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/kv?action=presence&repIds=${repIds}`);
+        const d = await r.json();
+        setOnlineReps(d.online || []);
+      } catch {}
+    };
+    poll();
+    presencePollRef.current = setInterval(poll, 30000);
+    return () => clearInterval(presencePollRef.current);
+  }, [rep]);
+
+  function startHeartbeat(repData) {
+    const ping = () => fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
+    ping();
+    heartbeatRef.current = setInterval(ping, 60000);
+  }
 
   function handleLogin(repData) {
     sSet('cc_rep', repData);
     setRep(repData);
+    startHeartbeat(repData);
   }
 
   function handleLogout() {
+    if (rep) fetch('/api/kv?action=rep-offline', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: rep.id }) }).catch(()=>{});
+    clearInterval(heartbeatRef.current);
+    clearInterval(presencePollRef.current);
     sessionStorage.clear();
     setRep(null);
     setMyLog([]);
     setAllLog([]);
+    setOnlineReps([]);
   }
 
   // Clock
@@ -1002,6 +1032,56 @@ export default function CareCircleDialer() {
       {tab==='dashboard' && (
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:18}}>{rep.name}'s Dashboard</div>
+
+          {/* ── LIVE TEAM (admin only) ── */}
+          {isAdmin && (() => {
+            const today = new Date().toDateString();
+            const todayStats = {};
+            allLog.forEach(e => {
+              if (!e.repId || new Date(e.timestamp).toDateString() !== today) return;
+              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, interested:0 };
+              todayStats[e.repId].calls++;
+              todayStats[e.repId].duration += (e.duration || 0);
+              if (e.outcome === 'interested') todayStats[e.repId].interested++;
+            });
+            return (
+              <div style={{marginBottom:28}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                  <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--teal)'}}>Live Team</div>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{onlineReps.length} online · updates every 30s</span>
+                </div>
+                <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
+                  <table style={{width:'100%',borderCollapse:'collapse'}}>
+                    <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
+                      {['Rep','Status','Calls Today','Talk Time','Interested'].map(h => (
+                        <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {REPS.map(r => {
+                        const isOnline = onlineReps.some(o => o.repId === r.id);
+                        const s = todayStats[r.id] || { calls:0, duration:0, interested:0 };
+                        return (
+                          <tr key={r.id} style={{borderBottom:'1px solid var(--border)'}}>
+                            <td style={{padding:'9px 14px',fontSize:12,fontWeight:500,color:'var(--text)'}}>{r.name}</td>
+                            <td style={{padding:'9px 14px'}}>
+                              <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:'DM Mono,monospace',fontSize:8,color:isOnline?'var(--gl)':'var(--dim)'}}>
+                                <span style={{width:6,height:6,borderRadius:'50%',background:isOnline?'var(--green)':'var(--border2)',display:'inline-block',animation:isOnline?'pulse 2s infinite':'none'}}></span>
+                                {isOnline ? 'ONLINE' : 'OFFLINE'}
+                              </span>
+                            </td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.interested>0?'var(--gl)':'var(--dim)',fontWeight:s.interested>0?600:400}}>{s.interested}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
             {[['Total Calls',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Interested',myInterested,'var(--teal)']].map(([label,val,color]) => (
               <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,padding:18}}>
