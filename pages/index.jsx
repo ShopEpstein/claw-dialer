@@ -253,6 +253,7 @@ export default function CareCircleDialer() {
   const [expandedLog, setExpandedLog] = useState(null);
   const [autoDial, setAutoDial] = useState(false);
   const [autoDialCountdown, setAutoDialCountdown] = useState(null);
+  const [lifecycleContact, setLifecycleContact] = useState(null); // { contact, history }
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -561,6 +562,16 @@ export default function CareCircleDialer() {
       }
     }
   }
+
+  function openLifecycle(phone, name) {
+    const contact = contacts.find(c => c.phone === phone) || { phone, name, status: 'unknown', notes: '' };
+    const history = [...(allLog || []), ...(myLog || [])]
+      .filter(e => e.contactPhone === phone)
+      .filter((e, i, arr) => arr.findIndex(x => x.timestamp === e.timestamp) === i) // dedupe
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    setLifecycleContact({ contact: { ...contact }, history });
+  }
+
 
   function cancelAutoDial() {
     clearInterval(countdownRef.current);
@@ -891,7 +902,7 @@ export default function CareCircleDialer() {
                 <div key={i} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:11,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{entry.contactName||'Unknown'}</div>
+                    <div onClick={() => entry.contactPhone && openLifecycle(entry.contactPhone, entry.contactName)} style={{fontSize:11,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',cursor:entry.contactPhone?'pointer':'default',textDecoration:entry.contactPhone?'underline':'none',textDecorationStyle:'dotted',textUnderlineOffset:3}}>{entry.contactName||'Unknown'}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:1}}>{(entry.outcome||'').toUpperCase()} · {fmtTime(entry.duration)}</div>
                   </div>
                 </div>
@@ -938,7 +949,11 @@ export default function CareCircleDialer() {
                         <>
                           <tr key={i} style={{borderBottom:'1px solid var(--border)',cursor:entry.notes?'pointer':'default'}} onClick={() => setExpandedLog(isExpanded?null:i)}>
                             <td style={{padding:'8px 14px',fontSize:12,color:'var(--teal)',fontWeight:500}}>{entry.repName}</td>
-                            <td style={{padding:'8px 14px',fontSize:11,color:'var(--text)'}}>{entry.contactName||'—'}</td>
+                            <td style={{padding:'8px 14px',fontSize:11,color:'var(--text)'}}>
+                              {entry.contactPhone ? (
+                                <span onClick={e => { e.stopPropagation(); openLifecycle(entry.contactPhone, entry.contactName); }} style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}}>{entry.contactName||entry.contactPhone}</span>
+                              ) : (entry.contactName||'—')}
+                            </td>
                             <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{(entry.contactType||'').toUpperCase()}</td>
                             <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:c}}>{(entry.outcome||'').toUpperCase()}</td>
                             <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>{fmtTime(entry.duration)}</td>
@@ -1150,6 +1165,92 @@ export default function CareCircleDialer() {
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:14}}>
               <button onClick={() => setShowAddModal(false)} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Cancel</button>
               <button onClick={addContact} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTACT LIFECYCLE MODAL */}
+      {lifecycleContact&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.8)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:20}} onClick={() => setLifecycleContact(null)}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,width:'100%',maxWidth:620,maxHeight:'90vh',display:'flex',flexDirection:'column',animation:'slideUp 0.2s ease'}} onClick={e=>e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{padding:'18px 22px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:17,fontWeight:600,color:'var(--gl)'}}>{lifecycleContact.contact.name||lifecycleContact.contact.phone}</div>
+                {lifecycleContact.contact.business_name&&<div style={{fontSize:11,color:'var(--dim)',marginTop:2}}>{lifecycleContact.contact.business_name}</div>}
+                <div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>{lifecycleContact.contact.phone}</span>
+                  {lifecycleContact.contact.status&&<span style={{fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,color:statusColor[lifecycleContact.contact.status]||'var(--dim)',padding:'2px 5px',border:`1px solid ${statusColor[lifecycleContact.contact.status]||'var(--dim)'}44`,borderRadius:2}}>{lifecycleContact.contact.status}</span>}
+                </div>
+              </div>
+              <button onClick={() => setLifecycleContact(null)} style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕ CLOSE</button>
+            </div>
+
+            <div style={{overflowY:'auto',flex:1,padding:'18px 22px'}}>
+
+              {/* Edit notes + status */}
+              <div style={{marginBottom:20,padding:'14px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3}}>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10}}>Update Contact</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                  <div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Status</div>
+                    <select value={lifecycleContact.contact.status||'new'} onChange={e => setLifecycleContact(p => ({...p, contact:{...p.contact, status:e.target.value}}))}
+                      style={{width:'100%',background:'var(--surface)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,padding:'6px 8px',outline:'none',borderRadius:3}}>
+                      {['new','called','voicemail','no-answer','callback','interested','not-interested','gatekeeper','wrong-number','disconnected','dnc'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Assigned Rep</div>
+                    <select value={lifecycleContact.contact.claimedBy||''} onChange={e => setLifecycleContact(p => ({...p, contact:{...p.contact, claimedBy:e.target.value||null}}))}
+                      style={{width:'100%',background:'var(--surface)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,padding:'6px 8px',outline:'none',borderRadius:3}}>
+                      <option value=''>— Pool —</option>
+                      {REPS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Notes</div>
+                  <textarea value={lifecycleContact.contact.notes||''} onChange={e => setLifecycleContact(p => ({...p, contact:{...p.contact, notes:e.target.value}}))}
+                    placeholder="Add notes about this contact..."
+                    style={{width:'100%',background:'var(--surface)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'8px 10px',outline:'none',borderRadius:3,resize:'vertical',height:70}} />
+                </div>
+                <div style={{display:'flex',justifyContent:'flex-end',marginTop:10}}>
+                  <button onClick={async () => {
+                    const updated = contacts.map(c => c.phone === lifecycleContact.contact.phone ? {...c, ...lifecycleContact.contact} : c);
+                    setContacts(updated);
+                    await saveContacts(contactType, updated);
+                    if (lifecycleContact.contact.id) updateContactKV(contactType, lifecycleContact.contact.id, { status: lifecycleContact.contact.status, notes: lifecycleContact.contact.notes, claimedBy: lifecycleContact.contact.claimedBy });
+                    notify('Contact updated', 'success');
+                    setLifecycleContact(null);
+                  }} style={{padding:'7px 16px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>Save Changes</button>
+                </div>
+              </div>
+
+              {/* Call history */}
+              <div>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10}}>Call History ({lifecycleContact.history.length})</div>
+                {lifecycleContact.history.length === 0 ? (
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',padding:'12px 0'}}>No calls logged for this contact yet.</div>
+                ) : lifecycleContact.history.map((entry, i) => {
+                  const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                  return (
+                    <div key={i} style={{padding:'10px 12px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:entry.notes?6:0}}>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          <span style={{width:6,height:6,borderRadius:'50%',background:c,display:'inline-block',flexShrink:0}}></span>
+                          <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:c,fontWeight:600}}>{(entry.outcome||'').toUpperCase()}</span>
+                          <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>· {fmtTime(entry.duration)}</span>
+                          <span style={{fontSize:10,color:'var(--teal)',fontWeight:500}}>{entry.repName}</span>
+                        </div>
+                        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{entry.timestamp?new Date(entry.timestamp).toLocaleString():'—'}</span>
+                      </div>
+                      {entry.notes&&<div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic',paddingLeft:14,lineHeight:1.5}}>{entry.notes}</div>}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
