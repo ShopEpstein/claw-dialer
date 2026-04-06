@@ -237,6 +237,7 @@ export default function CareCircleDialer() {
   const [allLog, setAllLog] = useState([]);
   const [loadingLog, setLoadingLog] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
+  const [sdkError, setSdkError] = useState('');
   const [micBlocked, setMicBlocked] = useState(false);
   const [audioDevices, setAudioDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
@@ -310,8 +311,12 @@ export default function CareCircleDialer() {
             navigator.mediaDevices.enumerateDevices()
               .then(devices => setAudioDevices(devices.filter(d => d.kind === 'audioinput')));
             const setup = () => {
-              Twilio.Device.on('ready', () => setSdkReady(true));
-              Twilio.Device.setup(token, { codecPreferences: ['opus', 'pcmu'] });
+              Twilio.Device.on('error', (err) => { setSdkReady(false); setSdkError(err.message || 'Device error'); });
+              Twilio.Device.on('ready', () => { setSdkReady(true); setSdkError(''); });
+              Twilio.Device.setup(token);
+              setTimeout(() => {
+                try { if (Twilio.Device.status() === 'ready') { setSdkReady(true); setSdkError(''); } } catch(e) {}
+              }, 5000);
             };
             if (typeof Twilio !== 'undefined') {
               setup();
@@ -532,7 +537,6 @@ export default function CareCircleDialer() {
         <link rel="icon" href={FAVICON} />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <style>{CSS}</style>
-        <script src="https://sdk.twilio.com/js/client/v1.14/twilio.js" />
       </Head>
 
       {/* TOP BAR */}
@@ -643,6 +647,8 @@ export default function CareCircleDialer() {
               <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                 {callState==='idle'&&<button onClick={startCall} style={{padding:'10px 20px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>📞 Dial</button>}
                 {!micBlocked && sdkReady && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1.5,color:'var(--gl)',padding:'3px 7px',border:'1px solid rgba(107,191,107,0.35)',borderRadius:2,background:'rgba(107,191,107,0.08)'}}>● READY</span>}
+                {!micBlocked && !sdkReady && !sdkError && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,color:'var(--dim)',padding:'3px 7px',border:'1px solid var(--border2)',borderRadius:2}}>◌ CONNECTING...</span>}
+                {sdkError && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,color:'var(--orange)',padding:'3px 7px',border:'1px solid rgba(200,122,42,0.35)',borderRadius:2,background:'rgba(200,122,42,0.08)'}} title={sdkError}>⚠ SDK ERROR</span>}
                 {micBlocked && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,color:'var(--red)',padding:'3px 7px',border:'1px solid rgba(196,68,68,0.35)',borderRadius:2,background:'rgba(196,68,68,0.08)'}}>⚠ MIC BLOCKED</span>}
                 {['dialing','connected'].includes(callState)&&(
                   <>
@@ -653,6 +659,7 @@ export default function CareCircleDialer() {
                 <button onClick={() => activeContact?setSmsModal(true):notify('Select a contact','warning')} style={{padding:'10px 12px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>💬 SMS</button>
               </div>
               {micBlocked && <div style={{marginTop:8,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--red)',lineHeight:1.6}}>Click the camera icon in your browser address bar to allow microphone access</div>}
+              {sdkError && <div style={{marginTop:8,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--orange)',lineHeight:1.6}}>{sdkError}</div>}
               {sdkReady && audioDevices.length > 0 && (
                 <div style={{marginTop:10,display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',flexShrink:0}}>Mic:</span>
