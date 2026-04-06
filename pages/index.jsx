@@ -276,7 +276,7 @@ export default function CareCircleDialer() {
 
   // Admin: poll presence every 30s
   useEffect(() => {
-    if (!rep?.role === 'admin') return;
+    if (rep?.role !== 'admin') return;
     const repIds = REPS.map(r => r.id).join(',');
     const poll = async () => {
       try {
