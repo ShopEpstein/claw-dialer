@@ -1,6 +1,6 @@
 import twilio from 'twilio';
 import Anthropic from '@anthropic-ai/sdk';
-import { saveCall } from '../API/kv';
+import { saveCall } from './kv';
 
 const BASE = 'https://claw-dialer.vercel.app';
 const FROM = '+18559600110';

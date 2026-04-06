@@ -1,0 +1,45 @@
+const BASE_URL = process.env.KV_REST_API_URL;
+const TOKEN = process.env.KV_REST_API_TOKEN;
+
+async function kv(cmd, ...args) {
+  const r = await fetch(BASE_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([cmd, ...args]),
+  });
+  const d = await r.json();
+  return d.result;
+}
+
+export async function saveCall(record) {
+  const s = JSON.stringify(record);
+  await Promise.all([
+    kv('LPUSH', 'calls:all', s),
+    kv('LPUSH', `calls:${record.repId}`, s),
+  ]);
+}
+
+export default async function handler(req, res) {
+  const { action, repId } = req.query;
+  if (action === 'save') {
+    try {
+      await saveCall(req.body);
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+  if (action === 'rep') {
+    try {
+      const raw = await kv('LRANGE', `calls:${repId}`, '0', '199');
+      const calls = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+      return res.status(200).json({ calls });
+    } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
+  }
+  if (action === 'all') {
+    try {
+      const raw = await kv('LRANGE', 'calls:all', '0', '499');
+      const calls = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+      return res.status(200).json({ calls });
+    } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
+  }
+  return res.status(400).json({ error: 'Unknown action' });
+}

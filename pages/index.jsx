@@ -240,6 +240,7 @@ export default function CareCircleDialer() {
   const [micBlocked, setMicBlocked] = useState(false);
   const [audioDevices, setAudioDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [dialPhone, setDialPhone] = useState('');
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -342,6 +343,7 @@ export default function CareCircleDialer() {
     setActiveContact(c);
     setNotes(c.notes || '');
     setSmsBody(SMS_TEMPLATES[contactType](c.name || ''));
+    setDialPhone(c.phone || '');
   }
 
   function updateContact(id, updates) {
@@ -363,10 +365,10 @@ export default function CareCircleDialer() {
   }
 
   async function startCall() {
-    if (!activeContact) return notify('Select a contact first', 'warning');
-    if (!activeContact.phone) return notify('No phone number', 'warning');
-    // Claim contact
-    updateContact(activeContact.id, { claimedBy: rep.id });
+    const phone = dialPhone.trim() || activeContact?.phone;
+    if (!phone) return notify('Enter a phone number to dial', 'warning');
+    const name = activeContact?.name || phone;
+    if (activeContact) updateContact(activeContact.id, { claimedBy: rep.id });
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -377,9 +379,9 @@ export default function CareCircleDialer() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: activeContact.phone,
-            contactName: activeContact.name || '',
-            contactBusiness: activeContact.business_name || '',
+            to: phone,
+            contactName: name,
+            contactBusiness: activeContact?.business_name || '',
             contactType,
             repId: rep.id,
             repName: rep.name,
@@ -391,27 +393,27 @@ export default function CareCircleDialer() {
         if (!r.ok) throw new Error(data.error);
         setCallSid(data.callSid);
         setCallState('connected');
-        notify(`Dialing ${activeContact.name || activeContact.phone}...`);
+        notify(`Dialing ${name}...`);
         startPoll(data.callSid);
       } else {
         if (typeof Twilio === 'undefined' || !Twilio.Device) throw new Error('Phone not ready. Please wait a moment and try again.');
         const conn = Twilio.Device.connect({
-          To: activeContact.phone,
-          contactName: activeContact.name || '',
+          To: phone,
+          contactName: name,
           repId: rep.id,
           contactType,
           script: SCRIPTS[contactType].name,
         });
         twilioConnRef.current = conn;
         conn.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
-        conn.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        conn.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
         setCallState('connected');
-        notify(`Dialing ${activeContact.name || activeContact.phone}...`);
+        notify(`Dialing ${name}...`);
       }
     } catch(err) {
       setCallState('idle');
       clearInterval(timerRef.current);
-      updateContact(activeContact.id, { claimedBy: null });
+      if (activeContact) updateContact(activeContact.id, { claimedBy: null });
       notify(`Call failed: ${err.message}`, 'warning');
     }
   }
@@ -622,6 +624,8 @@ export default function CareCircleDialer() {
 
             {/* Call controls */}
             <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)'}}>
+              <input value={dialPhone} onChange={e => setDialPhone(e.target.value)} placeholder="Enter number to dial directly  (+1...)"
+                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:13,padding:'8px 10px',outline:'none',borderRadius:3,marginBottom:10,letterSpacing:1}} />
               <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
                 <div style={{width:7,height:7,borderRadius:'50%',background:callStateColor[callState],animation:callState==='connected'?'pulse 1.5s infinite':'none'}}></div>
                 <span style={{fontFamily:'DM Mono,monospace',fontSize:11,letterSpacing:2,color:callStateColor[callState]}}>{callStateText[callState]}</span>
