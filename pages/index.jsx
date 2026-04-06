@@ -1324,7 +1324,7 @@ export default function CareCircleDialer() {
                 <div key={rec.recordingSid} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:500,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{rec.contactName || <span style={{color:'var(--dim)'}}>Unknown caller</span>}</div>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3,display:'flex',gap:12'}}>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3,display:'flex',gap:12}}>
                       <span>{rec.repName || '—'}</span>
                       <span>{rec.duration ? `${rec.duration}s` : '—'}</span>
                       <span>{rec.dateCreated ? new Date(rec.dateCreated).toLocaleString() : '—'}</span>
