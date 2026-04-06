@@ -246,6 +246,7 @@ export default function CareCircleDialer() {
   const timerRef = useRef(null);
   const pollRef = useRef(null);
   const twilioConnRef = useRef(null);
+  const twilioDeviceRef = useRef(null);
 
   // Session restore
   useEffect(() => {
@@ -311,18 +312,20 @@ export default function CareCircleDialer() {
             navigator.mediaDevices.enumerateDevices()
               .then(devices => setAudioDevices(devices.filter(d => d.kind === 'audioinput')));
             const setup = () => {
-              Twilio.Device.on('error', (err) => { setSdkReady(false); setSdkError(err.message || 'Device error'); });
-              Twilio.Device.on('ready', () => { setSdkReady(true); setSdkError(''); });
-              Twilio.Device.setup(token);
+              const device = new Twilio.Device(token, { logLevel: 1 });
+              twilioDeviceRef.current = device;
+              device.on('error', (err) => { setSdkReady(false); setSdkError(err.message || 'Device error'); });
+              device.on('registered', () => { setSdkReady(true); setSdkError(''); });
+              device.register();
               setTimeout(() => {
-                try { if (Twilio.Device.status() === 'ready') { setSdkReady(true); setSdkError(''); } } catch(e) {}
+                try { if (device.state === 'registered') { setSdkReady(true); setSdkError(''); } } catch(e) {}
               }, 5000);
             };
             if (typeof Twilio !== 'undefined') {
               setup();
             } else {
               const s = document.createElement('script');
-              s.src = 'https://sdk.twilio.com/js/client/v1.14/twilio.js';
+              s.src = 'https://unpkg.com/@twilio/voice-sdk@2/dist/twilio.min.js';
               s.onload = setup;
               document.head.appendChild(s);
             }
@@ -334,8 +337,8 @@ export default function CareCircleDialer() {
 
   function handleDeviceChange(deviceId) {
     setSelectedDeviceId(deviceId);
-    if (typeof Twilio !== 'undefined' && Twilio.Device.audio) {
-      Twilio.Device.audio.setInputDevice(deviceId);
+    if (twilioDeviceRef.current?.audio) {
+      twilioDeviceRef.current.audio.setInputDevice(deviceId);
     }
   }
 
@@ -411,16 +414,16 @@ export default function CareCircleDialer() {
         startPoll(data.callSid);
       } else {
         if (!sdkReady) throw new Error('Phone not ready — wait for the READY badge before dialing.');
-        const conn = Twilio.Device.connect({
+        const call = await twilioDeviceRef.current.connect({ params: {
           To: phone,
           contactName: name,
           repId: rep.id,
           contactType,
           script: SCRIPTS[contactType].name,
-        });
-        twilioConnRef.current = conn;
-        conn.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
-        conn.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        }});
+        twilioConnRef.current = call;
+        call.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
+        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
         setCallState('connected');
         notify(`Dialing ${name}...`);
       }
