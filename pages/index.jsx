@@ -236,6 +236,10 @@ export default function CareCircleDialer() {
   const [myLog, setMyLog] = useState([]);
   const [allLog, setAllLog] = useState([]);
   const [loadingLog, setLoadingLog] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const [micBlocked, setMicBlocked] = useState(false);
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -299,9 +303,26 @@ export default function CareCircleDialer() {
     if (!rep) return;
     fetch(`/api/token?repId=${rep.id}`)
       .then(r => r.json())
-      .then(({ token }) => { if (typeof Twilio !== 'undefined') Twilio.Device.setup(token); })
+      .then(({ token }) => {
+        if (typeof Twilio === 'undefined') return;
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(() => {
+            navigator.mediaDevices.enumerateDevices()
+              .then(devices => setAudioDevices(devices.filter(d => d.kind === 'audioinput')));
+            Twilio.Device.on('ready', () => setSdkReady(true));
+            Twilio.Device.setup(token, { codecPreferences: ['opus', 'pcmu'] });
+          })
+          .catch(() => setMicBlocked(true));
+      })
       .catch(() => {});
   }, [rep]);
+
+  function handleDeviceChange(deviceId) {
+    setSelectedDeviceId(deviceId);
+    if (typeof Twilio !== 'undefined' && Twilio.Device.audio) {
+      Twilio.Device.audio.setInputDevice(deviceId);
+    }
+  }
 
   const notify = useCallback((msg, type='info') => {
     setNotification({ msg, type });
@@ -606,8 +627,10 @@ export default function CareCircleDialer() {
                 <span style={{fontFamily:'DM Mono,monospace',fontSize:11,letterSpacing:2,color:callStateColor[callState]}}>{callStateText[callState]}</span>
                 {callState!=='idle'&&<span style={{fontFamily:'DM Mono,monospace',fontSize:12,color:'var(--mid)',marginLeft:'auto'}}>{fmtTime(callSeconds)}</span>}
               </div>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
                 {callState==='idle'&&<button onClick={startCall} style={{padding:'10px 20px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>📞 Dial</button>}
+                {!micBlocked && sdkReady && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1.5,color:'var(--gl)',padding:'3px 7px',border:'1px solid rgba(107,191,107,0.35)',borderRadius:2,background:'rgba(107,191,107,0.08)'}}>● READY</span>}
+                {micBlocked && <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1,color:'var(--red)',padding:'3px 7px',border:'1px solid rgba(196,68,68,0.35)',borderRadius:2,background:'rgba(196,68,68,0.08)'}}>⚠ MIC BLOCKED</span>}
                 {['dialing','connected'].includes(callState)&&(
                   <>
                     <button onClick={endCall} style={{padding:'10px 20px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,background:'var(--red)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>🔴 End</button>
@@ -616,6 +639,16 @@ export default function CareCircleDialer() {
                 )}
                 <button onClick={() => activeContact?setSmsModal(true):notify('Select a contact','warning')} style={{padding:'10px 12px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>💬 SMS</button>
               </div>
+              {micBlocked && <div style={{marginTop:8,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--red)',lineHeight:1.6}}>Click the camera icon in your browser address bar to allow microphone access</div>}
+              {sdkReady && audioDevices.length > 0 && (
+                <div style={{marginTop:10,display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',flexShrink:0}}>Mic:</span>
+                  <select value={selectedDeviceId} onChange={e => handleDeviceChange(e.target.value)}
+                    style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'4px 7px',outline:'none',borderRadius:3,cursor:'pointer'}}>
+                    {audioDevices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Microphone ${d.deviceId.slice(0,6)}`}</option>)}
+                  </select>
+                </div>
+              )}
               {['connected','ended'].includes(callState)&&(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
                   {[['answered','✓ Answered','var(--green)'],['voicemail','📬 Left VM','var(--dim)'],['callback','↩ Call Back','var(--orange)'],['interested','★ Interested','var(--gl)'],['not-interested','✕ Not Int.','var(--red)']].map(([outcome,label,color]) => (
