@@ -857,6 +857,59 @@ export default function CareCircleDialer() {
             </label>
           </div>
 
+          {/* Lists */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>Uploaded Lists</div>
+            {['b2b','b2c'].map(pool => {
+              const poolContacts = lGet(`cc_contacts_${pool}`, []);
+              const lists = [...new Set(poolContacts.map(c => c.list_name).filter(Boolean))];
+              if (!poolContacts.length) return null;
+              return (
+                <div key={pool} style={{marginBottom:16}}>
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:pool==='b2b'?'var(--green)':'var(--teal)',letterSpacing:1,marginBottom:8}}>{pool.toUpperCase()} POOL — {poolContacts.length} total contacts</div>
+                  {lists.length === 0 && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No named lists (manually added contacts)</div>}
+                  {lists.map(listName => {
+                    const count = poolContacts.filter(c => c.list_name === listName).length;
+                    return (
+                      <div key={listName} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:500,color:'var(--text)'}}>{listName}</div>
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{count} contacts</div>
+                        </div>
+                        <button onClick={() => {
+                          if (!confirm(`Delete "${listName}" and remove all ${count} contacts from the ${pool.toUpperCase()} pool?`)) return;
+                          const updated = poolContacts.filter(c => c.list_name !== listName);
+                          lSet(`cc_contacts_${pool}`, updated);
+                          if (contactType === pool) setContacts(updated);
+                          notify(`Deleted list "${listName}" (${count} contacts removed)`, 'success');
+                        }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
+                      </div>
+                    );
+                  })}
+                  {poolContacts.filter(c => !c.list_name).length > 0 && (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:500,color:'var(--dim)'}}>Manually added</div>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{poolContacts.filter(c => !c.list_name).length} contacts</div>
+                      </div>
+                      <button onClick={() => {
+                        const count = poolContacts.filter(c => !c.list_name).length;
+                        if (!confirm(`Delete all ${count} manually-added contacts from the ${pool.toUpperCase()} pool?`)) return;
+                        const updated = poolContacts.filter(c => c.list_name);
+                        lSet(`cc_contacts_${pool}`, updated);
+                        if (contactType === pool) setContacts(updated);
+                        notify(`Deleted ${count} manually-added contacts`, 'success');
+                      }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {lGet('cc_contacts_b2b',[]).length===0 && lGet('cc_contacts_b2c',[]).length===0 && (
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts uploaded yet.</div>
+            )}
+          </div>
+
           {/* Rep list */}
           <div style={{marginBottom:28}}>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>Active Reps</div>
