@@ -111,12 +111,13 @@ const SCRIPTS = {
       name: 'Cold Outbound Family',
       color: '#3D8B7A',
       sections: [
-        { label: 'OPENER', text: "Hi, is this [Name]? My name is [Your Name] — I'm calling from CareCircle Network in Pensacola. I'll be quick — we provide independent oversight for families with loved ones in nursing homes and care facilities in Northwest Florida. Do you have about 60 seconds?" },
-        { label: 'IF YES — 60 SECONDS', text: "The reason I'm calling is that a lot of families in [area] are in a situation where their loved one is in a facility and they visit when they can — but there's a whole part of the week they never see. We put trained advocates into facilities unannounced — overnight, on weekends — and give families a written report within 24 hours. Is that something that's ever crossed your mind for your family?" },
-        { label: 'IF THEY HAVE A CONCERN', text: "Tell me a little about the situation. Who is in the facility and what's been on your mind?" },
-        { label: 'IF NO CONCERN', text: "That's fair — and most families feel that way until something happens. Can I ask — does your loved one have someone who visits regularly, or are visits more sporadic? [Regular visits → 'Great, but you're still not seeing the overnight or holiday staffing.' Sporadic → 'That's exactly the gap we fill.']" },
-        { label: 'SEED PLANT CLOSE', text: "I'm not going to push you today — but I'd like to send you one resource. We have a free provider research tool at carecircle.fit/research that shows AHCA inspection records, CMS data, complaint history, and employee reviews for every facility in Northwest Florida. Would it be okay if I texted you the link?" },
-        { label: 'OBJECTIONS', text: "How did you get my number → [Be honest about your source.] 'We connect with families who have loved ones in local care facilities. If you'd prefer not to be contacted, I'll remove you right now.' | Not interested → 'Completely fine. Before I let you go — do you have a loved one in a facility right now? [If yes:] I'll leave you with one free resource. carecircle.fit/research — AHCA records and complaint history, completely free.'" },
+        { label: 'OPENER', text: "Hi, is this [Name]? This is [Your Name] calling from CareCircle Network in Pensacola — quick call. We help Northwest Florida families navigate senior care, whether that's keeping an eye on a loved one in a facility or finding quality in-home help so someone can stay home. Do you have just a minute?" },
+        { label: 'QUALIFY — JUST ASK', text: "Can I ask — do you have a parent or family member who's in a nursing home or assisted living right now, or maybe at home but starting to need some help day-to-day? [Listen. Don't rush. Their answer tells you which track to take.]" },
+        { label: 'IF NEEDS HOME CARE', text: "So we partner with Assisting Seniors of the Gulf Coast — they've been serving families here for 17 years, five-star rated. They provide non-medical home care: companionship, personal care, light housekeeping, transportation, meal help — the things that let someone stay safely at home. The good news is they accept most major insurance and some Medicaid, so a lot of families are surprised by what's actually covered. Would it be worth a quick 15-minute call with their team just to see what's available? No commitment — just information." },
+        { label: 'IF IN A FACILITY', text: "Tell me a little about the situation — what facility and how long have they been there? [Listen. Reflect back.] Got it. So what we do is put trained independent advocates into facilities unannounced — overnight, on weekends, shift changes — the times families never see. You get a written report within 24 hours. We work for your family, not the facility." },
+        { label: 'JUST HAVE A CONVERSATION', text: "[Don't rush to pitch. Ask follow-up questions. What's the biggest concern? How often do they visit? Have they noticed any changes? The goal is to understand their situation — the right solution becomes obvious when you listen. You're not closing a sale right now, you're building trust.]" },
+        { label: 'BOOK THE FOLLOW-UP', text: "Here's what I'd suggest — let me set up a short call between you and the right person on our team. They can look at your specific situation and tell you exactly what makes sense. It's free, no obligation, 15 minutes. What does your schedule look like later this week — are mornings or afternoons better for you?" },
+        { label: 'OBJECTIONS', text: "Not sure I need anything → 'Completely fair — can I ask what the care situation looks like right now? Even just knowing what's out there is useful.' | Home care cost concern → 'Assisting Seniors takes most insurance and some Medicaid. A lot of families don't realize what's covered. The consultation is free — worth finding out.' | Already in a facility and happy → 'Great to hear. An unannounced visit either confirms everything is great, or catches something early. Families who do it say they sleep better.' | How did you get my number → [Be honest.] 'We connect with families in the area navigating senior care. If you'd prefer not to be called, I'll take you off right now — no problem.'" },
       ]
     },
     {
@@ -136,7 +137,7 @@ const SCRIPTS = {
 };
 
 // Active script per contact type — default to first in each array
-const DEFAULT_SCRIPT = { b2b: 'b2b-cold-facility', b2c: 'b2c-inbound-warm' };
+const DEFAULT_SCRIPT = { b2b: 'b2b-cold-facility', b2c: 'b2c-cold' };
 
 const SMS_TEMPLATES = {
   b2b: (name) => `CareCircle Network: Hi${name?' '+name.split(' ')[0]:''} — your facility's scanner profile and partner options: carecircle.fit/research — Questions? Care@CareCircle.Fit or 850-341-4324. Reply STOP to opt out.`,
@@ -169,7 +170,7 @@ const CSS = `
   }
 `;
 
-const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)',partner:'var(--teal)' };
+const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
 const callStateColor = { idle:'var(--dim)',dialing:'var(--yellow)',connected:'var(--gl)',ended:'var(--orange)' };
 const callStateText = { idle:'STANDBY',dialing:'DIALING...',connected:'CONNECTED',ended:'CALL ENDED' };
 
@@ -219,7 +220,7 @@ function LoginScreen({ onLogin }) {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function CareCircleDialer() {
   const [rep, setRep] = useState(null);
-  const [contactType, setContactType] = useState('b2b');
+  const [contactType, setContactType] = useState('b2c');
   const [contacts, setContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [activeContact, setActiveContact] = useState(null);
@@ -247,6 +248,9 @@ export default function CareCircleDialer() {
   const [audioDevices, setAudioDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [dialPhone, setDialPhone] = useState('');
+  const [editingContact, setEditingContact] = useState(null);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [expandedLog, setExpandedLog] = useState(null);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -395,12 +399,15 @@ export default function CareCircleDialer() {
   }, []);
 
   // Contacts filtered
+  const DEAD_STATUSES = ['dnc', 'disconnected', 'wrong-number'];
   const allFiltered = contacts.filter(c => {
     const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
     const mf = statusFilter === 'all' || c.status === statusFilter;
     // Hide contacts claimed by other reps (show own + unclaimed)
     const mc = !c.claimedBy || c.claimedBy === rep?.id;
-    return ms && mf && mc;
+    // DNC / disconnected / wrong-number are permanently hidden unless explicitly filtered
+    const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
+    return ms && mf && mc && notDead;
   });
 
   function selectContact(c) {
@@ -500,7 +507,7 @@ export default function CareCircleDialer() {
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
     setCallState('idle');
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
     const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
@@ -616,7 +623,7 @@ export default function CareCircleDialer() {
   // Stats
   const myTotal = myLog.length;
   const myInterested = myLog.filter(c => c.outcome === 'interested').length;
-  const myAnswered = myLog.filter(c => !['voicemail','not-interested'].includes(c.outcome)).length;
+  const myAnswered = myLog.filter(c => ['answered','interested','callback','not-interested','dnc'].includes(c.outcome)).length;
   const myRate = myTotal > 0 ? Math.round(myAnswered/myTotal*100) : 0;
 
   const script = SCRIPTS[contactType].find(s => s.id === activeScriptId) || SCRIPTS[contactType][0];
@@ -677,7 +684,7 @@ export default function CareCircleDialer() {
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
                 style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
               <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                {['new','all','called','callback','interested','voicemail','not-interested','disconnected','dnc'].map(f => (
+                {['new','all','called','callback','interested','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
                   <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
                     {f}
                   </button>
@@ -772,8 +779,8 @@ export default function CareCircleDialer() {
                 </div>
               )}
               {['connected','ended'].includes(callState)&&(
-                <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
-                  {[['answered','✓ Answered','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['callback','↩ Call Back','var(--orange)'],['interested','★ Interested','var(--gl)'],['not-interested','✕ Not Int.','var(--red)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
+                <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
+                  {[['interested','★ Interested','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
                     <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
                       {label}
                     </button>
@@ -835,7 +842,7 @@ export default function CareCircleDialer() {
             {myLog.length===0 ? (
               <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No calls yet</div>
             ) : myLog.slice(0,60).map((entry,i) => {
-              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)'}[entry.outcome]||'var(--dim)';
+              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
               return (
                 <div key={i} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
@@ -877,20 +884,31 @@ export default function CareCircleDialer() {
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                 <table style={{width:'100%',borderCollapse:'collapse'}}>
                   <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                    {['Rep','Contact','Type','Outcome','Duration','Time'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
+                    {['Rep','Contact','Type','Outcome','Dur.','Time','Notes'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {allLog.slice(0,150).map((entry,i) => {
-                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)'}[entry.outcome]||'var(--dim)';
+                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                      const isExpanded = expandedLog === i;
                       return (
-                        <tr key={i} style={{borderBottom:'1px solid var(--border)'}}>
-                          <td style={{padding:'8px 14px',fontSize:12,color:'var(--teal)',fontWeight:500}}>{entry.repName}</td>
-                          <td style={{padding:'8px 14px',fontSize:11,color:'var(--text)'}}>{entry.contactName||'—'}</td>
-                          <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{(entry.contactType||'').toUpperCase()}</td>
-                          <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:c}}>{(entry.outcome||'').toUpperCase()}</td>
-                          <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>{fmtTime(entry.duration)}</td>
-                          <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>{entry.timestamp?new Date(entry.timestamp).toLocaleString():'—'}</td>
-                        </tr>
+                        <>
+                          <tr key={i} style={{borderBottom:'1px solid var(--border)',cursor:entry.notes?'pointer':'default'}} onClick={() => setExpandedLog(isExpanded?null:i)}>
+                            <td style={{padding:'8px 14px',fontSize:12,color:'var(--teal)',fontWeight:500}}>{entry.repName}</td>
+                            <td style={{padding:'8px 14px',fontSize:11,color:'var(--text)'}}>{entry.contactName||'—'}</td>
+                            <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{(entry.contactType||'').toUpperCase()}</td>
+                            <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:c}}>{(entry.outcome||'').toUpperCase()}</td>
+                            <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>{fmtTime(entry.duration)}</td>
+                            <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>{entry.timestamp?new Date(entry.timestamp).toLocaleString():'—'}</td>
+                            <td style={{padding:'8px 14px',fontSize:11,color:'var(--dim)',maxWidth:200}}>
+                              {entry.notes ? <span style={{color:'var(--mid)',cursor:'pointer'}}>{isExpanded ? '▲ hide' : entry.notes.slice(0,40)+(entry.notes.length>40?'…':'')}</span> : <span style={{opacity:0.3}}>—</span>}
+                            </td>
+                          </tr>
+                          {isExpanded && entry.notes && (
+                            <tr key={`${i}-notes`} style={{borderBottom:'1px solid var(--border)',background:'var(--surface2)'}}>
+                              <td colSpan={7} style={{padding:'10px 14px',fontSize:12,color:'var(--text)',lineHeight:1.5,fontStyle:'italic'}}>{entry.notes}</td>
+                            </tr>
+                          )}
+                        </>
                       );
                     })}
                   </tbody>
@@ -961,6 +979,60 @@ export default function CareCircleDialer() {
                 }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
               </div>
             )}
+          </div>
+
+          {/* Contact Management */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
+              Contact Management — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
+              <span style={{marginLeft:8,color:'var(--dim)',fontWeight:400,letterSpacing:0}}>({contacts.length} total)</span>
+            </div>
+            <input value={adminSearch} onChange={e=>setAdminSearch(e.target.value)} placeholder="Search name, phone, business..."
+              style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3,marginBottom:8}} />
+            <div style={{maxHeight:360,overflowY:'auto',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)'}}>
+                  {['Name / Business','Phone','Status','Claimed By','Actions'].map(h => <th key={h} style={{padding:'7px 10px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase',whiteSpace:'nowrap'}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {contacts.filter(c => {
+                    const q = adminSearch.toLowerCase();
+                    return !q || (c.name||'').toLowerCase().includes(q) || (c.phone||'').includes(q) || (c.business_name||'').toLowerCase().includes(q);
+                  }).slice(0,200).map(c => (
+                    <tr key={c.id} style={{borderBottom:'1px solid var(--border)'}}>
+                      <td style={{padding:'6px 10px',fontSize:11,color:'var(--text)',maxWidth:180}}>
+                        <div style={{fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name||'—'}</div>
+                        {c.business_name&&<div style={{fontSize:9,color:'var(--dim)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.business_name}</div>}
+                      </td>
+                      <td style={{padding:'6px 10px',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',whiteSpace:'nowrap'}}>{c.phone||'—'}</td>
+                      <td style={{padding:'6px 10px'}}>
+                        <span style={{fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,color:statusColor[c.status]||'var(--dim)',padding:'2px 5px',border:`1px solid ${statusColor[c.status]||'var(--dim)'}44`,borderRadius:2}}>{c.status||'new'}</span>
+                      </td>
+                      <td style={{padding:'6px 10px',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--teal)'}}>{c.claimedBy ? REPS.find(r=>r.id===c.claimedBy)?.name||c.claimedBy : <span style={{color:'var(--dim)'}}>—</span>}</td>
+                      <td style={{padding:'6px 10px'}}>
+                        <div style={{display:'flex',gap:5}}>
+                          <button onClick={() => setEditingContact({...c})} style={{padding:'3px 7px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2,letterSpacing:0.5}}>EDIT</button>
+                          <button onClick={() => {
+                            if (!confirm(`Delete "${c.name||c.phone}"?`)) return;
+                            const updated = contacts.filter(x => x.id !== c.id);
+                            setContacts(updated);
+                            saveContacts(contactType, updated);
+                            notify('Contact deleted', 'success');
+                          }} style={{padding:'3px 7px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DEL</button>
+                          {c.claimedBy && <button onClick={() => {
+                            const updated = contacts.map(x => x.id===c.id ? {...x, claimedBy:null} : x);
+                            setContacts(updated);
+                            saveContacts(contactType, updated);
+                            notify('Lead released back to pool', 'success');
+                          }} style={{padding:'3px 7px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--orange)',background:'transparent',color:'var(--orange)',borderRadius:2,letterSpacing:0.5}}>RELEASE</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {contacts.length === 0 && <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts in this pool.</div>}
+            </div>
           </div>
 
           {/* Rep list */}
@@ -1034,6 +1106,45 @@ export default function CareCircleDialer() {
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:14}}>
               <button onClick={() => setShowAddModal(false)} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Cancel</button>
               <button onClick={addContact} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT CONTACT MODAL (admin) */}
+      {editingContact&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:440,animation:'slideUp 0.2s ease'}}>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)',marginBottom:16}}>Edit Contact</div>
+            {[['Name','name'],['Business / Facility','business_name'],['Phone','phone'],['Email','email'],['City','city'],['Address','address']].map(([label,key]) => (
+              <div key={key} style={{marginBottom:10}}>
+                <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>{label}</div>
+                <input value={editingContact[key]||''} onChange={e => setEditingContact(p=>({...p,[key]:e.target.value}))}
+                  style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
+              </div>
+            ))}
+            <div style={{marginBottom:10}}>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Notes</div>
+              <textarea value={editingContact.notes||''} onChange={e => setEditingContact(p=>({...p,notes:e.target.value}))}
+                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3,resize:'vertical',height:70}} />
+            </div>
+            <div style={{marginBottom:14}}>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Assign To (Claimed By)</div>
+              <select value={editingContact.claimedBy||''} onChange={e => setEditingContact(p=>({...p,claimedBy:e.target.value||null}))}
+                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}}>
+                <option value=''>— Unassigned (back to pool) —</option>
+                {REPS.map(r => <option key={r.id} value={r.id}>{r.name} ({r.role})</option>)}
+              </select>
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={() => setEditingContact(null)} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Cancel</button>
+              <button onClick={() => {
+                const updated = contacts.map(c => c.id===editingContact.id ? editingContact : c);
+                setContacts(updated);
+                saveContacts(contactType, updated);
+                setEditingContact(null);
+                notify('Contact updated', 'success');
+              }} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>Save</button>
             </div>
           </div>
         </div>
