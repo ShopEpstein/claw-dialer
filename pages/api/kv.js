@@ -56,5 +56,16 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+  if (action === 'contact-update') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const { id, updates } = req.body;
+      const raw = await kv('GET', `contacts:${pool}`);
+      const contacts = raw ? JSON.parse(raw) : [];
+      const updated = contacts.map(c => c.id === id ? { ...c, ...updates } : c);
+      await kv('SET', `contacts:${pool}`, JSON.stringify(updated));
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
   return res.status(400).json({ error: 'Unknown action' });
 }

@@ -250,6 +250,7 @@ export default function CareCircleDialer() {
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
+  const syncRef = useRef(null);
   const twilioConnRef = useRef(null);
   const twilioDeviceRef = useRef(null);
 
@@ -298,6 +299,16 @@ export default function CareCircleDialer() {
     } catch {}
   }
 
+  async function updateContactKV(pool, id, updates) {
+    try {
+      await fetch(`/api/kv?action=contact-update&pool=${pool}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, updates }),
+      });
+    } catch {}
+  }
+
   useEffect(() => {
     if (!rep) return;
     loadContacts(contactType);
@@ -305,6 +316,19 @@ export default function CareCircleDialer() {
     setStatusFilter('new');
     setActiveScriptId(DEFAULT_SCRIPT[contactType]);
   }, [contactType, rep]);
+
+  // Poll KV every 5 seconds to sync lead claims across all reps
+  useEffect(() => {
+    if (!rep) return;
+    syncRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/kv?action=contacts&pool=${contactType}`);
+        const d = await r.json();
+        if (d.contacts) setContacts(d.contacts);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(syncRef.current);
+  }, [rep, contactType]);
 
   // Load call logs from KV
   async function loadLogs() {
@@ -408,7 +432,10 @@ export default function CareCircleDialer() {
     const phone = dialPhone.trim() || activeContact?.phone;
     if (!phone) return notify('Enter a phone number to dial', 'warning');
     const name = activeContact?.name || phone;
-    if (activeContact) updateContact(activeContact.id, { claimedBy: rep.id });
+    if (activeContact) {
+      updateContact(activeContact.id, { claimedBy: rep.id });
+      updateContactKV(contactType, activeContact.id, { claimedBy: rep.id });
+    }
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -446,14 +473,17 @@ export default function CareCircleDialer() {
         }});
         twilioConnRef.current = call;
         call.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
-        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) updateContact(activeContact.id, { claimedBy: null }); twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) { updateContact(activeContact.id, { claimedBy: null }); updateContactKV(contactType, activeContact.id, { claimedBy: null }); } twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
         setCallState('connected');
         notify(`Dialing ${name}...`);
       }
     } catch(err) {
       setCallState('idle');
       clearInterval(timerRef.current);
-      if (activeContact) updateContact(activeContact.id, { claimedBy: null });
+      if (activeContact) {
+        updateContact(activeContact.id, { claimedBy: null });
+        updateContactKV(contactType, activeContact.id, { claimedBy: null });
+      }
       notify(`Call failed: ${err.message}`, 'warning');
     }
   }
@@ -471,7 +501,9 @@ export default function CareCircleDialer() {
     clearInterval(pollRef.current);
     setCallState('idle');
     const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested' };
-    updateContact(activeContact.id, { status: statusMap[outcome] || 'called', notes, claimedBy: null });
+    const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null };
+    updateContact(activeContact.id, contactUpdates);
+    updateContactKV(contactType, activeContact.id, contactUpdates);
     // Save to KV
     const record = {
       repId: rep.id, repName: rep.name,
