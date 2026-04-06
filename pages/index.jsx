@@ -572,6 +572,7 @@ export default function CareCircleDialer() {
     setLifecycleContact({ contact: { ...contact }, history });
   }
 
+
   function cancelAutoDial() {
     clearInterval(countdownRef.current);
     setAutoDialCountdown(null);
