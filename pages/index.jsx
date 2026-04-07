@@ -540,6 +540,15 @@ export default function CareCircleDialer() {
   // Contacts filtered
   // not-interested is treated identically to DNC — permanently suppressed, never re-dialed (TCPA)
   const DEAD_STATUSES = ['dnc', 'not-interested', 'disconnected', 'wrong-number'];
+
+  // Build a set of phone numbers that have been dialed in the last 24h by anyone in the system.
+  // This blocks duplicates by phone number regardless of contact ID or which outbound number called.
+  const calledPhones24h = new Set(
+    contacts
+      .filter(c => c.lastCalledAt && (Date.now() - new Date(c.lastCalledAt).getTime()) < 86400000)
+      .map(c => c.phone).filter(Boolean)
+  );
+
   const allFiltered = contacts.filter(c => {
     const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
     const mf = statusFilter === 'all' || c.status === statusFilter;
@@ -547,12 +556,16 @@ export default function CareCircleDialer() {
     const mc = !c.claimedBy || c.claimedBy === rep?.id;
     // DNC / not-interested / disconnected / wrong-number are permanently excluded unless explicitly filtered
     const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
-    // Hide contacts called in the last 24h (callbacks/interested are intentional re-dials)
+    // Block if this contact's own lastCalledAt is within 24h
     const notCalledToday = !c.lastCalledAt
       || ['callback','interested'].includes(c.status)
-      || statusFilter === c.status  // show if explicitly filtering for that status
+      || statusFilter === c.status
       || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000;
-    return ms && mf && mc && notDead && notCalledToday;
+    // Also block by phone number — catches duplicates with same phone but different IDs
+    const phoneNotCalledToday = !c.phone || !calledPhones24h.has(c.phone)
+      || ['callback','interested'].includes(c.status)
+      || statusFilter === c.status;
+    return ms && mf && mc && notDead && notCalledToday && phoneNotCalledToday;
   });
 
   function selectContact(c) {
@@ -592,8 +605,12 @@ export default function CareCircleDialer() {
     if (!phone) return notify('Enter a phone number to dial', 'warning');
     const name = contact?.name || phone;
     if (contact) {
-      updateContact(contact.id, { claimedBy: rep.id });
-      updateContactKV(contactType, contact.id, { claimedBy: rep.id });
+      const now = new Date().toISOString();
+      // Stamp lastCalledAt immediately on dial — not just at disposition.
+      // This removes the lead from everyone's queue within seconds (next KV sync),
+      // even if the call drops before a disposition is set.
+      updateContact(contact.id, { claimedBy: rep.id, lastCalledAt: now });
+      updateContactKV(contactType, contact.id, { claimedBy: rep.id, lastCalledAt: now });
     }
     setNotification(null); // clear any previous notification immediately
     setCallState('dialing');
@@ -691,7 +708,8 @@ export default function CareCircleDialer() {
         !c.claimedBy &&
         !DEAD_STATUSES.includes(c.status) &&
         c.id !== activeContact.id &&
-        (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000)
+        (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
+        (!c.phone || !calledPhones24h.has(c.phone))
       );
       if (next) {
         let secs = 3;
@@ -984,7 +1002,7 @@ export default function CareCircleDialer() {
                     {/* Next Lead button */}
                     <div style={{padding:'12px'}}>
                       <button onClick={() => {
-                        const next = contacts.find(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000));
+                        const next = contacts.find(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000) && (!c.phone || !calledPhones24h.has(c.phone)));
                         if (next) selectContact(next);
                         else notify('No new leads available', 'warning');
                       }} style={{width:'100%',padding:'11px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5}}>
