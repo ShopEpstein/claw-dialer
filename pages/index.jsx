@@ -293,6 +293,7 @@ export default function CareCircleDialer() {
   const [onlineReps, setOnlineReps] = useState([]);
   const [numberAssignments, setNumberAssignments] = useState({}); // { repId -> phoneNumber }
   const [numberPoolSaving, setNumberPoolSaving] = useState(false);
+  const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -437,6 +438,34 @@ export default function CareCircleDialer() {
 
   useEffect(() => { if (rep) loadLogs(); }, [rep]);
   useEffect(() => { if (rep && tab === 'admin') loadNumberAssignments(); }, [rep, tab]);
+
+  // Fetch recordings for all callSids in the lifecycle modal when it opens
+  useEffect(() => {
+    if (!lifecycleContact) return;
+    const sids = lifecycleContact.history.map(e => e.callSid).filter(Boolean);
+    if (sids.length === 0) return;
+    setLifecycleRecordings(prev => {
+      const next = { ...prev };
+      sids.forEach(sid => { if (!next[sid]) next[sid] = 'loading'; });
+      return next;
+    });
+    fetch('/api/recordings?action=fetch-list', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callSids: sids }),
+    }).then(r => r.json()).then(d => {
+      setLifecycleRecordings(prev => {
+        const next = { ...prev };
+        sids.forEach(sid => { next[sid] = d.map?.[sid] || null; });
+        return next;
+      });
+    }).catch(() => {
+      setLifecycleRecordings(prev => {
+        const next = { ...prev };
+        sids.forEach(sid => { if (next[sid] === 'loading') next[sid] = null; });
+        return next;
+      });
+    });
+  }, [lifecycleContact]);
 
   async function loadNumberAssignments() {
     try {
@@ -1627,7 +1656,30 @@ export default function CareCircleDialer() {
                         </div>
                         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{entry.timestamp?new Date(entry.timestamp).toLocaleString():'—'}</span>
                       </div>
-                      {entry.notes&&<div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic',paddingLeft:14,lineHeight:1.5}}>{entry.notes}</div>}
+                      {entry.notes&&<div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic',paddingLeft:14,marginBottom:6,lineHeight:1.5}}>{entry.notes}</div>}
+                      {/* Recording */}
+                      {entry.callSid && (() => {
+                        const rec = lifecycleRecordings[entry.callSid];
+                        if (rec === 'loading') return <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',paddingLeft:14}}>Loading recording...</div>;
+                        if (!rec) return null;
+                        const streamUrl = `/api/recordings?action=stream&sid=${rec.recordingSid}`;
+                        const fullUrl = `https://claw-dialer.vercel.app/api/recordings?action=stream&sid=${rec.recordingSid}`;
+                        return (
+                          <div style={{paddingLeft:14,marginTop:8}}>
+                            <audio controls src={streamUrl} style={{width:'100%',height:32,marginBottom:7,display:'block'}} />
+                            <div style={{display:'flex',gap:7}}>
+                              <a href={streamUrl} download={`recording-${entry.callSid}.mp3`}
+                                style={{padding:'4px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--green)',borderRadius:2,textDecoration:'none',letterSpacing:0.5}}>
+                                ↓ DOWNLOAD
+                              </a>
+                              <button onClick={() => { navigator.clipboard.writeText(fullUrl); notify('Recording link copied', 'success'); }}
+                                style={{padding:'4px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.1)',color:'var(--teal)',borderRadius:2,letterSpacing:0.5}}>
+                                🔗 COPY LINK
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
