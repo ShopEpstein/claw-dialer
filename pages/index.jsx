@@ -550,14 +550,17 @@ export default function CareCircleDialer() {
     }, 3000);
   }
 
-  async function startCall() {
-    const phone = dialPhone.trim() || activeContact?.phone;
+  async function startCall(overrideContact) {
+    // Use overrideContact if passed (auto-dial passes it directly to avoid stale state)
+    const contact = overrideContact !== undefined ? overrideContact : activeContact;
+    const phone = dialPhone.trim() || contact?.phone;
     if (!phone) return notify('Enter a phone number to dial', 'warning');
-    const name = activeContact?.name || phone;
-    if (activeContact) {
-      updateContact(activeContact.id, { claimedBy: rep.id });
-      updateContactKV(contactType, activeContact.id, { claimedBy: rep.id });
+    const name = contact?.name || phone;
+    if (contact) {
+      updateContact(contact.id, { claimedBy: rep.id });
+      updateContactKV(contactType, contact.id, { claimedBy: rep.id });
     }
+    setNotification(null); // clear any previous notification immediately
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -570,7 +573,7 @@ export default function CareCircleDialer() {
           body: JSON.stringify({
             to: phone,
             contactName: name,
-            contactBusiness: activeContact?.business_name || '',
+            contactBusiness: contact?.business_name || '',
             contactType,
             repId: rep.id,
             repName: rep.name,
@@ -595,16 +598,16 @@ export default function CareCircleDialer() {
         }});
         twilioConnRef.current = call;
         call.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
-        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) { updateContact(activeContact.id, { claimedBy: null }); updateContactKV(contactType, activeContact.id, { claimedBy: null }); } twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (contact) { updateContact(contact.id, { claimedBy: null }); updateContactKV(contactType, contact.id, { claimedBy: null }); } twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
         setCallState('connected');
         notify(`Dialing ${name}...`);
       }
     } catch(err) {
       setCallState('idle');
       clearInterval(timerRef.current);
-      if (activeContact) {
-        updateContact(activeContact.id, { claimedBy: null });
-        updateContactKV(contactType, activeContact.id, { claimedBy: null });
+      if (contact) {
+        updateContact(contact.id, { claimedBy: null });
+        updateContactKV(contactType, contact.id, { claimedBy: null });
       }
       notify(`Call failed: ${err.message}`, 'warning');
     }
@@ -663,7 +666,7 @@ export default function CareCircleDialer() {
             clearInterval(countdownRef.current);
             setAutoDialCountdown(null);
             selectContact(next);
-            setTimeout(() => startCall(), 100);
+            setTimeout(() => startCall(next), 100);
           } else {
             setAutoDialCountdown(secs);
           }
