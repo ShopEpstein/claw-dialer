@@ -821,6 +821,17 @@ export default function CareCircleDialer() {
         </div>
       </div>
 
+      {/* INFO BAR */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:24,padding:'5px 20px',background:'rgba(180,140,60,0.07)',borderBottom:'1px solid rgba(180,140,60,0.18)',flexWrap:'wrap'}}>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--gl)',letterSpacing:0.5}}>carecircle.fit</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>850-341-4324</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>Care@CareCircle.Fit</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Billing questions → <span style={{color:'var(--text)'}}>Billing@CareCircle.Fit</span></span>
+      </div>
+
       {/* NAV */}
       <div style={{display:'flex',background:'var(--surface)',borderBottom:'1px solid var(--border)',padding:'0 20px'}}>
         {['dialer','dashboard',...(isAdmin?['admin']:[])].map(t => (
