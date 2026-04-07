@@ -11,6 +11,15 @@ async function kv(cmd, ...args) {
   return d.result;
 }
 
+export async function getPhoneAssignments() {
+  const raw = await kv('GET', 'phone:assignments');
+  return raw ? JSON.parse(raw) : null;
+}
+
+export async function setPhoneAssignments(assignments) {
+  await kv('SET', 'phone:assignments', JSON.stringify(assignments));
+}
+
 export async function saveCall(record) {
   const s = JSON.stringify(record);
   await Promise.all([

@@ -1,12 +1,26 @@
 import twilio from 'twilio';
 import Anthropic from '@anthropic-ai/sdk';
-import { saveCall } from './kv';
+import { saveCall, getPhoneAssignments, setPhoneAssignments } from './kv';
 
 const BASE = 'https://claw-dialer.vercel.app';
-const FROM = '+18559600110'; // toll-free — used for SMS by everyone
-const REP_CALLER_IDS = {
-  brittany: '+18507211779', // local outbound number for Brittany Lasley
+const FROM = '+18559600110'; // toll-free — SMS default for everyone
+
+// Default outbound caller IDs per rep — overridden at runtime via Admin > Number Pool
+const DEFAULT_PHONE_ASSIGNMENTS = {
+  chase:    '+18502033021', // (850) 203-3021 Chase Local
+  brittany: '+18507211779', // (850) 721-1779 Jessica Local
+  erica:    '+18502043347', // (850) 204-3347 Erica Local
 };
+
+async function getRepPhone(repId) {
+  try {
+    const stored = await getPhoneAssignments();
+    const map = stored || DEFAULT_PHONE_ASSIGNMENTS;
+    return map[repId] || FROM;
+  } catch {
+    return DEFAULT_PHONE_ASSIGNMENTS[repId] || FROM;
+  }
+}
 
 const SYSTEM_PROMPT_B2B = `You are a professional outreach representative for CareCircle Network, calling senior care facilities and providers in Northwest Florida. Calm, credible, direct. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
 
@@ -231,7 +245,7 @@ export default async function handler(req, res) {
         contactName: contactName || '', contactBusiness: contactBusiness || '',
         contactType: contactType || 'b2b', script: script || '',
       });
-      const callFrom = REP_CALLER_IDS[repId] || FROM;
+      const callFrom = await getRepPhone(repId);
       const call = await client.calls.create({
         to, from: callFrom,
         url: aiMode
@@ -265,7 +279,7 @@ export default async function handler(req, res) {
     const { To, repId: browserRepId } = body;
     res.setHeader('Content-Type', 'text/xml');
     if (!To) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
-    const browserCallerId = REP_CALLER_IDS[browserRepId] || FROM;
+    const browserCallerId = await getRepPhone(browserRepId || '');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Dial callerId="${browserCallerId}" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
@@ -287,6 +301,21 @@ export default async function handler(req, res) {
       }).catch(() => {});
     } catch {}
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Thanks for calling CareCircle Network. We connect families with independent care advocates across Florida. Someone from our team will call you right back — we're noting your number now.</Say><Hangup/></Response>`);
+  }
+
+  if (action === 'phone-assignments') {
+    if (req.method === 'GET') {
+      try {
+        const stored = await getPhoneAssignments();
+        return res.status(200).json({ assignments: stored || DEFAULT_PHONE_ASSIGNMENTS });
+      } catch(err) { return res.status(500).json({ error: err.message }); }
+    }
+    if (req.method === 'POST') {
+      try {
+        await setPhoneAssignments(req.body.assignments || {});
+        return res.status(200).json({ ok: true });
+      } catch(err) { return res.status(500).json({ error: err.message }); }
+    }
   }
 
   return res.status(400).json({ error: 'Unknown action' });
