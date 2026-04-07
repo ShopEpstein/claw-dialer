@@ -20,6 +20,14 @@ const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
       { id: 'megan',    name: 'Megan Harris',           pin: '2946', role: 'rep'   },
     ];
 
+// ─── NUMBER POOL — local numbers available for outbound dialing ───────────────
+const NUMBER_POOL = [
+  { number: '+18502033021', label: '(850) 203-3021', friendlyName: 'Chase Local'   },
+  { number: '+18507211779', label: '(850) 721-1779', friendlyName: 'Jessica Local' },
+  { number: '+18502043347', label: '(850) 204-3347', friendlyName: 'Erica Local'   },
+  { number: '+18542261882', label: '(854) 226-1882', friendlyName: 'SC Local'      },
+];
+
 // ─── SCRIPTS ──────────────────────────────────────────────────────────────────
 const SCRIPTS = {
   b2b: [
@@ -283,6 +291,8 @@ export default function CareCircleDialer() {
   const [playingSid, setPlayingSid] = useState(null);
   const [interestedModal, setInterestedModal] = useState(null); // { repName, entries }
   const [onlineReps, setOnlineReps] = useState([]);
+  const [numberAssignments, setNumberAssignments] = useState({}); // { repId -> phoneNumber }
+  const [numberPoolSaving, setNumberPoolSaving] = useState(false);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -414,6 +424,32 @@ export default function CareCircleDialer() {
   }
 
   useEffect(() => { if (rep) loadLogs(); }, [rep]);
+  useEffect(() => { if (rep && tab === 'admin') loadNumberAssignments(); }, [rep, tab]);
+
+  async function loadNumberAssignments() {
+    try {
+      const r = await fetch('/api/twilio?action=phone-assignments');
+      const d = await r.json();
+      setNumberAssignments(d.assignments || {});
+    } catch {}
+  }
+
+  async function saveNumberAssignment(repId, phoneNumber) {
+    setNumberPoolSaving(true);
+    try {
+      const next = { ...numberAssignments };
+      // Remove this number from any rep currently holding it
+      Object.keys(next).forEach(id => { if (next[id] === phoneNumber) delete next[id]; });
+      if (repId) next[repId] = phoneNumber; else delete next[repId];
+      await fetch('/api/twilio?action=phone-assignments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignments: next }),
+      });
+      setNumberAssignments(next);
+      notify('Number assignment saved', 'success');
+    } catch { notify('Failed to save assignment', 'warning'); }
+    setNumberPoolSaving(false);
+  }
 
   useEffect(() => {
     if (!rep) return;
@@ -1326,6 +1362,46 @@ export default function CareCircleDialer() {
               </table>
             </div>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:8}}>To add/change reps: update the REPS array in index.jsx and redeploy.</div>
+          </div>
+
+          {/* Number Pool */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>Number Pool — Outbound Caller ID</span>
+              <span style={{fontSize:7,color:'var(--dim)',letterSpacing:0.5,fontWeight:400,textTransform:'none'}}>SMS always uses toll-free · changes save instantly</span>
+            </div>
+            <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
+                  {['Number','Label','Assigned To (Outbound Calls)'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {NUMBER_POOL.map(entry => {
+                    const assignedRepId = Object.keys(numberAssignments).find(id => numberAssignments[id] === entry.number) || '';
+                    return (
+                      <tr key={entry.number} style={{borderBottom:'1px solid var(--border)'}}>
+                        <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text)',whiteSpace:'nowrap'}}>{entry.label}</td>
+                        <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>{entry.friendlyName}</td>
+                        <td style={{padding:'8px 14px'}}>
+                          <select
+                            disabled={numberPoolSaving}
+                            value={assignedRepId}
+                            onChange={e => saveNumberAssignment(e.target.value, entry.number)}
+                            style={{background:'var(--surface2)',border:'1px solid var(--border2)',color: assignedRepId ? 'var(--text)' : 'var(--dim)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'5px 8px',outline:'none',borderRadius:3,cursor:'pointer',minWidth:180}}
+                          >
+                            <option value="">— Unassigned (uses toll-free) —</option>
+                            {REPS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:7}}>
+              Toll-free default: (855) 960-0110 · Unassigned reps dial from toll-free
+            </div>
           </div>
 
           {/* Recordings */}
