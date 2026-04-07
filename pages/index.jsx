@@ -660,8 +660,9 @@ export default function CareCircleDialer() {
       const next = contacts.find(c =>
         c.status === 'new' &&
         !c.claimedBy &&
-        !['dnc','disconnected','wrong-number'].includes(c.status) &&
-        c.id !== activeContact.id
+        !DEAD_STATUSES.includes(c.status) &&
+        c.id !== activeContact.id &&
+        (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000)
       );
       if (next) {
         let secs = 3;
