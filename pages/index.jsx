@@ -830,6 +830,8 @@ export default function CareCircleDialer() {
         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>Care@CareCircle.Fit</span>
         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Billing questions → <span style={{color:'var(--text)'}}>Billing@CareCircle.Fit</span></span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Assisting Seniors: <span style={{color:'var(--text)'}}>850-602-5161</span></span>
       </div>
 
       {/* NAV */}
