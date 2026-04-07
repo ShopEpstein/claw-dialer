@@ -3,7 +3,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { saveCall } from './kv';
 
 const BASE = 'https://claw-dialer.vercel.app';
-const FROM = '+18559600110';
+const FROM = '+18559600110'; // toll-free — used for SMS by everyone
+const REP_CALLER_IDS = {
+  brittany: '+18507211779', // local outbound number for Brittany Lasley
+};
 
 const SYSTEM_PROMPT_B2B = `You are a professional outreach representative for CareCircle Network, calling senior care facilities and providers in Northwest Florida. Calm, credible, direct. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
 
@@ -228,8 +231,9 @@ export default async function handler(req, res) {
         contactName: contactName || '', contactBusiness: contactBusiness || '',
         contactType: contactType || 'b2b', script: script || '',
       });
+      const callFrom = REP_CALLER_IDS[repId] || FROM;
       const call = await client.calls.create({
-        to, from: FROM,
+        to, from: callFrom,
         url: aiMode
           ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&contactType=${contactType||'b2b'}`
           : `${BASE}/api/twilio?action=twiml`,
@@ -258,12 +262,13 @@ export default async function handler(req, res) {
   }
 
   if (action === 'browser-call') {
-    const { To } = body;
+    const { To, repId: browserRepId } = body;
     res.setHeader('Content-Type', 'text/xml');
     if (!To) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
+    const browserCallerId = REP_CALLER_IDS[browserRepId] || FROM;
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="+18559600110" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
+  <Dial callerId="${browserCallerId}" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
     <Number>${escapeXml(To)}</Number>
   </Dial>
 </Response>`);
