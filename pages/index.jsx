@@ -360,19 +360,31 @@ export default function CareCircleDialer() {
     try {
       const r = await fetch(`/api/kv?action=contacts&pool=${pool}`);
       const d = await r.json();
-      setContacts(d.contacts || []);
+      // Deduplicate by phone on load (guards against double-upload)
+      const seen = new Set();
+      const contacts = (d.contacts || []).filter(c => {
+        const key = c.phone || c.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setContacts(contacts);
     } catch { setContacts([]); }
     setContactsLoading(false);
   }
 
   async function saveContacts(pool, updated) {
     try {
-      await fetch(`/api/kv?action=contacts-save&pool=${pool}`, {
+      const r = await fetch(`/api/kv?action=contacts-save&pool=${pool}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contacts: updated }),
       });
-    } catch {}
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        notify(`Failed to save contacts: ${d.error || r.status}`, 'warning');
+      }
+    } catch(e) { notify(`Failed to save contacts: ${e.message}`, 'warning'); }
   }
 
   async function updateContactKV(pool, id, updates) {
@@ -736,7 +748,15 @@ export default function CareCircleDialer() {
         });
       }
       setContacts(prev => {
-        const updated = [...prev, ...newOnes];
+        const combined = [...prev, ...newOnes];
+        // Deduplicate by phone number
+        const seen = new Set();
+        const updated = combined.filter(c => {
+          const key = c.phone || c.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         saveContacts(contactType, updated);
         return updated;
       });
