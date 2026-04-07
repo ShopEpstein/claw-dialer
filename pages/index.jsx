@@ -509,13 +509,14 @@ export default function CareCircleDialer() {
   }, []);
 
   // Contacts filtered
-  const DEAD_STATUSES = ['dnc', 'disconnected', 'wrong-number'];
+  // not-interested is treated identically to DNC — permanently suppressed, never re-dialed (TCPA)
+  const DEAD_STATUSES = ['dnc', 'not-interested', 'disconnected', 'wrong-number'];
   const allFiltered = contacts.filter(c => {
     const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
     const mf = statusFilter === 'all' || c.status === statusFilter;
     // Hide contacts claimed by other reps (show own + unclaimed)
     const mc = !c.claimedBy || c.claimedBy === rep?.id;
-    // DNC / disconnected / wrong-number are permanently hidden unless explicitly filtered
+    // DNC / not-interested / disconnected / wrong-number are permanently excluded unless explicitly filtered
     const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
     // Hide contacts called in the last 24h (callbacks/interested are intentional re-dials)
     const notCalledToday = !c.lastCalledAt
@@ -553,7 +554,12 @@ export default function CareCircleDialer() {
   async function startCall(overrideContact) {
     // Use overrideContact if passed (auto-dial passes it directly to avoid stale state)
     const contact = overrideContact !== undefined ? overrideContact : activeContact;
-    const phone = dialPhone.trim() || contact?.phone;
+    // When auto-dial passes overrideContact, use contact.phone directly —
+    // dialPhone is stale React state and would dial the PREVIOUS person.
+    // For manual dials, dialPhone takes priority (user may have typed a custom number).
+    const phone = overrideContact !== undefined
+      ? (contact?.phone || dialPhone.trim())
+      : (dialPhone.trim() || contact?.phone);
     if (!phone) return notify('Enter a phone number to dial', 'warning');
     const name = contact?.name || phone;
     if (contact) {
