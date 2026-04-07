@@ -1,6 +1,9 @@
 const BASE_URL = process.env.KV_REST_API_URL;
 const TOKEN = process.env.KV_REST_API_TOKEN;
 
+// Raise body limit — 5K contacts can be ~2MB of JSON
+export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
+
 async function kv(cmd, ...args) {
   const r = await fetch(BASE_URL, {
     method: 'POST',
@@ -28,14 +31,48 @@ export async function saveCall(record) {
   ]);
 }
 
+// ─── Chunked contacts helpers ──────────────────────────────────────────────────
+// Splits large contact lists into 500-contact chunks so each KV value stays
+// well under the 1MB per-key limit.
+const CHUNK_SIZE = 500;
+
+async function loadContactsFromKV(pool) {
+  // Try chunked format first (contacts:{pool}:meta + contacts:{pool}:N)
+  const metaRaw = await kv('GET', `contacts:${pool}:meta`);
+  if (metaRaw) {
+    const meta = JSON.parse(metaRaw);
+    const chunks = await Promise.all(
+      Array.from({ length: meta.chunks }, (_, i) => kv('GET', `contacts:${pool}:${i}`))
+    );
+    return chunks.flatMap(raw => (raw ? JSON.parse(raw) : []));
+  }
+  // Fall back to legacy single-key format
+  const raw = await kv('GET', `contacts:${pool}`);
+  return raw ? JSON.parse(raw) : [];
+}
+
+async function saveContactsToKV(pool, contacts) {
+  const chunks = [];
+  for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
+    chunks.push(contacts.slice(i, i + CHUNK_SIZE));
+  }
+  await Promise.all(chunks.map((chunk, i) =>
+    kv('SET', `contacts:${pool}:${i}`, JSON.stringify(chunk))
+  ));
+  await kv('SET', `contacts:${pool}:meta`, JSON.stringify({ chunks: chunks.length, total: contacts.length }));
+}
+
+// ─── Handler ───────────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   const { action, repId } = req.query;
+
   if (action === 'save') {
     try {
       await saveCall(req.body);
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   if (action === 'rep') {
     try {
       const raw = await kv('LRANGE', `calls:${repId}`, '0', '199');
@@ -43,6 +80,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ calls });
     } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
   }
+
   if (action === 'all') {
     try {
       const raw = await kv('LRANGE', 'calls:all', '0', '499');
@@ -50,21 +88,24 @@ export default async function handler(req, res) {
       return res.status(200).json({ calls });
     } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
   }
+
   if (action === 'contacts') {
     try {
       const pool = req.query.pool || 'b2b';
-      const raw = await kv('GET', `contacts:${pool}`);
-      const contacts = raw ? JSON.parse(raw) : [];
+      const contacts = await loadContactsFromKV(pool);
       return res.status(200).json({ contacts });
     } catch(e) { return res.status(500).json({ contacts: [], error: e.message }); }
   }
+
   if (action === 'contacts-save') {
     try {
       const pool = req.query.pool || 'b2b';
-      await kv('SET', `contacts:${pool}`, JSON.stringify(req.body.contacts || []));
-      return res.status(200).json({ ok: true });
+      const contacts = req.body.contacts || [];
+      await saveContactsToKV(pool, contacts);
+      return res.status(200).json({ ok: true, total: contacts.length });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   if (action === 'rep-online') {
     try {
       const { repId, repName } = req.body;
@@ -73,6 +114,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   if (action === 'rep-offline') {
     try {
       const { repId } = req.body;
@@ -80,34 +122,35 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   if (action === 'presence') {
     try {
       const ids = (req.query.repIds || '').split(',').filter(Boolean);
       const results = await Promise.all(ids.map(id => kv('GET', `presence:${id}`)));
-      const online = results.map((r, i) => r ? JSON.parse(r) : null).filter(Boolean);
+      const online = results.map(r => r ? JSON.parse(r) : null).filter(Boolean);
       return res.status(200).json({ online });
     } catch(e) { return res.status(500).json({ online: [], error: e.message }); }
   }
+
   if (action === 'contact-delete') {
     try {
       const pool = req.query.pool || 'b2b';
       const { id } = req.body;
-      const raw = await kv('GET', `contacts:${pool}`);
-      const contacts = raw ? JSON.parse(raw) : [];
-      await kv('SET', `contacts:${pool}`, JSON.stringify(contacts.filter(c => c.id !== id)));
+      const contacts = await loadContactsFromKV(pool);
+      await saveContactsToKV(pool, contacts.filter(c => c.id !== id));
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   if (action === 'contact-update') {
     try {
       const pool = req.query.pool || 'b2b';
       const { id, updates } = req.body;
-      const raw = await kv('GET', `contacts:${pool}`);
-      const contacts = raw ? JSON.parse(raw) : [];
-      const updated = contacts.map(c => c.id === id ? { ...c, ...updates } : c);
-      await kv('SET', `contacts:${pool}`, JSON.stringify(updated));
+      const contacts = await loadContactsFromKV(pool);
+      await saveContactsToKV(pool, contacts.map(c => c.id === id ? { ...c, ...updates } : c));
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
