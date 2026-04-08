@@ -299,21 +299,14 @@ export default async function handler(req, res) {
       }
     }
 
-    // ── Regular outbound call via conference ─────────────────────────────────
-    // Save conf info immediately so monitoring can find it, then return TwiML
-    // right away. The customer call is placed by the conf-event callback once
-    // the conference starts — this avoids blocking the TwiML response on the
-    // Twilio REST API call and prevents Vercel function timeouts.
+    // ── Regular outbound call — simple direct dial ───────────────────────────
     const callerId = await getRepPhone(repId || '');
-    const repCallSid = body.CallSid;
-    const confName = `cc_${repId}_${Date.now()}`;
-
-    try {
-      await setActiveConf(repId, { confName, repCallSid, to: To, callerId, ct: ct || 'b2b', startTime: Date.now() });
-    } catch(e) { console.error('setActiveConf error:', e.message); }
-
-    const cbUrl = `${BASE}/api/twilio?action=conf-event&repId=${encodeURIComponent(repId||'')}`;
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" maxParticipants="10" statusCallback="${cbUrl}" statusCallbackEvent="start end" statusCallbackMethod="POST"/></Dial></Response>`);
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="${escapeXml(callerId)}" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
+    <Number>${escapeXml(To)}</Number>
+  </Dial>
+</Response>`);
   }
 
   // ── Conference event callback (start → dial customer; end → clean KV) ──────
