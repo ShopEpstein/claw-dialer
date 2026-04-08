@@ -1171,8 +1171,8 @@ export default function CareCircleDialer() {
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                         {[
                           ['New', contacts.filter(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--green)'],
-                          ['Callback', contacts.filter(c => c.status==='callback').length, 'var(--orange)'],
-                          ['Booked', contacts.filter(c => c.status==='booked').length, 'var(--gl)'],
+                          ['Callback', contacts.filter(c => c.status==='callback' && c.claimedBy === rep?.id).length, 'var(--orange)'],
+                          ['Booked', contacts.filter(c => c.status==='booked' && c.claimedBy === rep?.id).length, 'var(--gl)'],
                           ['Voicemail', contacts.filter(c => c.status==='voicemail' && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--blue)'],
                         ].map(([label, count, color]) => (
                           <div key={label} style={{padding:'8px 10px',background:'var(--surface2)',border:`1px solid ${color}22`,borderRadius:3,textAlign:'center'}}>
@@ -1195,11 +1195,11 @@ export default function CareCircleDialer() {
                       </button>
                     </div>
 
-                    {/* Follow-up queue: callback + interested */}
-                    {contacts.filter(c => ['callback','booked'].includes(c.status)).length > 0 && (
+                    {/* Follow-up queue: only this rep's callback/booked contacts */}
+                    {contacts.filter(c => ['callback','booked'].includes(c.status) && c.claimedBy === rep?.id).length > 0 && (
                       <div style={{borderTop:'1px solid var(--border)'}}>
                         <div style={{padding:'8px 12px',fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase'}}>My Follow-ups</div>
-                        {contacts.filter(c => ['callback','booked'].includes(c.status)).map(c => (
+                        {contacts.filter(c => ['callback','booked'].includes(c.status) && c.claimedBy === rep?.id).map(c => (
                           <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?`2px solid ${statusColor[c.status]}`:'2px solid transparent'}}>
                             <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||c.phone}</div>
                             <div style={{display:'flex',gap:6,marginTop:2,alignItems:'center'}}>
