@@ -199,7 +199,7 @@ const BASE_CSS = `
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 `;
 
-const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
+const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
 const callStateColor = { idle:'var(--dim)',dialing:'var(--yellow)',connected:'var(--gl)',ended:'var(--orange)' };
 const callStateText = { idle:'STANDBY',dialing:'DIALING...',connected:'CONNECTED',ended:'CALL ENDED' };
 
@@ -639,12 +639,12 @@ export default function CareCircleDialer() {
     const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
     // Block if this contact's own lastCalledAt is within 24h
     const notCalledToday = !c.lastCalledAt
-      || ['callback','interested'].includes(c.status)
+      || ['callback','booked'].includes(c.status)
       || statusFilter === c.status
       || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000;
     // Also block by phone number — catches duplicates with same phone but different IDs
     const phoneNotCalledToday = !c.phone || !calledPhones24h.has(c.phone)
-      || ['callback','interested'].includes(c.status)
+      || ['callback','booked'].includes(c.status)
       || statusFilter === c.status;
     return ms && mf && mc && notDead && notCalledToday && phoneNotCalledToday;
   });
@@ -759,7 +759,7 @@ export default function CareCircleDialer() {
     clearInterval(pollRef.current);
     if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('idle');
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', booked:'booked', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
     const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null, lastCalledAt: new Date().toISOString() };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
@@ -773,8 +773,8 @@ export default function CareCircleDialer() {
     };
     try { await fetch('/api/kv?action=save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) }); } catch {}
     setMyLog(prev => [record, ...prev]);
-    if (outcome === 'interested') {
-      notify(`Interested lead! Auto-sending SMS to ${activeContact.name || activeContact.phone}`, 'success');
+    if (outcome === 'booked') {
+      notify(`Booked! Auto-sending SMS to ${activeContact.name || activeContact.phone}`, 'success');
       try {
         await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: activeContact.phone, body: SMS_TEMPLATES[contactType](activeContact.name||'') }) });
       } catch {}
@@ -923,10 +923,12 @@ export default function CareCircleDialer() {
     a.download = filename; a.click();
   }
 
-  // Stats
-  const myTotal = myLog.length;
-  const myInterested = myLog.filter(c => c.outcome === 'interested').length;
-  const myAnswered = myLog.filter(c => ['answered','interested','callback','not-interested','dnc'].includes(c.outcome)).length;
+  // Stats — today only
+  const today = new Date().toDateString();
+  const myTodayLog = myLog.filter(e => new Date(e.timestamp).toDateString() === today);
+  const myTotal = myTodayLog.length;
+  const myBooked = myTodayLog.filter(c => c.outcome === 'booked').length;
+  const myAnswered = myTodayLog.filter(c => ['answered','booked','callback','not-interested','dnc'].includes(c.outcome)).length;
   const myRate = myTotal > 0 ? Math.round(myAnswered/myTotal*100) : 0;
 
   const script = SCRIPTS[contactType].find(s => s.id === activeScriptId) || SCRIPTS[contactType][0];
@@ -1021,7 +1023,7 @@ export default function CareCircleDialer() {
                   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
                     style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
                   <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                    {['new','all','called','callback','interested','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
+                    {['new','all','called','callback','booked','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
                       <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
                         {f}
                       </button>
@@ -1084,7 +1086,7 @@ export default function CareCircleDialer() {
                         {[
                           ['New', contacts.filter(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--green)'],
                           ['Callback', contacts.filter(c => c.status==='callback').length, 'var(--orange)'],
-                          ['Interested', contacts.filter(c => c.status==='interested').length, 'var(--gl)'],
+                          ['Booked', contacts.filter(c => c.status==='booked').length, 'var(--gl)'],
                           ['Voicemail', contacts.filter(c => c.status==='voicemail' && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--blue)'],
                         ].map(([label, count, color]) => (
                           <div key={label} style={{padding:'8px 10px',background:'var(--surface2)',border:`1px solid ${color}22`,borderRadius:3,textAlign:'center'}}>
@@ -1107,10 +1109,10 @@ export default function CareCircleDialer() {
                     </div>
 
                     {/* Follow-up queue: callback + interested */}
-                    {contacts.filter(c => ['callback','interested'].includes(c.status)).length > 0 && (
+                    {contacts.filter(c => ['callback','booked'].includes(c.status)).length > 0 && (
                       <div style={{borderTop:'1px solid var(--border)'}}>
                         <div style={{padding:'8px 12px',fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase'}}>My Follow-ups</div>
-                        {contacts.filter(c => ['callback','interested'].includes(c.status)).map(c => (
+                        {contacts.filter(c => ['callback','booked'].includes(c.status)).map(c => (
                           <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?`2px solid ${statusColor[c.status]}`:'2px solid transparent'}}>
                             <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||c.phone}</div>
                             <div style={{display:'flex',gap:6,marginTop:2,alignItems:'center'}}>
@@ -1212,7 +1214,7 @@ export default function CareCircleDialer() {
               )}
               {['connected','ended'].includes(callState)&&(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
-                  {[['interested','★ Interested','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
+                  {[['booked','★ Booked','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
                     <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
                       {label}
                     </button>
@@ -1260,7 +1262,7 @@ export default function CareCircleDialer() {
             <div style={{padding:'11px 14px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:10}}>
               <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1.5,color:'var(--dim)',textTransform:'uppercase'}}>My Stats</span>
             </div>
-            {[['Calls Made',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Interested',myInterested,'var(--teal)']].map(([label,val,color]) => (
+            {[['Calls Made',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Booked',myBooked,'var(--teal)']].map(([label,val,color]) => (
               <div key={label} style={{padding:'13px 14px',borderBottom:'1px solid var(--border)'}}>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>{label}</div>
                 <div style={{fontFamily:'Playfair Display,serif',fontSize:26,fontWeight:600,color,lineHeight:1}}>{val}</div>
@@ -1274,7 +1276,7 @@ export default function CareCircleDialer() {
             {myLog.length===0 ? (
               <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No calls yet</div>
             ) : myLog.slice(0,60).map((entry,i) => {
-              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
               return (
                 <div key={i} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
@@ -1296,14 +1298,13 @@ export default function CareCircleDialer() {
 
           {/* ── LIVE TEAM (admin only) ── */}
           {isAdmin && (() => {
-            const today = new Date().toDateString();
             const todayStats = {};
             allLog.forEach(e => {
               if (!e.repId || new Date(e.timestamp).toDateString() !== today) return;
-              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, interested:0 };
+              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, booked:0 };
               todayStats[e.repId].calls++;
               todayStats[e.repId].duration += (e.duration || 0);
-              if (e.outcome === 'interested') todayStats[e.repId].interested++;
+              if (e.outcome === 'booked') todayStats[e.repId].booked++;
             });
             return (
               <div style={{marginBottom:28}}>
@@ -1314,14 +1315,14 @@ export default function CareCircleDialer() {
                 <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Rep','Status','Calls Today','Talk Time','Interested'].map(h => (
+                      {['Rep','Status','Calls Today','Talk Time','Booked'].map(h => (
                         <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
                       {REPS.map(r => {
                         const isOnline = onlineReps.some(o => o.repId === r.id);
-                        const s = todayStats[r.id] || { calls:0, duration:0, interested:0 };
+                        const s = todayStats[r.id] || { calls:0, duration:0, booked:0 };
                         return (
                           <tr key={r.id} style={{borderBottom:'1px solid var(--border)'}}>
                             <td style={{padding:'9px 14px',fontSize:12,fontWeight:500,color:'var(--text)'}}>{r.name}</td>
@@ -1333,13 +1334,13 @@ export default function CareCircleDialer() {
                             </td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.interested>0?'var(--gl)':'var(--dim)',fontWeight:s.interested>0?600:400}}>
-                              {s.interested > 0
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.booked>0?'var(--gl)':'var(--dim)',fontWeight:s.booked>0?600:400}}>
+                              {s.booked > 0
                                 ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {
-                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'interested' && new Date(e.timestamp).toDateString() === today);
+                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'booked' && new Date(e.timestamp).toDateString() === today);
                                     setInterestedModal({ repName: r.name, entries });
-                                  }}>{s.interested}</span>
-                                : s.interested}
+                                  }}>{s.booked}</span>
+                                : s.booked}
                             </td>
                           </tr>
                         );
@@ -1351,7 +1352,7 @@ export default function CareCircleDialer() {
             );
           })()}
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
-            {[['Total Calls',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Interested',myInterested,'var(--teal)']].map(([label,val,color]) => (
+            {[['Total Calls',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Booked',myBooked,'var(--teal)']].map(([label,val,color]) => (
               <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,padding:18}}>
                 <div style={{fontFamily:'Playfair Display,serif',fontSize:34,fontWeight:700,color,lineHeight:1,marginBottom:5}}>{val}</div>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>{label}</div>
@@ -1377,7 +1378,7 @@ export default function CareCircleDialer() {
                   </tr></thead>
                   <tbody>
                     {allLog.slice(0,150).map((entry,i) => {
-                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
                       const isExpanded = expandedLog === i;
                       return (
                         <>
@@ -1766,7 +1767,7 @@ export default function CareCircleDialer() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Status</div>
                     <select value={lifecycleContact.contact.status||'new'} onChange={e => setLifecycleContact(p => ({...p, contact:{...p.contact, status:e.target.value}}))}
                       style={{width:'100%',background:'var(--surface)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,padding:'6px 8px',outline:'none',borderRadius:3}}>
-                      {['new','called','voicemail','no-answer','callback','interested','not-interested','gatekeeper','wrong-number','disconnected','dnc'].map(s => <option key={s} value={s}>{s}</option>)}
+                      {['new','called','voicemail','no-answer','callback','booked','not-interested','gatekeeper','wrong-number','disconnected','dnc'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
@@ -1802,7 +1803,7 @@ export default function CareCircleDialer() {
                 {lifecycleContact.history.length === 0 ? (
                   <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',padding:'12px 0'}}>No calls logged for this contact yet.</div>
                 ) : lifecycleContact.history.map((entry, i) => {
-                  const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                  const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
                   return (
                     <div key={i} style={{padding:'10px 12px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:entry.notes?6:0}}>
@@ -1853,13 +1854,13 @@ export default function CareCircleDialer() {
           <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:540,maxHeight:'80vh',overflowY:'auto',animation:'slideUp 0.2s ease'}} onClick={e => e.stopPropagation()}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
               <div>
-                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)'}}>Interested Leads</div>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)'}}>Booked Leads</div>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginTop:2}}>{interestedModal.repName} · today</div>
               </div>
               <button onClick={() => setInterestedModal(null)} style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕ CLOSE</button>
             </div>
             {interestedModal.entries.length === 0 ? (
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No interested leads found.</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No booked leads found.</div>
             ) : interestedModal.entries.map((e, i) => (
               <div key={i} style={{marginBottom:14,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,padding:'12px 14px'}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
@@ -1868,7 +1869,7 @@ export default function CareCircleDialer() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--green)',marginTop:2}}>{e.contactPhone}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3}}>{fmtTime(e.duration)} · {new Date(e.timestamp).toLocaleTimeString()}{e.notes ? ` · "${e.notes}"` : ''}</div>
                   </div>
-                  <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--gl)',border:'1px solid rgba(74,155,74,0.3)',borderRadius:2,padding:'2px 6px',flexShrink:0}}>INTERESTED</span>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--gl)',border:'1px solid rgba(74,155,74,0.3)',borderRadius:2,padding:'2px 6px',flexShrink:0}}>BOOKED</span>
                 </div>
                 {e.callSid
                   ? <InterestedRecording callSid={e.callSid} />
