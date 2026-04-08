@@ -14,6 +14,19 @@ async function kv(cmd, ...args) {
   return d.result;
 }
 
+// ─── Active conference helpers (used by twilio.js) ────────────────────────────
+export async function getActiveConf(repId) {
+  const raw = await kv('GET', `conf:active:${repId}`);
+  return raw ? JSON.parse(raw) : null;
+}
+export async function setActiveConf(repId, data) {
+  await kv('SET', `conf:active:${repId}`, JSON.stringify(data));
+  await kv('EXPIRE', `conf:active:${repId}`, '14400');
+}
+export async function delActiveConf(repId) {
+  await kv('DEL', `conf:active:${repId}`);
+}
+
 export async function getPhoneAssignments() {
   const raw = await kv('GET', 'phone:assignments');
   return raw ? JSON.parse(raw) : null;
@@ -149,6 +162,61 @@ export default async function handler(req, res) {
       const contacts = await loadContactsFromKV(pool);
       await saveContactsToKV(pool, contacts.map(c => c.id === id ? { ...c, ...updates } : c));
       return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  if (action === 'active-confs') {
+    try {
+      const ids = (req.query.repIds || '').split(',').filter(Boolean);
+      const results = await Promise.all(ids.map(id => kv('GET', `conf:active:${id}`)));
+      const confs = {};
+      ids.forEach((id, i) => { if (results[i]) try { confs[id] = JSON.parse(results[i]); } catch {} });
+      return res.status(200).json({ confs });
+    } catch(e) { return res.status(500).json({ confs: {}, error: e.message }); }
+  }
+
+  if (action === 'migrate-outcomes') {
+    try {
+      const repIds = req.body?.repIds || [];
+      let fixed = 0;
+
+      // Patch calls:all in place using LSET
+      const allRaw = await kv('LRANGE', 'calls:all', '0', '-1');
+      for (let i = 0; i < (allRaw || []).length; i++) {
+        try {
+          const rec = JSON.parse(allRaw[i]);
+          if (rec.outcome === 'interested') {
+            rec.outcome = 'booked';
+            await kv('LSET', 'calls:all', String(i), JSON.stringify(rec));
+            fixed++;
+          }
+        } catch {}
+      }
+
+      // Patch per-rep lists
+      for (const repId of repIds) {
+        const repRaw = await kv('LRANGE', `calls:${repId}`, '0', '-1');
+        for (let i = 0; i < (repRaw || []).length; i++) {
+          try {
+            const rec = JSON.parse(repRaw[i]);
+            if (rec.outcome === 'interested') {
+              rec.outcome = 'booked';
+              await kv('LSET', `calls:${repId}`, String(i), JSON.stringify(rec));
+            }
+          } catch {}
+        }
+      }
+
+      // Patch contact statuses in both pools
+      for (const pool of ['b2b', 'b2c']) {
+        const contacts = await loadContactsFromKV(pool);
+        const updated = contacts.map(c => c.status === 'interested' ? { ...c, status: 'booked' } : c);
+        if (updated.some((c, i) => c.status !== contacts[i].status)) {
+          await saveContactsToKV(pool, updated);
+        }
+      }
+
+      return res.status(200).json({ ok: true, fixed });
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
