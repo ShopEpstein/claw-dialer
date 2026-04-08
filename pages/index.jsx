@@ -163,7 +163,7 @@ const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www
 
 // ─── SKINS ────────────────────────────────────────────────────────────────────
 const SKINS = {
-  CARECIRCLE:    { label:'CARECIRCLE',    icon:'🌿', dark:true,  bg:'#0F1A0F', surface:'#141F14', surface2:'#192419', surface3:'#1F2E1F', border:'#243324', border2:'#2D422D', accent:'#4A9B4A', accentL:'#6BBF6B', accentD:'#2D6A2D', teal:'#3D8B7A', text:'#E8F0E8', dim:'#7A9A7A', mid:'#A8C4A8', red:'#C44444', orange:'#C87A2A', blue:'#3A7AAA', yellow:'#A8A030' },
+  CARECIRCLE:    { label:'CARECIRCLE',    icon:'🌿', dark:true,  repAccessible:true,  bg:'#0F1A0F', surface:'#141F14', surface2:'#192419', surface3:'#1F2E1F', border:'#243324', border2:'#2D422D', accent:'#4A9B4A', accentL:'#6BBF6B', accentD:'#2D6A2D', teal:'#3D8B7A', text:'#E8F0E8', dim:'#7A9A7A', mid:'#A8C4A8', red:'#C44444', orange:'#C87A2A', blue:'#3A7AAA', yellow:'#A8A030' },
   // ── dark ──
   DEFAULT:       { label:'CLAW DEFAULT',  icon:'🖤', dark:true,  bg:'#080A0F', surface:'#0D1017', surface2:'#111520', surface3:'#151A26', border:'#1A2030', border2:'#202840', accent:'#14F1C6', accentL:'#30FFD8', accentD:'#0A9980', teal:'#0DD6B0', text:'#E0F0EC', dim:'#4A7A70', mid:'#7AAAA0', red:'#E05050', orange:'#E09040', blue:'#4080C0', yellow:'#B0A030' },
   CYBERCLAW:     { label:'CYBERCLAW',     icon:'💜', dark:true,  bg:'#0A0010', surface:'#0F0018', surface2:'#130020', surface3:'#180028', border:'#200035', border2:'#280045', accent:'#BF00FF', accentL:'#D040FF', accentD:'#8000B0', teal:'#8000B0', text:'#F0E0FF', dim:'#604070', mid:'#9060B0', red:'#E04060', orange:'#C060B0', blue:'#6040E0', yellow:'#A060E0' },
@@ -172,12 +172,17 @@ const SKINS = {
   ECONOCLAW:     { label:'ECONOCLAW',     icon:'🔥', dark:true,  bg:'#0F0800', surface:'#160C00', surface2:'#1C1000', surface3:'#221400', border:'#301800', border2:'#402000', accent:'#FF6B2B', accentL:'#FF8A50', accentD:'#C04000', teal:'#C04000', text:'#F0E8D8', dim:'#7A5030', mid:'#B07848', red:'#FF4020', orange:'#FF8020', blue:'#8060C0', yellow:'#C09020' },
   BUDGETCLAW:    { label:'BUDGETCLAW',    icon:'📊', dark:true,  bg:'#000A00', surface:'#000F00', surface2:'#001400', surface3:'#001A00', border:'#002200', border2:'#002E00', accent:'#39FF14', accentL:'#60FF40', accentD:'#20B000', teal:'#20B000', text:'#E0F0D8', dim:'#407040', mid:'#60A060', red:'#C04040', orange:'#B06020', blue:'#408040', yellow:'#A0A000' },
   // ── light ──
-  CLAW_LIGHT:    { label:'CLAW LIGHT',    icon:'🤍', dark:false, bg:'#F0F4F8', surface:'#FFFFFF', surface2:'#F5F8FC', surface3:'#EEF2F7', border:'#D8E0EB', border2:'#C5D0DE', accent:'#008B7A', accentL:'#00B09A', accentD:'#006055', teal:'#006055', text:'#1A2A35', dim:'#708090', mid:'#4A6070', red:'#C03030', orange:'#B06000', blue:'#2060A0', yellow:'#707000' },
+  CLAW_LIGHT:    { label:'CLAW LIGHT',    icon:'🤍', dark:false, repAccessible:true,  bg:'#F0F4F8', surface:'#FFFFFF', surface2:'#F5F8FC', surface3:'#EEF2F7', border:'#D8E0EB', border2:'#C5D0DE', accent:'#008B7A', accentL:'#00B09A', accentD:'#006055', teal:'#006055', text:'#1A2A35', dim:'#708090', mid:'#4A6070', red:'#C03030', orange:'#B06000', blue:'#2060A0', yellow:'#707000' },
   CYBER_LIGHT:   { label:'CYBER LIGHT',   icon:'🪻', dark:false, bg:'#F5F0FF', surface:'#FFFFFF', surface2:'#F0EAFF', surface3:'#EAE0FF', border:'#D8CCEE', border2:'#C8B8E4', accent:'#7C00CC', accentL:'#9C20EE', accentD:'#580090', teal:'#580090', text:'#180028', dim:'#806090', mid:'#503870', red:'#B03050', orange:'#A05080', blue:'#5030C0', yellow:'#806090' },
   GOTHIC_LIGHT:  { label:'GOTHIC LIGHT',  icon:'📜', dark:false, bg:'#F5F0E8', surface:'#FFF8F0', surface2:'#F0E8DC', surface3:'#E8DDD0', border:'#D0C0B0', border2:'#C0B0A0', accent:'#8B0000', accentL:'#AA1010', accentD:'#600000', teal:'#600020', text:'#200000', dim:'#806060', mid:'#604040', red:'#AA0000', orange:'#904020', blue:'#603060', yellow:'#806000' },
   TACTIC_LIGHT:  { label:'TACTIC LIGHT',  icon:'🗺️', dark:false, bg:'#F2EED8', surface:'#FFFDE8', surface2:'#ECEAD0', surface3:'#E4E2C4', border:'#C8C4A0', border2:'#B8B490', accent:'#3A6600', accentL:'#508800', accentD:'#284800', teal:'#284800', text:'#1A2000', dim:'#708050', mid:'#506030', red:'#804020', orange:'#806000', blue:'#405830', yellow:'#606000' },
   ECONO_LIGHT:   { label:'ECONO LIGHT',   icon:'☀️', dark:false, bg:'#FFF8F0', surface:'#FFFFFF', surface2:'#FFF0E4', surface3:'#FFE8D8', border:'#E8D0B8', border2:'#D8C0A8', accent:'#CC4400', accentL:'#EE6020', accentD:'#A03000', teal:'#A03000', text:'#200800', dim:'#806050', mid:'#604030', red:'#CC2000', orange:'#CC6000', blue:'#806040', yellow:'#888020' },
   BUDGET_LIGHT:  { label:'BUDGET LIGHT',  icon:'🟢', dark:false, bg:'#F8FFF8', surface:'#FFFFFF', surface2:'#F0FFF0', surface3:'#E8FEE8', border:'#C8ECC8', border2:'#B8DEB8', accent:'#008800', accentL:'#00AA00', accentD:'#005500', teal:'#005500', text:'#001800', dim:'#508050', mid:'#306030', red:'#AA2020', orange:'#886020', blue:'#406040', yellow:'#686000' },
+  // ── rep picks ──
+  BLOSSOM:       { label:'BLOSSOM',       icon:'💗', dark:true,  repAccessible:true,  tagline:'Powered by Love ♥', bg:'#1A0A12', surface:'#22101C', surface2:'#2C1424', surface3:'#361A2E', border:'#4E2240', border2:'#642D52', accent:'#FF6B9D', accentL:'#FF8FB5', accentD:'#CC4070', teal:'#E8609A', text:'#FFE0EC', dim:'#9A5878', mid:'#C88098', red:'#FF4466', orange:'#FF7066', blue:'#C060D0', yellow:'#E0A8B8' },
+  HIBISCUS:      { label:'HIBISCUS',      icon:'🌺', dark:true,  repAccessible:true,  tagline:'Be Bold. Be You.', bg:'#160010', surface:'#1E0018', surface2:'#270022', surface3:'#30002C', border:'#460044', border2:'#5C0058', accent:'#FF2288', accentL:'#FF55AA', accentD:'#CC0066', teal:'#DD1177', text:'#FFDDEE', dim:'#884468', mid:'#BB6688', red:'#FF3344', orange:'#FF6655', blue:'#9933CC', yellow:'#EEAACC' },
+  SAKURA:        { label:'SAKURA',        icon:'🌸', dark:false, repAccessible:true,  tagline:'Girl Power 🌸', bg:'#FFF5F8', surface:'#FFFFFF', surface2:'#FFECF4', surface3:'#FFE2EE', border:'#F0CCDA', border2:'#E0B8CA', accent:'#C4527A', accentL:'#E0709A', accentD:'#A03060', teal:'#B03878', text:'#2A0818', dim:'#A07080', mid:'#785060', red:'#CC2040', orange:'#C06030', blue:'#805090', yellow:'#907030' },
+  PETAL:         { label:'PETAL',         icon:'🌷', dark:false, repAccessible:true,  tagline:'Soft Power 🌷', bg:'#FEF0FA', surface:'#FFFFFF', surface2:'#FDE8F8', surface3:'#FBD8F2', border:'#ECCAE8', border2:'#E0AACC', accent:'#C030A0', accentL:'#E050C0', accentD:'#900080', teal:'#980098', text:'#280028', dim:'#906080', mid:'#705060', red:'#CC2040', orange:'#B05040', blue:'#7040A0', yellow:'#806040' },
 };
 
 function buildSkinCss(s) {
@@ -199,7 +204,7 @@ const callStateColor = { idle:'var(--dim)',dialing:'var(--yellow)',connected:'va
 const callStateText = { idle:'STANDBY',dialing:'DIALING...',connected:'CONNECTED',ended:'CALL ENDED' };
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, activeSkin }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -217,6 +222,7 @@ function LoginScreen({ onLogin }) {
         <div style={{textAlign:'center',marginBottom:40}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:30,fontWeight:700,color:'var(--gl)',letterSpacing:0.5}}>CareCircle</div>
           <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',letterSpacing:3,textTransform:'uppercase',marginTop:6}}>Remote Care Center</div>
+          {activeSkin?.tagline && <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--mid)',letterSpacing:1,marginTop:5}}>{activeSkin.tagline}</div>}
           <div style={{width:36,height:1,background:'var(--border2)',margin:'14px auto 0'}}></div>
         </div>
         <form onSubmit={handleLogin}>
@@ -311,6 +317,12 @@ export default function CareCircleDialer() {
   const [numberPoolSaving, setNumberPoolSaving] = useState(false);
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
   const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatTo, setChatTo] = useState('all');
+  const [chatLastRead, setChatLastRead] = useState(0);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -320,6 +332,8 @@ export default function CareCircleDialer() {
   const presencePollRef = useRef(null);
   const twilioConnRef = useRef(null);
   const twilioDeviceRef = useRef(null);
+  const chatBottomRef = useRef(null);
+  const chatPollRef = useRef(null);
 
   // Session restore
   useEffect(() => {
@@ -359,15 +373,62 @@ export default function CareCircleDialer() {
     if (rep) fetch('/api/kv?action=rep-offline', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: rep.id }) }).catch(()=>{});
     clearInterval(heartbeatRef.current);
     clearInterval(presencePollRef.current);
+    clearInterval(chatPollRef.current);
     sessionStorage.clear();
     setRep(null);
     setMyLog([]);
     setAllLog([]);
     setOnlineReps([]);
+    setChatMessages([]);
+    setChatOpen(false);
   }
 
   // Persist skin selection
   useEffect(() => { lSet('cc_skin', skinKey); }, [skinKey]);
+
+  // Chat
+  async function fetchChat() {
+    try {
+      const r = await fetch('/api/kv?action=chat-fetch');
+      const d = await r.json();
+      setChatMessages(((d.messages || []).slice().reverse()));
+    } catch {}
+  }
+
+  async function sendChat() {
+    if (!chatInput.trim()) return;
+    const isAdminSender = rep?.role === 'admin';
+    const to = isAdminSender ? chatTo : 'admin';
+    const toRep = REPS.find(r => r.id === to);
+    const toName = to === 'all' ? 'All Reps' : to === 'admin' ? 'Admin' : (toRep?.name || to);
+    const body = { fromId: rep.id, fromName: rep.name, fromRole: rep.role, to, toName, text: chatInput.trim() };
+    setChatInput('');
+    try {
+      await fetch('/api/kv?action=chat-send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      await fetchChat();
+    } catch {}
+  }
+
+  async function markChatRead() {
+    const ts = Date.now();
+    setChatLastRead(ts);
+    if (rep) {
+      try { await fetch('/api/kv?action=chat-lastread', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: rep.id, ts }) }); } catch {}
+    }
+  }
+
+  useEffect(() => {
+    if (!rep) return;
+    fetch(`/api/kv?action=chat-lastread&repId=${rep.id}`).then(r => r.json()).then(d => setChatLastRead(d.ts || 0)).catch(() => {});
+    fetchChat();
+    chatPollRef.current = setInterval(fetchChat, 20000);
+    return () => clearInterval(chatPollRef.current);
+  }, [rep?.id]);
+
+  // Scroll chat to bottom on new messages
+  useEffect(() => {
+    if (chatOpen && chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior:'smooth' });
+  }, [chatMessages, chatOpen]);
 
   // Clock
   useEffect(() => {
@@ -872,8 +933,9 @@ export default function CareCircleDialer() {
   const isAdmin = rep?.role === 'admin';
   const activeSkin = SKINS[skinKey] ?? SKINS.CARECIRCLE;
   const fullCss = BASE_CSS + buildSkinCss(activeSkin);
+  const chatUnread = chatMessages.filter(m => m.ts > chatLastRead && m.fromId !== rep?.id && (m.to === 'all' || m.to === rep?.id || (isAdmin && m.to === 'admin'))).length;
 
-  if (!rep) return <><style>{fullCss}</style><LoginScreen onLogin={handleLogin} /></>;
+  if (!rep) return <><style>{fullCss}</style><LoginScreen onLogin={handleLogin} activeSkin={activeSkin} /></>;
 
   return (
     <>
@@ -893,9 +955,21 @@ export default function CareCircleDialer() {
             <span style={{width:5,height:5,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite',display:'inline-block'}}></span>LIVE
           </span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:14,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>
           <span>Rep: <span style={{color:'var(--gl)'}}>{rep.name}</span>{isAdmin&&<span style={{color:'var(--teal)',marginLeft:5}}>[ADMIN]</span>}</span>
           <span style={{color:'var(--green)'}}>{clock}</span>
+          {/* Skin picker */}
+          <div style={{position:'relative'}}>
+            <button onClick={() => setShowSkinPicker(v => !v)} title="Change theme"
+              style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:12,cursor:'pointer',border:`1px solid ${showSkinPicker?'var(--green)':'var(--border2)'}`,background:showSkinPicker?'rgba(74,155,74,0.12)':'transparent',color:'var(--text)',borderRadius:2}}>
+              {activeSkin.icon}
+            </button>
+          </div>
+          {/* Chat */}
+          <button onClick={() => { const next = !chatOpen; setChatOpen(next); if (next) markChatRead(); }}
+            style={{position:'relative',padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:`1px solid ${chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--border2)'}`,background:chatOpen?'rgba(61,139,122,0.12)':chatUnread>0?'rgba(200,122,42,0.1)':'transparent',color:chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--dim)',borderRadius:2,letterSpacing:0.5}}>
+            💬{chatUnread > 0 && <span style={{marginLeft:4,background:'var(--orange)',color:'white',borderRadius:8,padding:'0 4px',fontSize:7,fontWeight:700}}>{chatUnread}</span>}
+          </button>
           <button onClick={handleLogout} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>SIGN OUT</button>
         </div>
       </div>
@@ -1845,9 +1919,97 @@ export default function CareCircleDialer() {
         </div>
       )}
 
+      {/* SKIN PICKER DROPDOWN */}
+      {showSkinPicker && (
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:499}} onClick={() => setShowSkinPicker(false)} />
+          <div style={{position:'fixed',top:54,right:160,zIndex:500,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:12,width:260,boxShadow:'0 8px 28px rgba(0,0,0,0.5)',animation:'slideUp 0.15s ease'}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',marginBottom:8}}>Choose Theme</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+              {Object.entries(SKINS)
+                .filter(([, s]) => isAdmin || s.repAccessible)
+                .map(([key, s]) => (
+                <button key={key} onClick={() => { setSkinKey(key); setShowSkinPicker(false); }} style={{
+                  display:'flex',alignItems:'center',gap:4,padding:'5px 8px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',borderRadius:3,
+                  border:`1px solid ${skinKey===key?'var(--green)':'rgba(128,128,128,0.3)'}`,
+                  background:skinKey===key?'rgba(74,155,74,0.14)':s.dark?s.surface:s.surface2,
+                  color:s.accentL, transition:'all 0.1s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span style={{whiteSpace:'nowrap'}}>{s.label}</span>
+                  {skinKey===key && <span style={{color:'var(--green)',marginLeft:2}}>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* CHAT PANEL */}
+      {chatOpen && (
+        <div style={{position:'fixed',right:0,top:0,bottom:0,width:320,background:'var(--surface)',borderLeft:'1px solid var(--border2)',zIndex:300,display:'flex',flexDirection:'column',boxShadow:'-4px 0 20px rgba(0,0,0,0.4)'}}>
+          {/* header */}
+          <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+            <div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--gl)',letterSpacing:1}}>TEAM CHAT</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:2,letterSpacing:0.5}}>Internal · {REPS.length} reps</div>
+            </div>
+            <button onClick={() => setChatOpen(false)} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕</button>
+          </div>
+          {/* messages */}
+          <div style={{flex:1,overflowY:'auto',padding:'10px 10px 6px',display:'flex',flexDirection:'column',gap:7}}>
+            {chatMessages.length === 0 && (
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',textAlign:'center',marginTop:30}}>No messages yet. Say something!</div>
+            )}
+            {chatMessages
+              .filter(m => isAdmin || m.to === 'all' || m.to === rep.id || m.fromId === rep.id)
+              .map(m => {
+                const isMe = m.fromId === rep.id;
+                const isUnread = m.ts > chatLastRead && !isMe;
+                return (
+                  <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:isMe?'flex-end':'flex-start'}}>
+                    <div style={{
+                      maxWidth:'88%',padding:'8px 10px',borderRadius:4,
+                      background:isUnread?'rgba(200,122,42,0.12)':isMe?'var(--surface3)':'var(--surface2)',
+                      border:`1px solid ${isUnread?'rgba(200,122,42,0.35)':isMe?'var(--border2)':'var(--border)'}`,
+                    }}>
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginBottom:4,display:'flex',gap:6,alignItems:'center'}}>
+                        <span style={{color:isMe?'var(--gl)':m.fromRole==='admin'?'var(--teal)':'var(--mid)'}}>{isMe ? 'You' : m.fromName}</span>
+                        {m.to === 'all' ? <span>→ All</span> : isMe ? <span>→ {m.toName}</span> : null}
+                        <span>· {new Date(m.ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false})}</span>
+                        {isUnread && <span style={{color:'var(--orange)'}}>NEW</span>}
+                      </div>
+                      <div style={{fontSize:12,color:'var(--text)',lineHeight:1.45,wordBreak:'break-word'}}>{m.text}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            <div ref={chatBottomRef} />
+          </div>
+          {/* compose */}
+          <div style={{padding:10,borderTop:'1px solid var(--border)',flexShrink:0}}>
+            {isAdmin && (
+              <select value={chatTo} onChange={e => setChatTo(e.target.value)} style={{width:'100%',marginBottom:7,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'5px 8px',outline:'none',borderRadius:3,cursor:'pointer'}}>
+                <option value="all">→ All Reps</option>
+                {REPS.filter(r => r.id !== rep.id).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            )}
+            <div style={{display:'flex',gap:6}}>
+              <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                placeholder={isAdmin ? 'Message team...' : 'Message admin...'}
+                style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
+              <button onClick={sendChat} style={{padding:'7px 11px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.14)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5,whiteSpace:'nowrap'}}>SEND</button>
+            </div>
+            {!isAdmin && <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:5,letterSpacing:0.3}}>Messages go to admin only</div>}
+          </div>
+        </div>
+      )}
+
       {/* NOTIFICATION */}
       {notification&&(
-        <div style={{position:'fixed',bottom:22,right:22,padding:'11px 16px',background:'var(--surface)',border:'1px solid var(--border2)',borderLeft:`3px solid ${notification.type==='success'?'var(--green)':notification.type==='warning'?'var(--orange)':'var(--teal)'}`,borderRadius:3,fontFamily:'Inter,sans-serif',fontSize:12,color:'var(--text)',zIndex:1000,maxWidth:300,animation:'slideUp 0.3s ease',boxShadow:'0 4px 16px rgba(0,0,0,0.4)'}}>
+        <div style={{position:'fixed',bottom:22,right:chatOpen?342:22,padding:'11px 16px',background:'var(--surface)',border:'1px solid var(--border2)',borderLeft:`3px solid ${notification.type==='success'?'var(--green)':notification.type==='warning'?'var(--orange)':'var(--teal)'}`,borderRadius:3,fontFamily:'Inter,sans-serif',fontSize:12,color:'var(--text)',zIndex:1000,maxWidth:300,animation:'slideUp 0.3s ease',boxShadow:'0 4px 16px rgba(0,0,0,0.4)'}}>
           {notification.msg}
         </div>
       )}

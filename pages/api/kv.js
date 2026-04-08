@@ -152,5 +152,38 @@ export default async function handler(req, res) {
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
+  if (action === 'chat-send') {
+    try {
+      const { fromId, fromName, fromRole, to, toName, text } = req.body;
+      const msg = JSON.stringify({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        fromId, fromName, fromRole, to, toName, text, ts: Date.now(),
+      });
+      await kv('LPUSH', 'chat:messages', msg);
+      await kv('LTRIM', 'chat:messages', '0', '299');
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  if (action === 'chat-fetch') {
+    try {
+      const raw = await kv('LRANGE', 'chat:messages', '0', '99');
+      const messages = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+      return res.status(200).json({ messages });
+    } catch(e) { return res.status(500).json({ messages: [], error: e.message }); }
+  }
+
+  if (action === 'chat-lastread') {
+    try {
+      if (req.method === 'POST') {
+        const { repId, ts } = req.body;
+        await kv('SET', `chat:read:${repId}`, String(ts));
+        return res.status(200).json({ ok: true });
+      }
+      const ts = await kv('GET', `chat:read:${req.query.repId}`);
+      return res.status(200).json({ ts: ts ? Number(ts) : 0 });
+    } catch(e) { return res.status(500).json({ ts: 0, error: e.message }); }
+  }
+
   return res.status(400).json({ error: 'Unknown action' });
 }
