@@ -154,6 +154,27 @@ const SMS_TEMPLATES = {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function fmtTime(s) { return `${Math.floor((s||0)/60).toString().padStart(2,'0')}:${((s||0)%60).toString().padStart(2,'0')}` }
+
+// Shuffle new leads randomly, then spread same-last-name contacts apart so
+// people in the same household are never called back-to-back.
+function shuffleLeads(arr) {
+  const a = [...arr];
+  // Fisher-Yates shuffle
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  // Spread pass: if two adjacent contacts share a last name, push the second
+  // one at least 5 slots forward.
+  const ln = c => (c.name || '').trim().split(/\s+/).pop().toLowerCase();
+  for (let i = 0; i < a.length - 1; i++) {
+    if (!ln(a[i]) || ln(a[i]) !== ln(a[i + 1])) continue;
+    for (let j = Math.min(i + 5, a.length - 1); j < a.length; j++) {
+      if (ln(a[j]) !== ln(a[i])) { [a[i + 1], a[j]] = [a[j], a[i + 1]]; break; }
+    }
+  }
+  return a;
+}
 function sGet(k, d) { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
 function sSet(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
 function lGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }
@@ -491,13 +512,16 @@ export default function CareCircleDialer() {
       const d = await r.json();
       // Deduplicate by phone on load (guards against double-upload)
       const seen = new Set();
-      const contacts = (d.contacts || []).filter(c => {
+      const deduped = (d.contacts || []).filter(c => {
         const key = c.phone || c.id;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
-      setContacts(contacts);
+      // Shuffle unclaimed new leads so same-household contacts aren't adjacent
+      const newLeads = deduped.filter(c => c.status === 'new' && !c.claimedBy);
+      const rest     = deduped.filter(c => !(c.status === 'new' && !c.claimedBy));
+      setContacts([...shuffleLeads(newLeads), ...rest]);
     } catch { setContacts([]); }
     setContactsLoading(false);
   }
@@ -541,7 +565,15 @@ export default function CareCircleDialer() {
       try {
         const r = await fetch(`/api/kv?action=contacts&pool=${contactType}`);
         const d = await r.json();
-        if (d.contacts) setContacts(d.contacts);
+        if (d.contacts) setContacts(prev => {
+          const fresh = Object.fromEntries(d.contacts.map(c => [c.id, c]));
+          // Update existing contacts in-place, preserving shuffled order
+          const updated = prev.map(c => fresh[c.id] ? { ...c, ...fresh[c.id] } : c);
+          // Append genuinely new contacts (e.g. just uploaded by admin), shuffled
+          const existingIds = new Set(prev.map(c => c.id));
+          const brandNew = d.contacts.filter(c => !existingIds.has(c.id) && c.status === 'new');
+          return brandNew.length ? [...updated, ...shuffleLeads(brandNew)] : updated;
+        });
       } catch {}
     }, 5000);
     return () => clearInterval(syncRef.current);
