@@ -300,36 +300,60 @@ export default async function handler(req, res) {
     }
 
     // ── Regular outbound call via conference ─────────────────────────────────
+    // Save conf info immediately so monitoring can find it, then return TwiML
+    // right away. The customer call is placed by the conf-event callback once
+    // the conference starts — this avoids blocking the TwiML response on the
+    // Twilio REST API call and prevents Vercel function timeouts.
     const callerId = await getRepPhone(repId || '');
     const repCallSid = body.CallSid;
     const confName = `cc_${repId}_${Date.now()}`;
 
     try {
-      await setActiveConf(repId, { confName, repCallSid, to: To, startTime: Date.now() });
-      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-      await client.calls.create({
-        to: To, from: callerId,
-        url: `${BASE}/api/twilio?action=conf-customer&confName=${encodeURIComponent(confName)}`,
-        record: true,
-        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
-        recordingStatusCallbackMethod: 'POST',
-        machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${ct||'b2b'}`,
-        asyncAmdStatusCallbackMethod: 'POST',
-      });
-    } catch(e) { console.error('customer dial error:', e.message); }
+      await setActiveConf(repId, { confName, repCallSid, to: To, callerId, ct: ct || 'b2b', startTime: Date.now() });
+    } catch(e) { console.error('setActiveConf error:', e.message); }
 
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" maxParticipants="10" statusCallback="${BASE}/api/twilio?action=conf-end&repId=${encodeURIComponent(repId||'')}" statusCallbackEvent="end" statusCallbackMethod="POST"/></Dial></Response>`);
+    const cbUrl = `${BASE}/api/twilio?action=conf-event&repId=${encodeURIComponent(repId||'')}`;
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" maxParticipants="10" statusCallback="${cbUrl}" statusCallbackEvent="start end" statusCallbackMethod="POST"/></Dial></Response>`);
+  }
+
+  // ── Conference event callback (start → dial customer; end → clean KV) ──────
+  if (action === 'conf-event') {
+    const event = req.body?.StatusCallbackEvent;
+    const cbRepId = req.query.repId || '';
+
+    if (event === 'conference-start') {
+      try {
+        const confData = await getActiveConf(cbRepId);
+        if (confData) {
+          const { to, callerId: cid, ct: confCt, confName: cName } = confData;
+          const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+          await client.calls.create({
+            to, from: cid,
+            url: `${BASE}/api/twilio?action=conf-customer&confName=${encodeURIComponent(cName)}`,
+            record: true,
+            recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
+            recordingStatusCallbackMethod: 'POST',
+            machineDetection: 'DetectMessageEnd',
+            asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${confCt||'b2b'}`,
+            asyncAmdStatusCallbackMethod: 'POST',
+          });
+        }
+      } catch(e) { console.error('conf-start customer dial error:', e.message); }
+    } else if (event === 'conference-end') {
+      try { await delActiveConf(cbRepId); } catch {}
+    }
+
+    return res.status(200).end();
   }
 
   // ── Customer joins conference ──────────────────────────────────────────────
   if (action === 'conf-customer') {
     const confName = req.query.confName || '';
     res.setHeader('Content-Type', 'text/xml');
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" maxParticipants="10"/></Dial></Response>`);
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" maxParticipants="10"/></Dial></Response>`);
   }
 
-  // ── Conference ended — clean up KV ────────────────────────────────────────
+  // ── Conference ended — clean up KV (legacy, also handled by conf-event) ────
   if (action === 'conf-end') {
     try { await delActiveConf(req.query.repId || ''); } catch {}
     return res.status(200).end();
