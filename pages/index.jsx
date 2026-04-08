@@ -318,6 +318,8 @@ export default function CareCircleDialer() {
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState(null);
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
+  const [activeConfs, setActiveConfs] = useState({}); // { repId -> confData }
+  const [monitoring, setMonitoring] = useState(null); // { repId, repName, mode } | null
   const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -336,6 +338,8 @@ export default function CareCircleDialer() {
   const twilioDeviceRef = useRef(null);
   const chatBottomRef = useRef(null);
   const chatPollRef = useRef(null);
+  const confPollRef = useRef(null);
+  const monitorConnRef = useRef(null);
 
   // Session restore
   useEffect(() => {
@@ -376,6 +380,8 @@ export default function CareCircleDialer() {
     clearInterval(heartbeatRef.current);
     clearInterval(presencePollRef.current);
     clearInterval(chatPollRef.current);
+    clearInterval(confPollRef.current);
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
     sessionStorage.clear();
     setRep(null);
     setMyLog([]);
@@ -431,6 +437,41 @@ export default function CareCircleDialer() {
   useEffect(() => {
     if (chatOpen && chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior:'smooth' });
   }, [chatMessages, chatOpen]);
+
+  // Admin: poll active conferences every 10s
+  useEffect(() => {
+    if (!rep || rep.role !== 'admin') return;
+    const repIds = REPS.map(r => r.id).join(',');
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/kv?action=active-confs&repIds=${repIds}`);
+        const d = await r.json();
+        setActiveConfs(d.confs || {});
+      } catch {}
+    };
+    poll();
+    confPollRef.current = setInterval(poll, 10000);
+    return () => clearInterval(confPollRef.current);
+  }, [rep?.id]);
+
+  async function startMonitor(targetRepId, targetRepName, mode) {
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
+    if (!twilioDeviceRef.current) { notify('Twilio SDK not ready', 'warning'); return; }
+    try {
+      const conn = await twilioDeviceRef.current.connect({
+        params: { To: 'monitor', targetRepId, mode, adminRepId: rep.id, repId: rep.id },
+      });
+      monitorConnRef.current = conn;
+      setMonitoring({ repId: targetRepId, repName: targetRepName, mode });
+      conn.on('disconnect', () => { monitorConnRef.current = null; setMonitoring(null); });
+      conn.on('error', () => { monitorConnRef.current = null; setMonitoring(null); });
+    } catch(e) { notify(`Monitor failed: ${e.message}`, 'warning'); }
+  }
+
+  function stopMonitor() {
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
+    setMonitoring(null);
+  }
 
   // Clock
   useEffect(() => {
@@ -989,6 +1030,13 @@ export default function CareCircleDialer() {
             style={{position:'relative',padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:`1px solid ${chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--border2)'}`,background:chatOpen?'rgba(61,139,122,0.12)':chatUnread>0?'rgba(200,122,42,0.1)':'transparent',color:chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--dim)',borderRadius:2,letterSpacing:0.5}}>
             💬{chatUnread > 0 && <span style={{marginLeft:4,background:'var(--orange)',color:'white',borderRadius:8,padding:'0 4px',fontSize:7,fontWeight:700}}>{chatUnread}</span>}
           </button>
+          {monitoring && (
+            <div style={{display:'flex',alignItems:'center',gap:6,padding:'3px 9px',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.12)',borderRadius:2,fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:0.5}}>
+              <span style={{width:5,height:5,borderRadius:'50%',background:'var(--teal)',animation:'pulse 1.5s infinite',display:'inline-block'}}></span>
+              {monitoring.mode === 'whisper' ? '🎤' : '👂'} {monitoring.repName.split(' ')[0]}
+              <button onClick={stopMonitor} style={{marginLeft:2,padding:'1px 5px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--teal)',background:'transparent',color:'var(--teal)',borderRadius:1}}>✕</button>
+            </div>
+          )}
           <button onClick={handleLogout} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>SIGN OUT</button>
         </div>
       </div>
@@ -1332,7 +1380,7 @@ export default function CareCircleDialer() {
                 <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Rep','Status','Calls Today','Talk Time','Booked'].map(h => (
+                      {['Rep','Status','Calls Today','Talk Time','Booked','Monitor'].map(h => (
                         <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
                       ))}
                     </tr></thead>
@@ -1340,8 +1388,10 @@ export default function CareCircleDialer() {
                       {REPS.map(r => {
                         const isOnline = onlineReps.some(o => o.repId === r.id);
                         const s = todayStats[r.id] || { calls:0, duration:0, booked:0 };
+                        const conf = activeConfs[r.id];
+                        const isBeingMonitored = monitoring?.repId === r.id;
                         return (
-                          <tr key={r.id} style={{borderBottom:'1px solid var(--border)'}}>
+                          <tr key={r.id} style={{borderBottom:'1px solid var(--border)',background:isBeingMonitored?'rgba(61,139,122,0.06)':'transparent'}}>
                             <td style={{padding:'9px 14px',fontSize:12,fontWeight:500,color:'var(--text)'}}>{r.name}</td>
                             <td style={{padding:'9px 14px'}}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:'DM Mono,monospace',fontSize:8,color:isOnline?'var(--gl)':'var(--dim)'}}>
@@ -1358,6 +1408,20 @@ export default function CareCircleDialer() {
                                     setInterestedModal({ repName: r.name, entries });
                                   }}>{s.booked}</span>
                                 : s.booked}
+                            </td>
+                            <td style={{padding:'9px 14px'}}>
+                              {conf ? (
+                                isBeingMonitored ? (
+                                  <button onClick={stopMonitor} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--red)',background:'rgba(196,68,68,0.12)',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>■ STOP</button>
+                                ) : (
+                                  <div style={{display:'flex',gap:5}}>
+                                    <button onClick={() => startMonitor(r.id, r.name, 'listen')} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--blue)',background:'rgba(58,122,170,0.12)',color:'var(--blue)',borderRadius:2,letterSpacing:0.5}}>👂 LISTEN</button>
+                                    <button onClick={() => startMonitor(r.id, r.name, 'whisper')} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.12)',color:'var(--teal)',borderRadius:2,letterSpacing:0.5}}>🎤 WHISPER</button>
+                                  </div>
+                                )
+                              ) : (
+                                <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--border2)'}}>—</span>
+                              )}
                             </td>
                           </tr>
                         );

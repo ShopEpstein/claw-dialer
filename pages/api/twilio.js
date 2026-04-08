@@ -1,6 +1,6 @@
 import twilio from 'twilio';
 import Anthropic from '@anthropic-ai/sdk';
-import { saveCall, getPhoneAssignments, setPhoneAssignments } from './kv';
+import { saveCall, getPhoneAssignments, setPhoneAssignments, getActiveConf, setActiveConf, delActiveConf } from './kv';
 
 const BASE = 'https://claw-dialer.vercel.app';
 const FROM = '+18559600110'; // toll-free — SMS default for everyone
@@ -276,16 +276,77 @@ export default async function handler(req, res) {
   }
 
   if (action === 'browser-call') {
-    const { To, repId: browserRepId } = body;
+    const { To, repId, contactType: ct } = body;
     res.setHeader('Content-Type', 'text/xml');
     if (!To) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
-    const browserCallerId = await getRepPhone(browserRepId || '');
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial callerId="${browserCallerId}" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
-    <Number>${escapeXml(To)}</Number>
-  </Dial>
-</Response>`);
+
+    // ── Admin monitoring an active rep call ──────────────────────────────────
+    if (To === 'monitor') {
+      const { targetRepId, mode } = body;
+      try {
+        const confData = await getActiveConf(targetRepId);
+        if (!confData) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">No active call for that rep.</Say><Hangup/></Response>`);
+        const { confName, repCallSid } = confData;
+        const adminCallSid = body.CallSid;
+        // Whisper: join muted, status callback will enable coaching + unmute
+        // Listen:  join muted permanently
+        const cbParam = mode === 'whisper'
+          ? ` statusCallback="${BASE}/api/twilio?action=coach-activate&adminCallSid=${adminCallSid}&repCallSid=${encodeURIComponent(repCallSid)}" statusCallbackEvent="join" statusCallbackMethod="POST"`
+          : '';
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="false" endConferenceOnExit="false" beep="false" muted="true"${cbParam}/></Dial></Response>`);
+      } catch(e) {
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Error joining call.</Say><Hangup/></Response>`);
+      }
+    }
+
+    // ── Regular outbound call via conference ─────────────────────────────────
+    const callerId = await getRepPhone(repId || '');
+    const repCallSid = body.CallSid;
+    const confName = `cc_${repId}_${Date.now()}`;
+
+    try {
+      await setActiveConf(repId, { confName, repCallSid, to: To, startTime: Date.now() });
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      await client.calls.create({
+        to: To, from: callerId,
+        url: `${BASE}/api/twilio?action=conf-customer&confName=${encodeURIComponent(confName)}`,
+        record: true,
+        recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
+        recordingStatusCallbackMethod: 'POST',
+        machineDetection: 'DetectMessageEnd',
+        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${ct||'b2b'}`,
+        asyncAmdStatusCallbackMethod: 'POST',
+      });
+    } catch(e) { console.error('customer dial error:', e.message); }
+
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" maxParticipants="10" statusCallback="${BASE}/api/twilio?action=conf-end&repId=${encodeURIComponent(repId||'')}" statusCallbackEvent="end" statusCallbackMethod="POST"/></Dial></Response>`);
+  }
+
+  // ── Customer joins conference ──────────────────────────────────────────────
+  if (action === 'conf-customer') {
+    const confName = req.query.confName || '';
+    res.setHeader('Content-Type', 'text/xml');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" waitUrl="" maxParticipants="10"/></Dial></Response>`);
+  }
+
+  // ── Conference ended — clean up KV ────────────────────────────────────────
+  if (action === 'conf-end') {
+    try { await delActiveConf(req.query.repId || ''); } catch {}
+    return res.status(200).end();
+  }
+
+  // ── Coaching activation via conference participant status callback ─────────
+  // Fires when admin participant joins; enables coaching so only rep hears admin
+  if (action === 'coach-activate') {
+    const { adminCallSid, repCallSid } = req.query;
+    const { ConferenceSid } = req.body || {};
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      await client.conferences(ConferenceSid).participants(adminCallSid).update({
+        coaching: true, callSidToCoach: repCallSid, muted: false,
+      });
+    } catch(e) { console.error('coach-activate error:', e.message); }
+    return res.status(200).end();
   }
 
   if (action === 'inbound') {

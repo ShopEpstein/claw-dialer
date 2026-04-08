@@ -14,6 +14,19 @@ async function kv(cmd, ...args) {
   return d.result;
 }
 
+// ─── Active conference helpers (used by twilio.js) ────────────────────────────
+export async function getActiveConf(repId) {
+  const raw = await kv('GET', `conf:active:${repId}`);
+  return raw ? JSON.parse(raw) : null;
+}
+export async function setActiveConf(repId, data) {
+  await kv('SET', `conf:active:${repId}`, JSON.stringify(data));
+  await kv('EXPIRE', `conf:active:${repId}`, '14400');
+}
+export async function delActiveConf(repId) {
+  await kv('DEL', `conf:active:${repId}`);
+}
+
 export async function getPhoneAssignments() {
   const raw = await kv('GET', 'phone:assignments');
   return raw ? JSON.parse(raw) : null;
@@ -150,6 +163,16 @@ export default async function handler(req, res) {
       await saveContactsToKV(pool, contacts.map(c => c.id === id ? { ...c, ...updates } : c));
       return res.status(200).json({ ok: true });
     } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  if (action === 'active-confs') {
+    try {
+      const ids = (req.query.repIds || '').split(',').filter(Boolean);
+      const results = await Promise.all(ids.map(id => kv('GET', `conf:active:${id}`)));
+      const confs = {};
+      ids.forEach((id, i) => { if (results[i]) try { confs[id] = JSON.parse(results[i]); } catch {} });
+      return res.status(200).json({ confs });
+    } catch(e) { return res.status(500).json({ confs: {}, error: e.message }); }
   }
 
   if (action === 'migrate-outcomes') {
