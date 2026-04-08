@@ -621,6 +621,8 @@ export default function CareCircleDialer() {
   // Contacts filtered
   // not-interested is treated identically to DNC — permanently suppressed, never re-dialed (TCPA)
   const DEAD_STATUSES = ['dnc', 'not-interested', 'disconnected', 'wrong-number'];
+  // Statuses eligible for recycling after all new leads are exhausted
+  const RECYCLE_STATUSES = ['voicemail', 'no-answer', 'called', 'gatekeeper'];
 
   // Build a set of phone numbers that have been dialed in the last 24h by anyone in the system.
   // This blocks duplicates by phone number regardless of contact ID or which outbound number called.
@@ -629,6 +631,31 @@ export default function CareCircleDialer() {
       .filter(c => c.lastCalledAt && (Date.now() - new Date(c.lastCalledAt).getTime()) < 86400000)
       .map(c => c.phone).filter(Boolean)
   );
+
+  // Returns the best available lead: NEW contacts first, recycled (voicemail/no-answer/called)
+  // only after all new contacts are exhausted. Never returns dead or claimed-by-others contacts.
+  function nextAvailableLead(excludeId) {
+    const ok = c =>
+      c.id !== excludeId &&
+      (!c.claimedBy || c.claimedBy === rep?.id) &&
+      !DEAD_STATUSES.includes(c.status) &&
+      (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
+      (!c.phone || !calledPhones24h.has(c.phone));
+    return (
+      contacts.find(c => c.status === 'new' && ok(c)) ||
+      contacts.find(c => RECYCLE_STATUSES.includes(c.status) && ok(c)) ||
+      null
+    );
+  }
+
+  // True when there are zero new leads left (so next pick will be a recycled contact)
+  const hasNewLeads = contacts.some(c =>
+    c.status === 'new' &&
+    (!c.claimedBy || c.claimedBy === rep?.id) &&
+    (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
+    (!c.phone || !calledPhones24h.has(c.phone))
+  );
+
 
   const allFiltered = contacts.filter(c => {
     const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
@@ -784,15 +811,9 @@ export default function CareCircleDialer() {
     setActiveContact(null);
 
     if (autoDial) {
-      const next = contacts.find(c =>
-        c.status === 'new' &&
-        !c.claimedBy &&
-        !DEAD_STATUSES.includes(c.status) &&
-        c.id !== activeContact.id &&
-        (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
-        (!c.phone || !calledPhones24h.has(c.phone))
-      );
+      const next = nextAvailableLead(activeContact.id);
       if (next) {
+        if (next.status !== 'new') notify('All new leads dialed — recycling previously called contacts', 'info');
         let secs = 3;
         setAutoDialCountdown(secs);
         countdownRef.current = setInterval(() => {
@@ -807,7 +828,7 @@ export default function CareCircleDialer() {
           }
         }, 1000);
       } else {
-        notify('No more unclaimed leads in queue', 'warning');
+        notify('All leads dialed — no contacts available to queue', 'warning');
       }
     }
   }
@@ -1098,9 +1119,10 @@ export default function CareCircleDialer() {
                     {/* Next Lead button */}
                     <div style={{padding:'12px'}}>
                       <button onClick={() => {
-                        const next = contacts.find(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000) && (!c.phone || !calledPhones24h.has(c.phone)));
-                        if (next) selectContact(next);
-                        else notify('No new leads available', 'warning');
+                        const next = nextAvailableLead();
+                        if (!next) { notify('All leads dialed — no contacts available', 'warning'); return; }
+                        selectContact(next);
+                        if (next.status !== 'new') notify('All new leads dialed — recycling previously called contacts', 'info');
                       }} style={{width:'100%',padding:'11px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5}}>
                         → Next Lead
                       </button>
