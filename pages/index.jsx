@@ -315,6 +315,8 @@ export default function CareCircleDialer() {
   const [onlineReps, setOnlineReps] = useState([]);
   const [numberAssignments, setNumberAssignments] = useState({}); // { repId -> phoneNumber }
   const [numberPoolSaving, setNumberPoolSaving] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState(null);
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
   const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
   const [showSkinPicker, setShowSkinPicker] = useState(false);
@@ -547,6 +549,21 @@ export default function CareCircleDialer() {
       });
     });
   }, [lifecycleContact]);
+
+  async function runOutcomeMigration() {
+    setMigrating(true);
+    setMigrateResult(null);
+    try {
+      const r = await fetch('/api/kv?action=migrate-outcomes', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ repIds: REPS.map(r => r.id) }),
+      });
+      const d = await r.json();
+      setMigrateResult(d.ok ? `Done — ${d.fixed} call record${d.fixed===1?'':'s'} updated.` : `Error: ${d.error}`);
+      if (d.ok) { loadContacts(contactType); await loadAllLog(); }
+    } catch(e) { setMigrateResult(`Error: ${e.message}`); }
+    setMigrating(false);
+  }
 
   async function loadNumberAssignments() {
     try {
@@ -1418,6 +1435,21 @@ export default function CareCircleDialer() {
       {tab==='admin'&&isAdmin&&(
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:22}}>Admin Panel</div>
+
+          {/* One-time data migrations */}
+          {migrateResult === null && (
+            <div style={{marginBottom:20,padding:'10px 14px',background:'rgba(200,122,42,0.07)',border:'1px solid rgba(200,122,42,0.25)',borderRadius:3,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--orange)',letterSpacing:0.5}}>Existing records saved as "interested" need to be updated to "booked"</span>
+              <button onClick={runOutcomeMigration} disabled={migrating} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--orange)',background:'rgba(200,122,42,0.12)',color:'var(--orange)',borderRadius:2,letterSpacing:0.5,whiteSpace:'nowrap'}}>
+                {migrating ? 'MIGRATING...' : 'FIX NOW'}
+              </button>
+            </div>
+          )}
+          {migrateResult && (
+            <div style={{marginBottom:20,padding:'10px 14px',background:'rgba(74,155,74,0.07)',border:'1px solid rgba(74,155,74,0.25)',borderRadius:3,fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--green)',letterSpacing:0.5}}>
+              ✓ {migrateResult}
+            </div>
+          )}
 
           {/* Theme Switcher */}
           <div style={{marginBottom:28}}>

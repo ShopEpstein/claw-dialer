@@ -152,6 +152,51 @@ export default async function handler(req, res) {
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
+  if (action === 'migrate-outcomes') {
+    try {
+      const repIds = req.body?.repIds || [];
+      let fixed = 0;
+
+      // Patch calls:all in place using LSET
+      const allRaw = await kv('LRANGE', 'calls:all', '0', '-1');
+      for (let i = 0; i < (allRaw || []).length; i++) {
+        try {
+          const rec = JSON.parse(allRaw[i]);
+          if (rec.outcome === 'interested') {
+            rec.outcome = 'booked';
+            await kv('LSET', 'calls:all', String(i), JSON.stringify(rec));
+            fixed++;
+          }
+        } catch {}
+      }
+
+      // Patch per-rep lists
+      for (const repId of repIds) {
+        const repRaw = await kv('LRANGE', `calls:${repId}`, '0', '-1');
+        for (let i = 0; i < (repRaw || []).length; i++) {
+          try {
+            const rec = JSON.parse(repRaw[i]);
+            if (rec.outcome === 'interested') {
+              rec.outcome = 'booked';
+              await kv('LSET', `calls:${repId}`, String(i), JSON.stringify(rec));
+            }
+          } catch {}
+        }
+      }
+
+      // Patch contact statuses in both pools
+      for (const pool of ['b2b', 'b2c']) {
+        const contacts = await loadContactsFromKV(pool);
+        const updated = contacts.map(c => c.status === 'interested' ? { ...c, status: 'booked' } : c);
+        if (updated.some((c, i) => c.status !== contacts[i].status)) {
+          await saveContactsToKV(pool, updated);
+        }
+      }
+
+      return res.status(200).json({ ok: true, fixed });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   if (action === 'chat-send') {
     try {
       const { fromId, fromName, fromRole, to, toName, text } = req.body;
