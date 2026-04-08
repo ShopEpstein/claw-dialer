@@ -161,21 +161,37 @@ function lSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch 
 
 const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#1A3D1A"/><text x="5" y="22" font-size="14" font-family="serif" fill="#4CAF50" font-weight="bold">CC</text></svg>')}`;
 
-const CSS = `
+// ─── SKINS ────────────────────────────────────────────────────────────────────
+const SKINS = {
+  CARECIRCLE:    { label:'CARECIRCLE',    icon:'🌿', dark:true,  bg:'#0F1A0F', surface:'#141F14', surface2:'#192419', surface3:'#1F2E1F', border:'#243324', border2:'#2D422D', accent:'#4A9B4A', accentL:'#6BBF6B', accentD:'#2D6A2D', teal:'#3D8B7A', text:'#E8F0E8', dim:'#7A9A7A', mid:'#A8C4A8', red:'#C44444', orange:'#C87A2A', blue:'#3A7AAA', yellow:'#A8A030' },
+  // ── dark ──
+  DEFAULT:       { label:'CLAW DEFAULT',  icon:'🖤', dark:true,  bg:'#080A0F', surface:'#0D1017', surface2:'#111520', surface3:'#151A26', border:'#1A2030', border2:'#202840', accent:'#14F1C6', accentL:'#30FFD8', accentD:'#0A9980', teal:'#0DD6B0', text:'#E0F0EC', dim:'#4A7A70', mid:'#7AAAA0', red:'#E05050', orange:'#E09040', blue:'#4080C0', yellow:'#B0A030' },
+  CYBERCLAW:     { label:'CYBERCLAW',     icon:'💜', dark:true,  bg:'#0A0010', surface:'#0F0018', surface2:'#130020', surface3:'#180028', border:'#200035', border2:'#280045', accent:'#BF00FF', accentL:'#D040FF', accentD:'#8000B0', teal:'#8000B0', text:'#F0E0FF', dim:'#604070', mid:'#9060B0', red:'#E04060', orange:'#C060B0', blue:'#6040E0', yellow:'#A060E0' },
+  GOTHICCLAW:    { label:'GOTHICCLAW',    icon:'🩸', dark:true,  bg:'#0D0000', surface:'#120000', surface2:'#180000', surface3:'#1E0000', border:'#280000', border2:'#360000', accent:'#CC0000', accentL:'#EE2222', accentD:'#880000', teal:'#880020', text:'#F0E0E0', dim:'#704040', mid:'#A06060', red:'#FF3030', orange:'#CC4020', blue:'#8040A0', yellow:'#A08020' },
+  TACTICLAW:     { label:'TACTICLAW',     icon:'🎯', dark:true,  bg:'#0A0C07', surface:'#0F1209', surface2:'#13180C', surface3:'#181F10', border:'#20280A', border2:'#283510', accent:'#7FFF00', accentL:'#AAFF40', accentD:'#50B000', teal:'#50B000', text:'#E8F0D8', dim:'#5A7030', mid:'#88A050', red:'#D06030', orange:'#C08020', blue:'#408040', yellow:'#C0C000' },
+  ECONOCLAW:     { label:'ECONOCLAW',     icon:'🔥', dark:true,  bg:'#0F0800', surface:'#160C00', surface2:'#1C1000', surface3:'#221400', border:'#301800', border2:'#402000', accent:'#FF6B2B', accentL:'#FF8A50', accentD:'#C04000', teal:'#C04000', text:'#F0E8D8', dim:'#7A5030', mid:'#B07848', red:'#FF4020', orange:'#FF8020', blue:'#8060C0', yellow:'#C09020' },
+  BUDGETCLAW:    { label:'BUDGETCLAW',    icon:'📊', dark:true,  bg:'#000A00', surface:'#000F00', surface2:'#001400', surface3:'#001A00', border:'#002200', border2:'#002E00', accent:'#39FF14', accentL:'#60FF40', accentD:'#20B000', teal:'#20B000', text:'#E0F0D8', dim:'#407040', mid:'#60A060', red:'#C04040', orange:'#B06020', blue:'#408040', yellow:'#A0A000' },
+  // ── light ──
+  CLAW_LIGHT:    { label:'CLAW LIGHT',    icon:'🤍', dark:false, bg:'#F0F4F8', surface:'#FFFFFF', surface2:'#F5F8FC', surface3:'#EEF2F7', border:'#D8E0EB', border2:'#C5D0DE', accent:'#008B7A', accentL:'#00B09A', accentD:'#006055', teal:'#006055', text:'#1A2A35', dim:'#708090', mid:'#4A6070', red:'#C03030', orange:'#B06000', blue:'#2060A0', yellow:'#707000' },
+  CYBER_LIGHT:   { label:'CYBER LIGHT',   icon:'🪻', dark:false, bg:'#F5F0FF', surface:'#FFFFFF', surface2:'#F0EAFF', surface3:'#EAE0FF', border:'#D8CCEE', border2:'#C8B8E4', accent:'#7C00CC', accentL:'#9C20EE', accentD:'#580090', teal:'#580090', text:'#180028', dim:'#806090', mid:'#503870', red:'#B03050', orange:'#A05080', blue:'#5030C0', yellow:'#806090' },
+  GOTHIC_LIGHT:  { label:'GOTHIC LIGHT',  icon:'📜', dark:false, bg:'#F5F0E8', surface:'#FFF8F0', surface2:'#F0E8DC', surface3:'#E8DDD0', border:'#D0C0B0', border2:'#C0B0A0', accent:'#8B0000', accentL:'#AA1010', accentD:'#600000', teal:'#600020', text:'#200000', dim:'#806060', mid:'#604040', red:'#AA0000', orange:'#904020', blue:'#603060', yellow:'#806000' },
+  TACTIC_LIGHT:  { label:'TACTIC LIGHT',  icon:'🗺️', dark:false, bg:'#F2EED8', surface:'#FFFDE8', surface2:'#ECEAD0', surface3:'#E4E2C4', border:'#C8C4A0', border2:'#B8B490', accent:'#3A6600', accentL:'#508800', accentD:'#284800', teal:'#284800', text:'#1A2000', dim:'#708050', mid:'#506030', red:'#804020', orange:'#806000', blue:'#405830', yellow:'#606000' },
+  ECONO_LIGHT:   { label:'ECONO LIGHT',   icon:'☀️', dark:false, bg:'#FFF8F0', surface:'#FFFFFF', surface2:'#FFF0E4', surface3:'#FFE8D8', border:'#E8D0B8', border2:'#D8C0A8', accent:'#CC4400', accentL:'#EE6020', accentD:'#A03000', teal:'#A03000', text:'#200800', dim:'#806050', mid:'#604030', red:'#CC2000', orange:'#CC6000', blue:'#806040', yellow:'#888020' },
+  BUDGET_LIGHT:  { label:'BUDGET LIGHT',  icon:'🟢', dark:false, bg:'#F8FFF8', surface:'#FFFFFF', surface2:'#F0FFF0', surface3:'#E8FEE8', border:'#C8ECC8', border2:'#B8DEB8', accent:'#008800', accentL:'#00AA00', accentD:'#005500', teal:'#005500', text:'#001800', dim:'#508050', mid:'#306030', red:'#AA2020', orange:'#886020', blue:'#406040', yellow:'#686000' },
+};
+
+function buildSkinCss(s) {
+  return `:root{--bg:${s.bg};--surface:${s.surface};--surface2:${s.surface2};--surface3:${s.surface3};--border:${s.border};--border2:${s.border2};--green:${s.accent};--gl:${s.accentL};--gd:${s.accentD};--teal:${s.teal};--text:${s.text};--dim:${s.dim};--mid:${s.mid};--red:${s.red};--orange:${s.orange};--blue:${s.blue};--yellow:${s.yellow}}`;
+}
+
+const BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#0F1A0F;color:#E8F0E8;font-family:'Inter',sans-serif;overflow:hidden}
-  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2D5A2D}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
   @keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  :root{
-    --bg:#0F1A0F;--surface:#141F14;--surface2:#192419;--surface3:#1F2E1F;
-    --border:#243324;--border2:#2D422D;
-    --green:#4A9B4A;--gl:#6BBF6B;--gd:#2D6A2D;
-    --teal:#3D8B7A;--text:#E8F0E8;--dim:#7A9A7A;--mid:#A8C4A8;
-    --red:#C44444;--orange:#C87A2A;--blue:#3A7AAA;--yellow:#A8A030;
-  }
 `;
 
 const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
@@ -294,6 +310,7 @@ export default function CareCircleDialer() {
   const [numberAssignments, setNumberAssignments] = useState({}); // { repId -> phoneNumber }
   const [numberPoolSaving, setNumberPoolSaving] = useState(false);
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
+  const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -348,6 +365,9 @@ export default function CareCircleDialer() {
     setAllLog([]);
     setOnlineReps([]);
   }
+
+  // Persist skin selection
+  useEffect(() => { lSet('cc_skin', skinKey); }, [skinKey]);
 
   // Clock
   useEffect(() => {
@@ -850,8 +870,10 @@ export default function CareCircleDialer() {
 
   const script = SCRIPTS[contactType].find(s => s.id === activeScriptId) || SCRIPTS[contactType][0];
   const isAdmin = rep?.role === 'admin';
+  const activeSkin = SKINS[skinKey] ?? SKINS.CARECIRCLE;
+  const fullCss = BASE_CSS + buildSkinCss(activeSkin);
 
-  if (!rep) return <><style>{CSS}</style><LoginScreen onLogin={handleLogin} /></>;
+  if (!rep) return <><style>{fullCss}</style><LoginScreen onLogin={handleLogin} /></>;
 
   return (
     <>
@@ -859,7 +881,7 @@ export default function CareCircleDialer() {
         <title>CareCircle — Remote Care Center</title>
         <link rel="icon" href={FAVICON} />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <style>{CSS}</style>
+        <style>{fullCss}</style>
       </Head>
 
       {/* TOP BAR */}
@@ -1321,6 +1343,50 @@ export default function CareCircleDialer() {
       {tab==='admin'&&isAdmin&&(
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:22}}>Admin Panel</div>
+
+          {/* Theme Switcher */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
+              UI Themes — <span style={{color:'var(--gl)'}}>{activeSkin.label}</span>
+              {!activeSkin.dark && <span style={{color:'var(--orange)',marginLeft:6}}>[LIGHT MODE]</span>}
+            </div>
+            <div style={{marginBottom:6,fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>// DARK</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+              {Object.entries(SKINS).filter(([,s]) => s.dark).map(([key, s]) => (
+                <button key={key} onClick={() => setSkinKey(key)} style={{
+                  display:'flex',alignItems:'center',gap:5,padding:'5px 10px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',
+                  border:`1px solid ${skinKey===key?'var(--green)':s.border2}`,
+                  borderRadius:3,
+                  background:skinKey===key?'rgba(74,155,74,0.12)':s.surface,
+                  color:skinKey===key?'var(--gl)':s.accentL,
+                  transition:'all 0.15s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span>{s.label}</span>
+                  {skinKey===key && <span style={{color:'var(--gl)'}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <div style={{marginBottom:6,fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>// LIGHT</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {Object.entries(SKINS).filter(([,s]) => !s.dark).map(([key, s]) => (
+                <button key={key} onClick={() => setSkinKey(key)} style={{
+                  display:'flex',alignItems:'center',gap:5,padding:'5px 10px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',
+                  border:`1px solid ${skinKey===key?s.accent:s.border2}`,
+                  borderRadius:3,
+                  background:skinKey===key?s.surface3:s.surface2,
+                  color:s.accent,
+                  transition:'all 0.15s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span>{s.label}</span>
+                  {skinKey===key && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* CSV Upload */}
           <div style={{marginBottom:28}}>
