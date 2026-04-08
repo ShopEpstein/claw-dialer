@@ -305,6 +305,10 @@ export default function CareCircleDialer() {
   const [editingContact, setEditingContact] = useState(null);
   const [adminSearch, setAdminSearch] = useState('');
   const [expandedLog, setExpandedLog] = useState(null);
+  const [dashRange, setDashRange] = useState('today'); // 'today'|'week'|'month'|'custom'
+  const [dashFrom, setDashFrom] = useState('');
+  const [dashTo, setDashTo] = useState('');
+  const [dashRepFilter, setDashRepFilter] = useState('all');
   const [autoDial, setAutoDial] = useState(false);
   const [autoDialCountdown, setAutoDialCountdown] = useState(null);
   const [lifecycleContact, setLifecycleContact] = useState(null); // { contact, history }
@@ -1002,9 +1006,26 @@ export default function CareCircleDialer() {
     a.download = filename; a.click();
   }
 
-  // Stats — today only
+  // Date range filter
   const today = new Date().toDateString();
-  const myTodayLog = myLog.filter(e => new Date(e.timestamp).toDateString() === today);
+  function inDashRange(ts) {
+    if (!ts) return false;
+    const d = new Date(ts);
+    const now = new Date();
+    if (dashRange === 'today') return d.toDateString() === now.toDateString();
+    if (dashRange === 'week') {
+      const s = new Date(now); s.setDate(now.getDate() - now.getDay()); s.setHours(0,0,0,0);
+      return d >= s;
+    }
+    if (dashRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (dashRange === 'custom') {
+      if (dashFrom && d < new Date(dashFrom + 'T00:00:00')) return false;
+      if (dashTo   && d > new Date(dashTo   + 'T23:59:59')) return false;
+      return true;
+    }
+    return true;
+  }
+  const myTodayLog = myLog.filter(e => inDashRange(e.timestamp));
   const myTotal = myTodayLog.length;
   const myBooked = myTodayLog.filter(c => c.outcome === 'booked').length;
   const myAnswered = myTodayLog.filter(c => ['answered','booked','callback','not-interested','dnc'].includes(c.outcome)).length;
@@ -1381,13 +1402,32 @@ export default function CareCircleDialer() {
       {/* ── DASHBOARD TAB ── */}
       {tab==='dashboard' && (
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
-          <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:18}}>{rep.name}'s Dashboard</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)'}}>{rep.name}'s Dashboard</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+              {['today','week','month','custom'].map(r => (
+                <button key={r} onClick={() => setDashRange(r)}
+                  style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',borderRadius:2,border:`1px solid ${dashRange===r?'var(--teal)':'var(--border2)'}`,background:dashRange===r?'rgba(61,139,122,0.15)':'transparent',color:dashRange===r?'var(--teal)':'var(--dim)',textTransform:'uppercase'}}>
+                  {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : r === 'month' ? 'This Month' : 'Custom'}
+                </button>
+              ))}
+              {dashRange === 'custom' && (
+                <>
+                  <input type="date" value={dashFrom} onChange={e => setDashFrom(e.target.value)}
+                    style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:10,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none'}} />
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>→</span>
+                  <input type="date" value={dashTo} onChange={e => setDashTo(e.target.value)}
+                    style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:10,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none'}} />
+                </>
+              )}
+            </div>
+          </div>
 
           {/* ── LIVE TEAM (admin only) ── */}
           {isAdmin && (() => {
             const todayStats = {};
             allLog.forEach(e => {
-              if (!e.repId || new Date(e.timestamp).toDateString() !== today) return;
+              if (!e.repId || !inDashRange(e.timestamp)) return;
               if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, booked:0 };
               todayStats[e.repId].calls++;
               todayStats[e.repId].duration += (e.duration || 0);
@@ -1402,7 +1442,7 @@ export default function CareCircleDialer() {
                 <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Rep','Status','Calls Today','Talk Time','Booked','Monitor'].map(h => (
+                      {['Rep','Status',dashRange==='today'?'Calls Today':'Calls','Talk Time','Booked','Monitor'].map(h => (
                         <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
                       ))}
                     </tr></thead>
@@ -1426,7 +1466,7 @@ export default function CareCircleDialer() {
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.booked>0?'var(--gl)':'var(--dim)',fontWeight:s.booked>0?600:400}}>
                               {s.booked > 0
                                 ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {
-                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'booked' && new Date(e.timestamp).toDateString() === today);
+                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'booked' && inDashRange(e.timestamp));
                                     setInterestedModal({ repName: r.name, entries });
                                   }}>{s.booked}</span>
                                 : s.booked}
@@ -1464,14 +1504,21 @@ export default function CareCircleDialer() {
           </div>
 
           {/* Admin: all reps */}
-          {isAdmin && (
+          {isAdmin && (() => {
+            const filtered = allLog.filter(e => inDashRange(e.timestamp) && (dashRepFilter === 'all' || e.repId === dashRepFilter));
+            return (
             <div>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--teal)'}}>All Reps Activity</div>
-                <div style={{display:'flex',gap:8}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--teal)'}}>All Reps Activity <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',fontWeight:400}}>({filtered.length} records)</span></div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                  <select value={dashRepFilter} onChange={e => setDashRepFilter(e.target.value)}
+                    style={{padding:'4px 8px',fontFamily:'DM Mono,monospace',fontSize:9,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none',cursor:'pointer'}}>
+                    <option value="all">All Reps</option>
+                    {REPS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
                   <button onClick={loadLogs} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>{loadingLog?'Loading...':'↺ Refresh'}</button>
-                  <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...allLog.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'all-calls.csv')}
-                    style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>EXPORT ALL</button>
+                  <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...filtered.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],`calls-${dashRange}.csv`)}
+                    style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>EXPORT</button>
                 </div>
               </div>
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
@@ -1480,7 +1527,7 @@ export default function CareCircleDialer() {
                     {['Rep','Contact','Type','Outcome','Dur.','Time','Notes'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
                   </tr></thead>
                   <tbody>
-                    {allLog.slice(0,150).map((entry,i) => {
+                    {filtered.slice(0,300).map((entry,i) => {
                       const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
                       const isExpanded = expandedLog === i;
                       return (
@@ -1510,10 +1557,11 @@ export default function CareCircleDialer() {
                     })}
                   </tbody>
                 </table>
-                {allLog.length===0&&<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No calls recorded yet</div>}
+                {filtered.length===0&&<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No calls in this range</div>}
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
