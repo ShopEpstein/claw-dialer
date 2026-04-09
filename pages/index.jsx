@@ -345,6 +345,7 @@ export default function CareCircleDialer() {
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
   const [activeConfs, setActiveConfs] = useState({}); // { repId -> confData }
   const [monitoring, setMonitoring] = useState(null); // { repId, repName, mode } | null
+  const [dialTimes, setDialTimes] = useState({}); // { repId -> minutes in range }
   const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -389,7 +390,11 @@ export default function CareCircleDialer() {
   }, [rep]);
 
   function startHeartbeat(repData) {
-    const ping = () => fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
+    const ping = () => {
+      const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+      fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
+      fetch('/api/kv?action=dial-heartbeat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, date }) }).catch(()=>{});
+    };
     ping();
     heartbeatRef.current = setInterval(ping, 60000);
   }
@@ -596,7 +601,35 @@ export default function CareCircleDialer() {
     setLoadingLog(false);
   }
 
-  useEffect(() => { if (rep) loadLogs(); }, [rep]);
+  // Fetch accumulated dial-time (minutes) for all reps across the current range
+  async function loadDialTimes() {
+    if (!rep || rep.role !== 'admin') return;
+    try {
+      const now = new Date();
+      const dates = [];
+      if (dashRange === 'today') {
+        dates.push(now.toISOString().slice(0, 10));
+      } else if (dashRange === 'week') {
+        const d = new Date(now); d.setDate(now.getDate() - now.getDay());
+        while (d <= now) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      } else if (dashRange === 'month') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1);
+        while (d <= now) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      } else if (dashRange === 'custom' && dashFrom) {
+        const d = new Date(dashFrom + 'T00:00:00');
+        const end = dashTo ? new Date(dashTo + 'T23:59:59') : now;
+        while (d <= end) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      }
+      if (!dates.length) return;
+      const repIds = REPS.map(r => r.id);
+      const res = await fetch('/api/kv?action=dial-times', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repIds, dates }) });
+      const data = await res.json();
+      setDialTimes(data.totals || {});
+    } catch {}
+  }
+
+  useEffect(() => { if (rep) { loadLogs(); loadDialTimes(); } }, [rep]);
+  useEffect(() => { loadDialTimes(); }, [dashRange, dashFrom, dashTo]);
   useEffect(() => { if (rep && tab === 'admin') loadNumberAssignments(); }, [rep, tab]);
 
   // Fetch recordings for all callSids in the lifecycle modal when it opens
@@ -1474,7 +1507,7 @@ export default function CareCircleDialer() {
                 <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Rep','Status',dashRange==='today'?'Calls Today':'Calls','Talk Time','Booked','Monitor'].map(h => (
+                      {['Rep','Status',dashRange==='today'?'Calls Today':'Calls','Talk Time','Dial Time','Booked','Monitor'].map(h => (
                         <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
                       ))}
                     </tr></thead>
@@ -1495,6 +1528,7 @@ export default function CareCircleDialer() {
                             </td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:(dialTimes[r.id]||0)>0?'var(--text)':'var(--dim)'}}>{(dialTimes[r.id]||0)>0?fmtTime((dialTimes[r.id]||0)*60):'—'}</td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.booked>0?'var(--gl)':'var(--dim)',fontWeight:s.booked>0?600:400}}>
                               {s.booked > 0
                                 ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {

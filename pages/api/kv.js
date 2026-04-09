@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
   if (action === 'rep') {
     try {
-      const raw = await kv('LRANGE', `calls:${repId}`, '0', '199');
+      const raw = await kv('LRANGE', `calls:${repId}`, '0', '-1');
       const calls = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
       return res.status(200).json({ calls });
     } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
@@ -96,7 +96,7 @@ export default async function handler(req, res) {
 
   if (action === 'all') {
     try {
-      const raw = await kv('LRANGE', 'calls:all', '0', '499');
+      const raw = await kv('LRANGE', 'calls:all', '0', '-1');
       const calls = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
       return res.status(200).json({ calls });
     } catch(e) { return res.status(500).json({ calls: [], error: e.message }); }
@@ -218,6 +218,39 @@ export default async function handler(req, res) {
 
       return res.status(200).json({ ok: true, fixed });
     } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  // ── Dial-time tracking ─────────────────────────────────────────────────────
+  // Each heartbeat (60s) increments a per-rep daily counter by 1 minute.
+  // Key: dialtime:{repId}:{YYYY-MM-DD}, value: integer minutes, TTL 120 days.
+  if (action === 'dial-heartbeat') {
+    try {
+      const { repId: dhRepId, date } = req.body;
+      const key = `dialtime:${dhRepId}:${date}`;
+      await kv('INCR', key);
+      await kv('EXPIRE', key, '10368000'); // 120 days
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
+  // Fetch dial-time minutes for multiple reps across a date range.
+  // Body: { repIds: string[], dates: string[] }  (dates as YYYY-MM-DD)
+  if (action === 'dial-times') {
+    try {
+      const { repIds: dtRepIds = [], dates = [] } = req.body;
+      const keys = dtRepIds.flatMap(id => dates.map(d => `dialtime:${id}:${d}`));
+      const vals = keys.length ? await kv('MGET', ...keys) : [];
+      const totals = {};
+      let ki = 0;
+      for (const id of dtRepIds) {
+        totals[id] = 0;
+        for (const _d of dates) {
+          totals[id] += parseInt(vals[ki] || '0', 10);
+          ki++;
+        }
+      }
+      return res.status(200).json({ totals });
+    } catch(e) { return res.status(500).json({ totals: {}, error: e.message }); }
   }
 
   if (action === 'chat-send') {
