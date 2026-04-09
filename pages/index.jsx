@@ -391,9 +391,7 @@ export default function CareCircleDialer() {
 
   function startHeartbeat(repData) {
     const ping = () => {
-      const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
       fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
-      fetch('/api/kv?action=dial-heartbeat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, date }) }).catch(()=>{});
     };
     ping();
     heartbeatRef.current = setInterval(ping, 60000);
@@ -435,10 +433,10 @@ export default function CareCircleDialer() {
 
   async function sendChat() {
     if (!chatInput.trim()) return;
-    const isAdminSender = rep?.role === 'admin';
-    const to = isAdminSender ? chatTo : 'admin';
+    // Reps always message Chase. Admin messages the selected rep.
+    const to = isAdmin ? (chatTo || REPS.find(r => r.id !== rep?.id)?.id || 'all') : 'chase';
     const toRep = REPS.find(r => r.id === to);
-    const toName = to === 'all' ? 'All Reps' : to === 'admin' ? 'Admin' : (toRep?.name || to);
+    const toName = toRep?.name || 'Admin';
     const body = { fromId: rep.id, fromName: rep.name, fromRole: rep.role, to, toName, text: chatInput.trim() };
     setChatInput('');
     try {
@@ -1490,12 +1488,14 @@ export default function CareCircleDialer() {
 
           {/* ── LIVE TEAM (admin only) ── */}
           {isAdmin && (() => {
+            const TALK_OUTCOMES = new Set(['answered','callback','booked','voicemail','interested']);
             const todayStats = {};
             allLog.forEach(e => {
               if (!e.repId || !inDashRange(e.timestamp)) return;
-              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, booked:0 };
+              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, dialDuration:0, talkDuration:0, booked:0 };
               todayStats[e.repId].calls++;
-              todayStats[e.repId].duration += (e.duration || 0);
+              todayStats[e.repId].dialDuration += (e.duration || 0);
+              if (TALK_OUTCOMES.has(e.outcome)) todayStats[e.repId].talkDuration += (e.duration || 0);
               if (e.outcome === 'booked') todayStats[e.repId].booked++;
             });
             return (
@@ -1514,7 +1514,7 @@ export default function CareCircleDialer() {
                     <tbody>
                       {REPS.map(r => {
                         const isOnline = onlineReps.some(o => o.repId === r.id);
-                        const s = todayStats[r.id] || { calls:0, duration:0, booked:0 };
+                        const s = todayStats[r.id] || { calls:0, dialDuration:0, talkDuration:0, booked:0 };
                         const conf = activeConfs[r.id];
                         const isBeingMonitored = monitoring?.repId === r.id;
                         return (
@@ -1527,8 +1527,8 @@ export default function CareCircleDialer() {
                               </span>
                             </td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:(dialTimes[r.id]||0)>0?'var(--text)':'var(--dim)'}}>{(dialTimes[r.id]||0)>0?fmtTime((dialTimes[r.id]||0)*60):'—'}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.talkDuration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.talkDuration)}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.dialDuration>0?'var(--text)':'var(--dim)'}}>{s.dialDuration>0?fmtTime(s.dialDuration):'—'}</td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.booked>0?'var(--gl)':'var(--dim)',fontWeight:s.booked>0?600:400}}>
                               {s.booked > 0
                                 ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {
@@ -2185,8 +2185,8 @@ export default function CareCircleDialer() {
           {/* header */}
           <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
             <div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--gl)',letterSpacing:1}}>TEAM CHAT</div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:2,letterSpacing:0.5}}>Internal · {REPS.length} reps</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--gl)',letterSpacing:1}}>MESSAGES</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:2,letterSpacing:0.5}}>{isAdmin ? 'Rep threads → Chase' : 'Your thread with Chase'}</div>
             </div>
             <button onClick={() => setChatOpen(false)} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕</button>
           </div>
@@ -2196,7 +2196,10 @@ export default function CareCircleDialer() {
               <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',textAlign:'center',marginTop:30}}>No messages yet. Say something!</div>
             )}
             {chatMessages
-              .filter(m => isAdmin || m.to === 'all' || m.to === rep.id || m.fromId === rep.id)
+              .filter(m => isAdmin
+                ? (chatTo ? (m.fromId === chatTo || m.to === chatTo) : true)
+                : (m.fromId === rep.id || m.to === rep.id)
+              )
               .map(m => {
                 const isMe = m.fromId === rep.id;
                 const isUnread = m.ts > chatLastRead && !isMe;
@@ -2209,7 +2212,7 @@ export default function CareCircleDialer() {
                     }}>
                       <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginBottom:4,display:'flex',gap:6,alignItems:'center'}}>
                         <span style={{color:isMe?'var(--gl)':m.fromRole==='admin'?'var(--teal)':'var(--mid)'}}>{isMe ? 'You' : m.fromName}</span>
-                        {m.to === 'all' ? <span>→ All</span> : isMe ? <span>→ {m.toName}</span> : null}
+                        {isMe ? <span>→ {m.toName}</span> : <span>→ Chase</span>}
                         <span>· {new Date(m.ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false})}</span>
                         {isUnread && <span style={{color:'var(--orange)'}}>NEW</span>}
                       </div>
@@ -2224,18 +2227,18 @@ export default function CareCircleDialer() {
           <div style={{padding:10,borderTop:'1px solid var(--border)',flexShrink:0}}>
             {isAdmin && (
               <select value={chatTo} onChange={e => setChatTo(e.target.value)} style={{width:'100%',marginBottom:7,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'5px 8px',outline:'none',borderRadius:3,cursor:'pointer'}}>
-                <option value="all">→ All Reps</option>
+                <option value="">All threads</option>
                 {REPS.filter(r => r.id !== rep.id).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
             )}
             <div style={{display:'flex',gap:6}}>
               <input value={chatInput} onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
-                placeholder={isAdmin ? 'Message team...' : 'Message admin...'}
+                placeholder={isAdmin ? `Message ${chatTo ? REPS.find(r=>r.id===chatTo)?.name||'' : 'a rep'}...` : 'Message Chase...'}
                 style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
               <button onClick={sendChat} style={{padding:'7px 11px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.14)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5,whiteSpace:'nowrap'}}>SEND</button>
             </div>
-            {!isAdmin && <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:5,letterSpacing:0.3}}>Messages go to admin only</div>}
+            {!isAdmin && <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:5,letterSpacing:0.3}}>Messages go to Chase only</div>}
           </div>
         </div>
       )}
