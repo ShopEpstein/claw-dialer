@@ -20,6 +20,14 @@ const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
       { id: 'megan',    name: 'Megan Harris',           pin: '2946', role: 'rep'   },
     ];
 
+// ─── NUMBER POOL — local numbers available for outbound dialing ───────────────
+const NUMBER_POOL = [
+  { number: '+18502033021', label: '(850) 203-3021', friendlyName: 'Chase Local'   },
+  { number: '+18507211779', label: '(850) 721-1779', friendlyName: 'Jessica Local' },
+  { number: '+18502043347', label: '(850) 204-3347', friendlyName: 'Erica Local'   },
+  { number: '+18542261882', label: '(854) 226-1882', friendlyName: 'SC Local'      },
+];
+
 // ─── SCRIPTS ──────────────────────────────────────────────────────────────────
 const SCRIPTS = {
   b2b: [
@@ -111,13 +119,13 @@ const SCRIPTS = {
       name: 'Cold Outbound Family',
       color: '#3D8B7A',
       sections: [
-        { label: 'OPENER', text: "Hi, is this [Name]? This is [Your Name] calling from CareCircle Network in Pensacola — quick call. We help Northwest Florida families navigate senior care, whether that's keeping an eye on a loved one in a facility or finding quality in-home help so someone can stay home. Do you have just a minute?" },
-        { label: 'QUALIFY — JUST ASK', text: "Can I ask — do you have a parent or family member who's in a nursing home or assisted living right now, or maybe at home but starting to need some help day-to-day? [Listen. Don't rush. Their answer tells you which track to take.]" },
-        { label: 'IF NEEDS HOME CARE', text: "So we partner with Assisting Seniors of the Gulf Coast — they've been serving families here for 17 years, five-star rated. They provide non-medical home care: companionship, personal care, light housekeeping, transportation, meal help — the things that let someone stay safely at home. The good news is they accept most major insurance and some Medicaid, so a lot of families are surprised by what's actually covered. Would it be worth a quick 15-minute call with their team just to see what's available? No commitment — just information." },
-        { label: 'IF IN A FACILITY', text: "Tell me a little about the situation — what facility and how long have they been there? [Listen. Reflect back.] Got it. So what we do is put trained independent advocates into facilities unannounced — overnight, on weekends, shift changes — the times families never see. You get a written report within 24 hours. We work for your family, not the facility." },
-        { label: 'JUST HAVE A CONVERSATION', text: "[Don't rush to pitch. Ask follow-up questions. What's the biggest concern? How often do they visit? Have they noticed any changes? The goal is to understand their situation — the right solution becomes obvious when you listen. You're not closing a sale right now, you're building trust.]" },
-        { label: 'BOOK THE FOLLOW-UP', text: "Here's what I'd suggest — let me set up a short call between you and the right person on our team. They can look at your specific situation and tell you exactly what makes sense. It's free, no obligation, 15 minutes. What does your schedule look like later this week — are mornings or afternoons better for you?" },
-        { label: 'OBJECTIONS', text: "Not sure I need anything → 'Completely fair — can I ask what the care situation looks like right now? Even just knowing what's out there is useful.' | Home care cost concern → 'Assisting Seniors takes most insurance and some Medicaid. A lot of families don't realize what's covered. The consultation is free — worth finding out.' | Already in a facility and happy → 'Great to hear. An unannounced visit either confirms everything is great, or catches something early. Families who do it say they sleep better.' | How did you get my number → [Be honest.] 'We connect with families in the area navigating senior care. If you'd prefer not to be called, I'll take you off right now — no problem.'" },
+        { label: 'OPENER', text: "Hi, my name is [Your Name] and I'm reaching out from CareCircle Network. Do you have 30 seconds for me to tell you why I'm calling? [Wait for yes.] We help Northwest Florida families navigate senior care — whether that's keeping an eye on a loved one in a facility, or finding quality in-home help so someone can stay at home. Quick question — do you have a parent or family member who's either in a nursing home or assisted living right now, or maybe at home but starting to need some help day-to-day? [Listen. Don't rush. Their answer tells you which track to take.]" },
+        { label: 'TRACK A — IN A FACILITY', text: "Got it — how long have they been there, and how often are you able to get in and visit? [Listen. Then:] I want to share something with you — a Senate investigation and recent HHS data found that nearly two-thirds of nursing home caregivers have anonymously admitted to some form of resident mistreatment. That's not an attack on every facility — most staff are good people — but it means the families who stay close and stay visible get better outcomes. That's exactly what we do. We put trained independent advocates into facilities unannounced — overnight, on weekends, shift changes — the times families never see. You get a written report within 24 hours. We work for your family, not the facility." },
+        { label: 'TRACK B — NEEDS HOME CARE', text: "So we partner with Assisting Seniors of the Gulf Coast — they've been serving families here in Pensacola for 17 years, five-star rated. Non-medical home care: companionship, personal care, light housekeeping, transportation, meal prep — the things that let someone stay safely at home. They accept most major insurance and some Medicaid — a lot of families are surprised by what's actually covered. Would it be worth a free 15-minute call with their team just to see what's available? No commitment — just information." },
+        { label: 'TRACK C — NOT SURE / NO CURRENT SITUATION', text: "Completely fair. Can I ask what the care situation looks like right now? Even just knowing what's out there before you need it is useful — most families call us after something's already gone wrong." },
+        { label: 'JUST HAVE A CONVERSATION', text: "Don't rush to pitch. Ask follow-up questions: 'What's the biggest thing you worry about with their care right now?' | 'How often are you able to get in and see them?' | 'Have you noticed any changes recently — in them, or in how the staff are responding?' The goal is to understand their situation. The right solution becomes obvious when you listen. You're not closing a sale right now — you're building trust." },
+        { label: 'BOOK THE FOLLOW-UP', text: "Here's what I'd suggest — let me set up a short call between you and the right person on our team. They'll look at your specific situation and tell you exactly what makes sense. Free, no obligation, 15 minutes. Are mornings or afternoons better for you this week?" },
+        { label: 'OBJECTIONS', text: "Not sure I need anything → 'Completely fair — can I ask what the care situation looks like right now? Even just knowing what's out there is useful.' | Home care cost concern → 'Assisting Seniors takes most insurance and some Medicaid. A lot of families don't realize what's covered. The consultation is free — worth finding out.' | Already in a facility and happy → 'Great to hear. An unannounced visit either confirms everything is great, or catches something early. Families who do it say they sleep better at night.' | How did you get my number → 'We connect with families in Northwest Florida navigating senior care. If you'd prefer not to be called, I'll take you off right now — no problem at all.' | Those statistics sound made up → 'It's from a Senate Finance Committee investigation and HHS data — I can text you the source right now if you want to read it yourself.'" },
       ]
     },
     {
@@ -146,6 +154,27 @@ const SMS_TEMPLATES = {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function fmtTime(s) { return `${Math.floor((s||0)/60).toString().padStart(2,'0')}:${((s||0)%60).toString().padStart(2,'0')}` }
+
+// Shuffle new leads randomly, then spread same-last-name contacts apart so
+// people in the same household are never called back-to-back.
+function shuffleLeads(arr) {
+  const a = [...arr];
+  // Fisher-Yates shuffle
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  // Spread pass: if two adjacent contacts share a last name, push the second
+  // one at least 5 slots forward.
+  const ln = c => (c.name || '').trim().split(/\s+/).pop().toLowerCase();
+  for (let i = 0; i < a.length - 1; i++) {
+    if (!ln(a[i]) || ln(a[i]) !== ln(a[i + 1])) continue;
+    for (let j = Math.min(i + 5, a.length - 1); j < a.length; j++) {
+      if (ln(a[j]) !== ln(a[i])) { [a[i + 1], a[j]] = [a[j], a[i + 1]]; break; }
+    }
+  }
+  return a;
+}
 function sGet(k, d) { try { const v = sessionStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
 function sSet(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} }
 function lGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }
@@ -153,29 +182,50 @@ function lSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch 
 
 const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#1A3D1A"/><text x="5" y="22" font-size="14" font-family="serif" fill="#4CAF50" font-weight="bold">CC</text></svg>')}`;
 
-const CSS = `
+// ─── SKINS ────────────────────────────────────────────────────────────────────
+const SKINS = {
+  CARECIRCLE:    { label:'CARECIRCLE',    icon:'🌿', dark:true,  repAccessible:true,  bg:'#0F1A0F', surface:'#141F14', surface2:'#192419', surface3:'#1F2E1F', border:'#243324', border2:'#2D422D', accent:'#4A9B4A', accentL:'#6BBF6B', accentD:'#2D6A2D', teal:'#3D8B7A', text:'#E8F0E8', dim:'#7A9A7A', mid:'#A8C4A8', red:'#C44444', orange:'#C87A2A', blue:'#3A7AAA', yellow:'#A8A030' },
+  // ── dark ──
+  DEFAULT:       { label:'CLAW DEFAULT',  icon:'🖤', dark:true,  bg:'#080A0F', surface:'#0D1017', surface2:'#111520', surface3:'#151A26', border:'#1A2030', border2:'#202840', accent:'#14F1C6', accentL:'#30FFD8', accentD:'#0A9980', teal:'#0DD6B0', text:'#E0F0EC', dim:'#4A7A70', mid:'#7AAAA0', red:'#E05050', orange:'#E09040', blue:'#4080C0', yellow:'#B0A030' },
+  CYBERCLAW:     { label:'CYBERCLAW',     icon:'💜', dark:true,  bg:'#0A0010', surface:'#0F0018', surface2:'#130020', surface3:'#180028', border:'#200035', border2:'#280045', accent:'#BF00FF', accentL:'#D040FF', accentD:'#8000B0', teal:'#8000B0', text:'#F0E0FF', dim:'#604070', mid:'#9060B0', red:'#E04060', orange:'#C060B0', blue:'#6040E0', yellow:'#A060E0' },
+  GOTHICCLAW:    { label:'GOTHICCLAW',    icon:'🩸', dark:true,  bg:'#0D0000', surface:'#120000', surface2:'#180000', surface3:'#1E0000', border:'#280000', border2:'#360000', accent:'#CC0000', accentL:'#EE2222', accentD:'#880000', teal:'#880020', text:'#F0E0E0', dim:'#704040', mid:'#A06060', red:'#FF3030', orange:'#CC4020', blue:'#8040A0', yellow:'#A08020' },
+  TACTICLAW:     { label:'TACTICLAW',     icon:'🎯', dark:true,  bg:'#0A0C07', surface:'#0F1209', surface2:'#13180C', surface3:'#181F10', border:'#20280A', border2:'#283510', accent:'#7FFF00', accentL:'#AAFF40', accentD:'#50B000', teal:'#50B000', text:'#E8F0D8', dim:'#5A7030', mid:'#88A050', red:'#D06030', orange:'#C08020', blue:'#408040', yellow:'#C0C000' },
+  ECONOCLAW:     { label:'ECONOCLAW',     icon:'🔥', dark:true,  bg:'#0F0800', surface:'#160C00', surface2:'#1C1000', surface3:'#221400', border:'#301800', border2:'#402000', accent:'#FF6B2B', accentL:'#FF8A50', accentD:'#C04000', teal:'#C04000', text:'#F0E8D8', dim:'#7A5030', mid:'#B07848', red:'#FF4020', orange:'#FF8020', blue:'#8060C0', yellow:'#C09020' },
+  BUDGETCLAW:    { label:'BUDGETCLAW',    icon:'📊', dark:true,  bg:'#000A00', surface:'#000F00', surface2:'#001400', surface3:'#001A00', border:'#002200', border2:'#002E00', accent:'#39FF14', accentL:'#60FF40', accentD:'#20B000', teal:'#20B000', text:'#E0F0D8', dim:'#407040', mid:'#60A060', red:'#C04040', orange:'#B06020', blue:'#408040', yellow:'#A0A000' },
+  // ── light ──
+  CLAW_LIGHT:    { label:'CLAW LIGHT',    icon:'🤍', dark:false, repAccessible:true,  bg:'#F0F4F8', surface:'#FFFFFF', surface2:'#F5F8FC', surface3:'#EEF2F7', border:'#D8E0EB', border2:'#C5D0DE', accent:'#008B7A', accentL:'#00B09A', accentD:'#006055', teal:'#006055', text:'#1A2A35', dim:'#708090', mid:'#4A6070', red:'#C03030', orange:'#B06000', blue:'#2060A0', yellow:'#707000' },
+  CYBER_LIGHT:   { label:'CYBER LIGHT',   icon:'🪻', dark:false, bg:'#F5F0FF', surface:'#FFFFFF', surface2:'#F0EAFF', surface3:'#EAE0FF', border:'#D8CCEE', border2:'#C8B8E4', accent:'#7C00CC', accentL:'#9C20EE', accentD:'#580090', teal:'#580090', text:'#180028', dim:'#806090', mid:'#503870', red:'#B03050', orange:'#A05080', blue:'#5030C0', yellow:'#806090' },
+  GOTHIC_LIGHT:  { label:'GOTHIC LIGHT',  icon:'📜', dark:false, bg:'#F5F0E8', surface:'#FFF8F0', surface2:'#F0E8DC', surface3:'#E8DDD0', border:'#D0C0B0', border2:'#C0B0A0', accent:'#8B0000', accentL:'#AA1010', accentD:'#600000', teal:'#600020', text:'#200000', dim:'#806060', mid:'#604040', red:'#AA0000', orange:'#904020', blue:'#603060', yellow:'#806000' },
+  TACTIC_LIGHT:  { label:'TACTIC LIGHT',  icon:'🗺️', dark:false, bg:'#F2EED8', surface:'#FFFDE8', surface2:'#ECEAD0', surface3:'#E4E2C4', border:'#C8C4A0', border2:'#B8B490', accent:'#3A6600', accentL:'#508800', accentD:'#284800', teal:'#284800', text:'#1A2000', dim:'#708050', mid:'#506030', red:'#804020', orange:'#806000', blue:'#405830', yellow:'#606000' },
+  ECONO_LIGHT:   { label:'ECONO LIGHT',   icon:'☀️', dark:false, bg:'#FFF8F0', surface:'#FFFFFF', surface2:'#FFF0E4', surface3:'#FFE8D8', border:'#E8D0B8', border2:'#D8C0A8', accent:'#CC4400', accentL:'#EE6020', accentD:'#A03000', teal:'#A03000', text:'#200800', dim:'#806050', mid:'#604030', red:'#CC2000', orange:'#CC6000', blue:'#806040', yellow:'#888020' },
+  BUDGET_LIGHT:  { label:'BUDGET LIGHT',  icon:'🟢', dark:false, bg:'#F8FFF8', surface:'#FFFFFF', surface2:'#F0FFF0', surface3:'#E8FEE8', border:'#C8ECC8', border2:'#B8DEB8', accent:'#008800', accentL:'#00AA00', accentD:'#005500', teal:'#005500', text:'#001800', dim:'#508050', mid:'#306030', red:'#AA2020', orange:'#886020', blue:'#406040', yellow:'#686000' },
+  // ── rep picks ──
+  BLOSSOM:       { label:'BLOSSOM',       icon:'💗', dark:true,  repAccessible:true,  tagline:'Powered by Love ♥', bg:'#1A0A12', surface:'#22101C', surface2:'#2C1424', surface3:'#361A2E', border:'#4E2240', border2:'#642D52', accent:'#FF6B9D', accentL:'#FF8FB5', accentD:'#CC4070', teal:'#E8609A', text:'#FFE0EC', dim:'#9A5878', mid:'#C88098', red:'#FF4466', orange:'#FF7066', blue:'#C060D0', yellow:'#E0A8B8' },
+  HIBISCUS:      { label:'HIBISCUS',      icon:'🌺', dark:true,  repAccessible:true,  tagline:'Be Bold. Be You.', bg:'#160010', surface:'#1E0018', surface2:'#270022', surface3:'#30002C', border:'#460044', border2:'#5C0058', accent:'#FF2288', accentL:'#FF55AA', accentD:'#CC0066', teal:'#DD1177', text:'#FFDDEE', dim:'#884468', mid:'#BB6688', red:'#FF3344', orange:'#FF6655', blue:'#9933CC', yellow:'#EEAACC' },
+  SAKURA:        { label:'SAKURA',        icon:'🌸', dark:false, repAccessible:true,  tagline:'Girl Power 🌸', bg:'#FFF5F8', surface:'#FFFFFF', surface2:'#FFECF4', surface3:'#FFE2EE', border:'#F0CCDA', border2:'#E0B8CA', accent:'#C4527A', accentL:'#E0709A', accentD:'#A03060', teal:'#B03878', text:'#2A0818', dim:'#A07080', mid:'#785060', red:'#CC2040', orange:'#C06030', blue:'#805090', yellow:'#907030' },
+  PETAL:         { label:'PETAL',         icon:'🌷', dark:false, repAccessible:true,  tagline:'Soft Power 🌷', bg:'#FEF0FA', surface:'#FFFFFF', surface2:'#FDE8F8', surface3:'#FBD8F2', border:'#ECCAE8', border2:'#E0AACC', accent:'#C030A0', accentL:'#E050C0', accentD:'#900080', teal:'#980098', text:'#280028', dim:'#906080', mid:'#705060', red:'#CC2040', orange:'#B05040', blue:'#7040A0', yellow:'#806040' },
+};
+
+function buildSkinCss(s) {
+  return `:root{--bg:${s.bg};--surface:${s.surface};--surface2:${s.surface2};--surface3:${s.surface3};--border:${s.border};--border2:${s.border2};--green:${s.accent};--gl:${s.accentL};--gd:${s.accentD};--teal:${s.teal};--text:${s.text};--dim:${s.dim};--mid:${s.mid};--red:${s.red};--orange:${s.orange};--blue:${s.blue};--yellow:${s.yellow}}`;
+}
+
+const BASE_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;background:#0F1A0F;color:#E8F0E8;font-family:'Inter',sans-serif;overflow:hidden}
-  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2D5A2D}
+  html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden}
+  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2)}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
   @keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-  :root{
-    --bg:#0F1A0F;--surface:#141F14;--surface2:#192419;--surface3:#1F2E1F;
-    --border:#243324;--border2:#2D422D;
-    --green:#4A9B4A;--gl:#6BBF6B;--gd:#2D6A2D;
-    --teal:#3D8B7A;--text:#E8F0E8;--dim:#7A9A7A;--mid:#A8C4A8;
-    --red:#C44444;--orange:#C87A2A;--blue:#3A7AAA;--yellow:#A8A030;
-  }
 `;
 
-const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
+const statusColor = { new:'var(--green)',called:'var(--dim)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)',partner:'var(--teal)' };
 const callStateColor = { idle:'var(--dim)',dialing:'var(--yellow)',connected:'var(--gl)',ended:'var(--orange)' };
 const callStateText = { idle:'STANDBY',dialing:'DIALING...',connected:'CONNECTED',ended:'CALL ENDED' };
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, activeSkin }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -193,6 +243,7 @@ function LoginScreen({ onLogin }) {
         <div style={{textAlign:'center',marginBottom:40}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:30,fontWeight:700,color:'var(--gl)',letterSpacing:0.5}}>CareCircle</div>
           <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',letterSpacing:3,textTransform:'uppercase',marginTop:6}}>Remote Care Center</div>
+          {activeSkin?.tagline && <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--mid)',letterSpacing:1,marginTop:5}}>{activeSkin.tagline}</div>}
           <div style={{width:36,height:1,background:'var(--border2)',margin:'14px auto 0'}}></div>
         </div>
         <form onSubmit={handleLogin}>
@@ -275,6 +326,10 @@ export default function CareCircleDialer() {
   const [editingContact, setEditingContact] = useState(null);
   const [adminSearch, setAdminSearch] = useState('');
   const [expandedLog, setExpandedLog] = useState(null);
+  const [dashRange, setDashRange] = useState('today'); // 'today'|'week'|'month'|'custom'
+  const [dashFrom, setDashFrom] = useState('');
+  const [dashTo, setDashTo] = useState('');
+  const [dashRepFilter, setDashRepFilter] = useState('all');
   const [autoDial, setAutoDial] = useState(false);
   const [autoDialCountdown, setAutoDialCountdown] = useState(null);
   const [lifecycleContact, setLifecycleContact] = useState(null); // { contact, history }
@@ -283,6 +338,21 @@ export default function CareCircleDialer() {
   const [playingSid, setPlayingSid] = useState(null);
   const [interestedModal, setInterestedModal] = useState(null); // { repName, entries }
   const [onlineReps, setOnlineReps] = useState([]);
+  const [numberAssignments, setNumberAssignments] = useState({}); // { repId -> phoneNumber }
+  const [numberPoolSaving, setNumberPoolSaving] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateResult, setMigrateResult] = useState(null);
+  const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
+  const [activeConfs, setActiveConfs] = useState({}); // { repId -> confData }
+  const [monitoring, setMonitoring] = useState(null); // { repId, repName, mode } | null
+  const [dialTimes, setDialTimes] = useState({}); // { repId -> minutes in range }
+  const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatTo, setChatTo] = useState('all');
+  const [chatLastRead, setChatLastRead] = useState(0);
 
   const timerRef = useRef(null);
   const pollRef = useRef(null);
@@ -292,6 +362,10 @@ export default function CareCircleDialer() {
   const presencePollRef = useRef(null);
   const twilioConnRef = useRef(null);
   const twilioDeviceRef = useRef(null);
+  const chatBottomRef = useRef(null);
+  const chatPollRef = useRef(null);
+  const confPollRef = useRef(null);
+  const monitorConnRef = useRef(null);
 
   // Session restore
   useEffect(() => {
@@ -316,7 +390,9 @@ export default function CareCircleDialer() {
   }, [rep]);
 
   function startHeartbeat(repData) {
-    const ping = () => fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
+    const ping = () => {
+      fetch('/api/kv?action=rep-online', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: repData.id, repName: repData.name }) }).catch(()=>{});
+    };
     ping();
     heartbeatRef.current = setInterval(ping, 60000);
   }
@@ -331,11 +407,98 @@ export default function CareCircleDialer() {
     if (rep) fetch('/api/kv?action=rep-offline', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: rep.id }) }).catch(()=>{});
     clearInterval(heartbeatRef.current);
     clearInterval(presencePollRef.current);
+    clearInterval(chatPollRef.current);
+    clearInterval(confPollRef.current);
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
     sessionStorage.clear();
     setRep(null);
     setMyLog([]);
     setAllLog([]);
     setOnlineReps([]);
+    setChatMessages([]);
+    setChatOpen(false);
+  }
+
+  // Persist skin selection
+  useEffect(() => { lSet('cc_skin', skinKey); }, [skinKey]);
+
+  // Chat
+  async function fetchChat() {
+    try {
+      const r = await fetch('/api/kv?action=chat-fetch');
+      const d = await r.json();
+      setChatMessages(((d.messages || []).slice().reverse()));
+    } catch {}
+  }
+
+  async function sendChat() {
+    if (!chatInput.trim()) return;
+    // Reps always message Chase. Admin messages the selected rep.
+    const to = isAdmin ? (chatTo || REPS.find(r => r.id !== rep?.id)?.id || 'all') : 'chase';
+    const toRep = REPS.find(r => r.id === to);
+    const toName = toRep?.name || 'Admin';
+    const body = { fromId: rep.id, fromName: rep.name, fromRole: rep.role, to, toName, text: chatInput.trim() };
+    setChatInput('');
+    try {
+      await fetch('/api/kv?action=chat-send', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      await fetchChat();
+    } catch {}
+  }
+
+  async function markChatRead() {
+    const ts = Date.now();
+    setChatLastRead(ts);
+    if (rep) {
+      try { await fetch('/api/kv?action=chat-lastread', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repId: rep.id, ts }) }); } catch {}
+    }
+  }
+
+  useEffect(() => {
+    if (!rep) return;
+    fetch(`/api/kv?action=chat-lastread&repId=${rep.id}`).then(r => r.json()).then(d => setChatLastRead(d.ts || 0)).catch(() => {});
+    fetchChat();
+    chatPollRef.current = setInterval(fetchChat, 20000);
+    return () => clearInterval(chatPollRef.current);
+  }, [rep?.id]);
+
+  // Scroll chat to bottom on new messages
+  useEffect(() => {
+    if (chatOpen && chatBottomRef.current) chatBottomRef.current.scrollIntoView({ behavior:'smooth' });
+  }, [chatMessages, chatOpen]);
+
+  // Admin: poll active conferences every 10s
+  useEffect(() => {
+    if (!rep || rep.role !== 'admin') return;
+    const repIds = REPS.map(r => r.id).join(',');
+    const poll = async () => {
+      try {
+        const r = await fetch(`/api/kv?action=active-confs&repIds=${repIds}`);
+        const d = await r.json();
+        setActiveConfs(d.confs || {});
+      } catch {}
+    };
+    poll();
+    confPollRef.current = setInterval(poll, 10000);
+    return () => clearInterval(confPollRef.current);
+  }, [rep?.id]);
+
+  async function startMonitor(targetRepId, targetRepName, mode) {
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
+    if (!twilioDeviceRef.current) { notify('Twilio SDK not ready', 'warning'); return; }
+    try {
+      const conn = await twilioDeviceRef.current.connect({
+        params: { To: 'monitor', targetRepId, mode, adminRepId: rep.id, repId: rep.id },
+      });
+      monitorConnRef.current = conn;
+      setMonitoring({ repId: targetRepId, repName: targetRepName, mode });
+      conn.on('disconnect', () => { monitorConnRef.current = null; setMonitoring(null); });
+      conn.on('error', () => { monitorConnRef.current = null; setMonitoring(null); });
+    } catch(e) { notify(`Monitor failed: ${e.message}`, 'warning'); }
+  }
+
+  function stopMonitor() {
+    if (monitorConnRef.current) { monitorConnRef.current.disconnect(); monitorConnRef.current = null; }
+    setMonitoring(null);
   }
 
   // Clock
@@ -350,19 +513,34 @@ export default function CareCircleDialer() {
     try {
       const r = await fetch(`/api/kv?action=contacts&pool=${pool}`);
       const d = await r.json();
-      setContacts(d.contacts || []);
+      // Deduplicate by phone on load (guards against double-upload)
+      const seen = new Set();
+      const deduped = (d.contacts || []).filter(c => {
+        const key = c.phone || c.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      // Shuffle unclaimed new leads so same-household contacts aren't adjacent
+      const newLeads = deduped.filter(c => c.status === 'new' && !c.claimedBy);
+      const rest     = deduped.filter(c => !(c.status === 'new' && !c.claimedBy));
+      setContacts([...shuffleLeads(newLeads), ...rest]);
     } catch { setContacts([]); }
     setContactsLoading(false);
   }
 
   async function saveContacts(pool, updated) {
     try {
-      await fetch(`/api/kv?action=contacts-save&pool=${pool}`, {
+      const r = await fetch(`/api/kv?action=contacts-save&pool=${pool}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contacts: updated }),
       });
-    } catch {}
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}));
+        notify(`Failed to save contacts: ${d.error || r.status}`, 'warning');
+      }
+    } catch(e) { notify(`Failed to save contacts: ${e.message}`, 'warning'); }
   }
 
   async function updateContactKV(pool, id, updates) {
@@ -390,7 +568,15 @@ export default function CareCircleDialer() {
       try {
         const r = await fetch(`/api/kv?action=contacts&pool=${contactType}`);
         const d = await r.json();
-        if (d.contacts) setContacts(d.contacts);
+        if (d.contacts) setContacts(prev => {
+          const fresh = Object.fromEntries(d.contacts.map(c => [c.id, c]));
+          // Update existing contacts in-place, preserving shuffled order
+          const updated = prev.map(c => fresh[c.id] ? { ...c, ...fresh[c.id] } : c);
+          // Append genuinely new contacts (e.g. just uploaded by admin), shuffled
+          const existingIds = new Set(prev.map(c => c.id));
+          const brandNew = d.contacts.filter(c => !existingIds.has(c.id) && c.status === 'new');
+          return brandNew.length ? [...updated, ...shuffleLeads(brandNew)] : updated;
+        });
       } catch {}
     }, 5000);
     return () => clearInterval(syncRef.current);
@@ -413,7 +599,104 @@ export default function CareCircleDialer() {
     setLoadingLog(false);
   }
 
-  useEffect(() => { if (rep) loadLogs(); }, [rep]);
+  // Fetch accumulated dial-time (minutes) for all reps across the current range
+  async function loadDialTimes() {
+    if (!rep || rep.role !== 'admin') return;
+    try {
+      const now = new Date();
+      const dates = [];
+      if (dashRange === 'today') {
+        dates.push(now.toISOString().slice(0, 10));
+      } else if (dashRange === 'week') {
+        const d = new Date(now); d.setDate(now.getDate() - now.getDay());
+        while (d <= now) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      } else if (dashRange === 'month') {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1);
+        while (d <= now) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      } else if (dashRange === 'custom' && dashFrom) {
+        const d = new Date(dashFrom + 'T00:00:00');
+        const end = dashTo ? new Date(dashTo + 'T23:59:59') : now;
+        while (d <= end) { dates.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      }
+      if (!dates.length) return;
+      const repIds = REPS.map(r => r.id);
+      const res = await fetch('/api/kv?action=dial-times', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ repIds, dates }) });
+      const data = await res.json();
+      setDialTimes(data.totals || {});
+    } catch {}
+  }
+
+  useEffect(() => { if (rep) { loadLogs(); loadDialTimes(); } }, [rep]);
+  useEffect(() => { loadDialTimes(); }, [dashRange, dashFrom, dashTo]);
+  useEffect(() => { if (rep && tab === 'admin') loadNumberAssignments(); }, [rep, tab]);
+
+  // Fetch recordings for all callSids in the lifecycle modal when it opens
+  useEffect(() => {
+    if (!lifecycleContact) return;
+    const sids = lifecycleContact.history.map(e => e.callSid).filter(Boolean);
+    if (sids.length === 0) return;
+    setLifecycleRecordings(prev => {
+      const next = { ...prev };
+      sids.forEach(sid => { if (!next[sid]) next[sid] = 'loading'; });
+      return next;
+    });
+    fetch('/api/recordings?action=fetch-list', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callSids: sids }),
+    }).then(r => r.json()).then(d => {
+      setLifecycleRecordings(prev => {
+        const next = { ...prev };
+        sids.forEach(sid => { next[sid] = d.map?.[sid] || null; });
+        return next;
+      });
+    }).catch(() => {
+      setLifecycleRecordings(prev => {
+        const next = { ...prev };
+        sids.forEach(sid => { if (next[sid] === 'loading') next[sid] = null; });
+        return next;
+      });
+    });
+  }, [lifecycleContact]);
+
+  async function runOutcomeMigration() {
+    setMigrating(true);
+    setMigrateResult(null);
+    try {
+      const r = await fetch('/api/kv?action=migrate-outcomes', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ repIds: REPS.map(r => r.id) }),
+      });
+      const d = await r.json();
+      setMigrateResult(d.ok ? `Done — ${d.fixed} call record${d.fixed===1?'':'s'} updated.` : `Error: ${d.error}`);
+      if (d.ok) { loadContacts(contactType); await loadAllLog(); }
+    } catch(e) { setMigrateResult(`Error: ${e.message}`); }
+    setMigrating(false);
+  }
+
+  async function loadNumberAssignments() {
+    try {
+      const r = await fetch('/api/twilio?action=phone-assignments');
+      const d = await r.json();
+      setNumberAssignments(d.assignments || {});
+    } catch {}
+  }
+
+  async function saveNumberAssignment(repId, phoneNumber) {
+    setNumberPoolSaving(true);
+    try {
+      const next = { ...numberAssignments };
+      // Remove this number from any rep currently holding it
+      Object.keys(next).forEach(id => { if (next[id] === phoneNumber) delete next[id]; });
+      if (repId) next[repId] = phoneNumber; else delete next[repId];
+      await fetch('/api/twilio?action=phone-assignments', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignments: next }),
+      });
+      setNumberAssignments(next);
+      notify('Number assignment saved', 'success');
+    } catch { notify('Failed to save assignment', 'warning'); }
+    setNumberPoolSaving(false);
+  }
 
   useEffect(() => {
     if (!rep) return;
@@ -461,20 +744,61 @@ export default function CareCircleDialer() {
   }, []);
 
   // Contacts filtered
-  const DEAD_STATUSES = ['dnc', 'disconnected', 'wrong-number'];
+  // not-interested is treated identically to DNC — permanently suppressed, never re-dialed (TCPA)
+  const DEAD_STATUSES = ['dnc', 'not-interested', 'disconnected', 'wrong-number'];
+  // Statuses eligible for recycling after all new leads are exhausted
+  const RECYCLE_STATUSES = ['voicemail', 'no-answer', 'called', 'gatekeeper'];
+
+  // Build a set of phone numbers that have been dialed in the last 24h by anyone in the system.
+  // This blocks duplicates by phone number regardless of contact ID or which outbound number called.
+  const calledPhones24h = new Set(
+    contacts
+      .filter(c => c.lastCalledAt && (Date.now() - new Date(c.lastCalledAt).getTime()) < 86400000)
+      .map(c => c.phone).filter(Boolean)
+  );
+
+  // Returns the best available lead: NEW contacts first, recycled (voicemail/no-answer/called)
+  // only after all new contacts are exhausted. Never returns dead or claimed-by-others contacts.
+  function nextAvailableLead(excludeId) {
+    const ok = c =>
+      c.id !== excludeId &&
+      (!c.claimedBy || c.claimedBy === rep?.id) &&
+      !DEAD_STATUSES.includes(c.status) &&
+      (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
+      (!c.phone || !calledPhones24h.has(c.phone));
+    return (
+      contacts.find(c => c.status === 'new' && ok(c)) ||
+      contacts.find(c => RECYCLE_STATUSES.includes(c.status) && ok(c)) ||
+      null
+    );
+  }
+
+  // True when there are zero new leads left (so next pick will be a recycled contact)
+  const hasNewLeads = contacts.some(c =>
+    c.status === 'new' &&
+    (!c.claimedBy || c.claimedBy === rep?.id) &&
+    (!c.lastCalledAt || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000) &&
+    (!c.phone || !calledPhones24h.has(c.phone))
+  );
+
+
   const allFiltered = contacts.filter(c => {
     const ms = !search || (c.name||'').toLowerCase().includes(search.toLowerCase()) || (c.business_name||'').toLowerCase().includes(search.toLowerCase()) || (c.phone||'').includes(search);
     const mf = statusFilter === 'all' || c.status === statusFilter;
     // Hide contacts claimed by other reps (show own + unclaimed)
     const mc = !c.claimedBy || c.claimedBy === rep?.id;
-    // DNC / disconnected / wrong-number are permanently hidden unless explicitly filtered
+    // DNC / not-interested / disconnected / wrong-number are permanently excluded unless explicitly filtered
     const notDead = !DEAD_STATUSES.includes(c.status) || statusFilter === c.status;
-    // Hide contacts called in the last 24h (callbacks/interested are intentional re-dials)
+    // Block if this contact's own lastCalledAt is within 24h
     const notCalledToday = !c.lastCalledAt
-      || ['callback','interested'].includes(c.status)
-      || statusFilter === c.status  // show if explicitly filtering for that status
+      || ['callback','booked'].includes(c.status)
+      || statusFilter === c.status
       || (Date.now() - new Date(c.lastCalledAt).getTime()) > 86400000;
-    return ms && mf && mc && notDead && notCalledToday;
+    // Also block by phone number — catches duplicates with same phone but different IDs
+    const phoneNotCalledToday = !c.phone || !calledPhones24h.has(c.phone)
+      || ['callback','booked'].includes(c.status)
+      || statusFilter === c.status;
+    return ms && mf && mc && notDead && notCalledToday && phoneNotCalledToday;
   });
 
   function selectContact(c) {
@@ -502,14 +826,26 @@ export default function CareCircleDialer() {
     }, 3000);
   }
 
-  async function startCall() {
-    const phone = dialPhone.trim() || activeContact?.phone;
+  async function startCall(overrideContact) {
+    // Use overrideContact if passed (auto-dial passes it directly to avoid stale state)
+    const contact = overrideContact !== undefined ? overrideContact : activeContact;
+    // When auto-dial passes overrideContact, use contact.phone directly —
+    // dialPhone is stale React state and would dial the PREVIOUS person.
+    // For manual dials, dialPhone takes priority (user may have typed a custom number).
+    const phone = overrideContact !== undefined
+      ? (contact?.phone || dialPhone.trim())
+      : (dialPhone.trim() || contact?.phone);
     if (!phone) return notify('Enter a phone number to dial', 'warning');
-    const name = activeContact?.name || phone;
-    if (activeContact) {
-      updateContact(activeContact.id, { claimedBy: rep.id });
-      updateContactKV(contactType, activeContact.id, { claimedBy: rep.id });
+    const name = contact?.name || phone;
+    if (contact) {
+      const now = new Date().toISOString();
+      // Stamp lastCalledAt immediately on dial — not just at disposition.
+      // This removes the lead from everyone's queue within seconds (next KV sync),
+      // even if the call drops before a disposition is set.
+      updateContact(contact.id, { claimedBy: rep.id, lastCalledAt: now });
+      updateContactKV(contactType, contact.id, { claimedBy: rep.id, lastCalledAt: now });
     }
+    setNotification(null); // clear any previous notification immediately
     setCallState('dialing');
     setCallSeconds(0);
     clearInterval(timerRef.current);
@@ -522,7 +858,7 @@ export default function CareCircleDialer() {
           body: JSON.stringify({
             to: phone,
             contactName: name,
-            contactBusiness: activeContact?.business_name || '',
+            contactBusiness: contact?.business_name || '',
             contactType,
             repId: rep.id,
             repName: rep.name,
@@ -547,16 +883,16 @@ export default function CareCircleDialer() {
         }});
         twilioConnRef.current = call;
         call.on('disconnect', () => { clearInterval(timerRef.current); setCallState('ended'); twilioConnRef.current = null; });
-        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (activeContact) { updateContact(activeContact.id, { claimedBy: null }); updateContactKV(contactType, activeContact.id, { claimedBy: null }); } twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
+        call.on('error', (err) => { clearInterval(timerRef.current); setCallState('idle'); if (contact) { updateContact(contact.id, { claimedBy: null }); updateContactKV(contactType, contact.id, { claimedBy: null }); } twilioConnRef.current = null; notify(`Call failed: ${err.message}`, 'warning'); });
         setCallState('connected');
         notify(`Dialing ${name}...`);
       }
     } catch(err) {
       setCallState('idle');
       clearInterval(timerRef.current);
-      if (activeContact) {
-        updateContact(activeContact.id, { claimedBy: null });
-        updateContactKV(contactType, activeContact.id, { claimedBy: null });
+      if (contact) {
+        updateContact(contact.id, { claimedBy: null });
+        updateContactKV(contactType, contact.id, { claimedBy: null });
       }
       notify(`Call failed: ${err.message}`, 'warning');
     }
@@ -575,7 +911,7 @@ export default function CareCircleDialer() {
     clearInterval(pollRef.current);
     if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('idle');
-    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', interested:'interested', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
+    const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', booked:'booked', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
     const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null, lastCalledAt: new Date().toISOString() };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
@@ -589,8 +925,8 @@ export default function CareCircleDialer() {
     };
     try { await fetch('/api/kv?action=save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) }); } catch {}
     setMyLog(prev => [record, ...prev]);
-    if (outcome === 'interested') {
-      notify(`Interested lead! Auto-sending SMS to ${activeContact.name || activeContact.phone}`, 'success');
+    if (outcome === 'booked') {
+      notify(`Booked! Auto-sending SMS to ${activeContact.name || activeContact.phone}`, 'success');
       try {
         await fetch('/api/twilio?action=sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ to: activeContact.phone, body: SMS_TEMPLATES[contactType](activeContact.name||'') }) });
       } catch {}
@@ -600,13 +936,9 @@ export default function CareCircleDialer() {
     setActiveContact(null);
 
     if (autoDial) {
-      const next = contacts.find(c =>
-        c.status === 'new' &&
-        !c.claimedBy &&
-        !['dnc','disconnected','wrong-number'].includes(c.status) &&
-        c.id !== activeContact.id
-      );
+      const next = nextAvailableLead(activeContact.id);
       if (next) {
+        if (next.status !== 'new') notify('All new leads dialed — recycling previously called contacts', 'info');
         let secs = 3;
         setAutoDialCountdown(secs);
         countdownRef.current = setInterval(() => {
@@ -615,13 +947,13 @@ export default function CareCircleDialer() {
             clearInterval(countdownRef.current);
             setAutoDialCountdown(null);
             selectContact(next);
-            setTimeout(() => startCall(), 100);
+            setTimeout(() => startCall(next), 100);
           } else {
             setAutoDialCountdown(secs);
           }
         }, 1000);
       } else {
-        notify('No more unclaimed leads in queue', 'warning');
+        notify('All leads dialed — no contacts available to queue', 'warning');
       }
     }
   }
@@ -700,7 +1032,15 @@ export default function CareCircleDialer() {
         });
       }
       setContacts(prev => {
-        const updated = [...prev, ...newOnes];
+        const combined = [...prev, ...newOnes];
+        // Deduplicate by phone number
+        const seen = new Set();
+        const updated = combined.filter(c => {
+          const key = c.phone || c.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         saveContacts(contactType, updated);
         return updated;
       });
@@ -729,16 +1069,38 @@ export default function CareCircleDialer() {
     a.download = filename; a.click();
   }
 
-  // Stats
-  const myTotal = myLog.length;
-  const myInterested = myLog.filter(c => c.outcome === 'interested').length;
-  const myAnswered = myLog.filter(c => ['answered','interested','callback','not-interested','dnc'].includes(c.outcome)).length;
+  // Date range filter
+  const today = new Date().toDateString();
+  function inDashRange(ts) {
+    if (!ts) return false;
+    const d = new Date(ts);
+    const now = new Date();
+    if (dashRange === 'today') return d.toDateString() === now.toDateString();
+    if (dashRange === 'week') {
+      const s = new Date(now); s.setDate(now.getDate() - now.getDay()); s.setHours(0,0,0,0);
+      return d >= s;
+    }
+    if (dashRange === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if (dashRange === 'custom') {
+      if (dashFrom && d < new Date(dashFrom + 'T00:00:00')) return false;
+      if (dashTo   && d > new Date(dashTo   + 'T23:59:59')) return false;
+      return true;
+    }
+    return true;
+  }
+  const myTodayLog = myLog.filter(e => inDashRange(e.timestamp));
+  const myTotal = myTodayLog.length;
+  const myBooked = myTodayLog.filter(c => c.outcome === 'booked').length;
+  const myAnswered = myTodayLog.filter(c => ['answered','booked','callback','not-interested','dnc'].includes(c.outcome)).length;
   const myRate = myTotal > 0 ? Math.round(myAnswered/myTotal*100) : 0;
 
   const script = SCRIPTS[contactType].find(s => s.id === activeScriptId) || SCRIPTS[contactType][0];
   const isAdmin = rep?.role === 'admin';
+  const activeSkin = SKINS[skinKey] ?? SKINS.CARECIRCLE;
+  const fullCss = BASE_CSS + buildSkinCss(activeSkin);
+  const chatUnread = chatMessages.filter(m => m.ts > chatLastRead && m.fromId !== rep?.id && (m.to === 'all' || m.to === rep?.id || (isAdmin && m.to === 'admin'))).length;
 
-  if (!rep) return <><style>{CSS}</style><LoginScreen onLogin={handleLogin} /></>;
+  if (!rep) return <><style>{fullCss}</style><LoginScreen onLogin={handleLogin} activeSkin={activeSkin} /></>;
 
   return (
     <>
@@ -746,7 +1108,7 @@ export default function CareCircleDialer() {
         <title>CareCircle — Remote Care Center</title>
         <link rel="icon" href={FAVICON} />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <style>{CSS}</style>
+        <style>{fullCss}</style>
       </Head>
 
       {/* TOP BAR */}
@@ -758,11 +1120,43 @@ export default function CareCircleDialer() {
             <span style={{width:5,height:5,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite',display:'inline-block'}}></span>LIVE
           </span>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:14,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>
           <span>Rep: <span style={{color:'var(--gl)'}}>{rep.name}</span>{isAdmin&&<span style={{color:'var(--teal)',marginLeft:5}}>[ADMIN]</span>}</span>
           <span style={{color:'var(--green)'}}>{clock}</span>
+          {/* Skin picker */}
+          <div style={{position:'relative'}}>
+            <button onClick={() => setShowSkinPicker(v => !v)} title="Change theme"
+              style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:12,cursor:'pointer',border:`1px solid ${showSkinPicker?'var(--green)':'var(--border2)'}`,background:showSkinPicker?'rgba(74,155,74,0.12)':'transparent',color:'var(--text)',borderRadius:2}}>
+              {activeSkin.icon}
+            </button>
+          </div>
+          {/* Chat */}
+          <button onClick={() => { const next = !chatOpen; setChatOpen(next); if (next) markChatRead(); }}
+            style={{position:'relative',padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:`1px solid ${chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--border2)'}`,background:chatOpen?'rgba(61,139,122,0.12)':chatUnread>0?'rgba(200,122,42,0.1)':'transparent',color:chatOpen?'var(--teal)':chatUnread>0?'var(--orange)':'var(--dim)',borderRadius:2,letterSpacing:0.5}}>
+            💬{chatUnread > 0 && <span style={{marginLeft:4,background:'var(--orange)',color:'white',borderRadius:8,padding:'0 4px',fontSize:7,fontWeight:700}}>{chatUnread}</span>}
+          </button>
+          {monitoring && (
+            <div style={{display:'flex',alignItems:'center',gap:6,padding:'3px 9px',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.12)',borderRadius:2,fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--teal)',letterSpacing:0.5}}>
+              <span style={{width:5,height:5,borderRadius:'50%',background:'var(--teal)',animation:'pulse 1.5s infinite',display:'inline-block'}}></span>
+              {monitoring.mode === 'whisper' ? '🎤' : '👂'} {monitoring.repName.split(' ')[0]}
+              <button onClick={stopMonitor} style={{marginLeft:2,padding:'1px 5px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--teal)',background:'transparent',color:'var(--teal)',borderRadius:1}}>✕</button>
+            </div>
+          )}
           <button onClick={handleLogout} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>SIGN OUT</button>
         </div>
+      </div>
+
+      {/* INFO BAR */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:24,padding:'5px 20px',background:'rgba(180,140,60,0.07)',borderBottom:'1px solid rgba(180,140,60,0.18)',flexWrap:'wrap'}}>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--gl)',letterSpacing:0.5}}>carecircle.fit</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>850-341-4324</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>Care@CareCircle.Fit</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Billing questions → <span style={{color:'var(--text)'}}>Billing@CareCircle.Fit</span></span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Assisting Seniors: <span style={{color:'var(--text)'}}>850-602-5161</span></span>
       </div>
 
       {/* NAV */}
@@ -799,7 +1193,7 @@ export default function CareCircleDialer() {
                   <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
                     style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
                   <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                    {['new','all','called','callback','interested','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
+                    {['new','all','called','callback','booked','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
                       <button key={f} onClick={() => setStatusFilter(f)} style={{padding:'2px 7px',fontFamily:'DM Mono,monospace',fontSize:7,letterSpacing:0.5,cursor:'pointer',border:`1px solid ${statusFilter===f?'var(--green)':'var(--border2)'}`,background:statusFilter===f?'rgba(74,155,74,0.12)':'transparent',color:statusFilter===f?'var(--green)':'var(--dim)',borderRadius:2,textTransform:'uppercase'}}>
                         {f}
                       </button>
@@ -861,8 +1255,8 @@ export default function CareCircleDialer() {
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                         {[
                           ['New', contacts.filter(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--green)'],
-                          ['Callback', contacts.filter(c => c.status==='callback').length, 'var(--orange)'],
-                          ['Interested', contacts.filter(c => c.status==='interested').length, 'var(--gl)'],
+                          ['Callback', contacts.filter(c => c.status==='callback' && c.claimedBy === rep?.id).length, 'var(--orange)'],
+                          ['Booked', contacts.filter(c => c.status==='booked' && c.claimedBy === rep?.id).length, 'var(--gl)'],
                           ['Voicemail', contacts.filter(c => c.status==='voicemail' && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000)).length, 'var(--blue)'],
                         ].map(([label, count, color]) => (
                           <div key={label} style={{padding:'8px 10px',background:'var(--surface2)',border:`1px solid ${color}22`,borderRadius:3,textAlign:'center'}}>
@@ -876,19 +1270,20 @@ export default function CareCircleDialer() {
                     {/* Next Lead button */}
                     <div style={{padding:'12px'}}>
                       <button onClick={() => {
-                        const next = contacts.find(c => c.status==='new' && !c.claimedBy && (!c.lastCalledAt || Date.now()-new Date(c.lastCalledAt)>86400000));
-                        if (next) selectContact(next);
-                        else notify('No new leads available', 'warning');
+                        const next = nextAvailableLead();
+                        if (!next) { notify('All leads dialed — no contacts available', 'warning'); return; }
+                        selectContact(next);
+                        if (next.status !== 'new') notify('All new leads dialed — recycling previously called contacts', 'info');
                       }} style={{width:'100%',padding:'11px',fontFamily:'Inter,sans-serif',fontSize:13,fontWeight:600,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5}}>
                         → Next Lead
                       </button>
                     </div>
 
-                    {/* Follow-up queue: callback + interested */}
-                    {contacts.filter(c => ['callback','interested'].includes(c.status)).length > 0 && (
+                    {/* Follow-up queue: only this rep's callback/booked contacts */}
+                    {contacts.filter(c => ['callback','booked'].includes(c.status) && c.claimedBy === rep?.id).length > 0 && (
                       <div style={{borderTop:'1px solid var(--border)'}}>
                         <div style={{padding:'8px 12px',fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase'}}>My Follow-ups</div>
-                        {contacts.filter(c => ['callback','interested'].includes(c.status)).map(c => (
+                        {contacts.filter(c => ['callback','booked'].includes(c.status) && c.claimedBy === rep?.id).map(c => (
                           <div key={c.id} onClick={() => selectContact(c)} style={{padding:'10px 13px',borderBottom:'1px solid var(--border)',cursor:'pointer',background:activeContact?.id===c.id?'var(--surface2)':'transparent',borderLeft:activeContact?.id===c.id?`2px solid ${statusColor[c.status]}`:'2px solid transparent'}}>
                             <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{c.name||c.phone}</div>
                             <div style={{display:'flex',gap:6,marginTop:2,alignItems:'center'}}>
@@ -990,7 +1385,7 @@ export default function CareCircleDialer() {
               )}
               {['connected','ended'].includes(callState)&&(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
-                  {[['interested','★ Interested','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
+                  {[['booked','★ Booked','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
                     <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
                       {label}
                     </button>
@@ -1038,7 +1433,7 @@ export default function CareCircleDialer() {
             <div style={{padding:'11px 14px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:10}}>
               <span style={{fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:1.5,color:'var(--dim)',textTransform:'uppercase'}}>My Stats</span>
             </div>
-            {[['Calls Made',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Interested',myInterested,'var(--teal)']].map(([label,val,color]) => (
+            {[['Calls Made',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Booked',myBooked,'var(--teal)']].map(([label,val,color]) => (
               <div key={label} style={{padding:'13px 14px',borderBottom:'1px solid var(--border)'}}>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',marginBottom:4}}>{label}</div>
                 <div style={{fontFamily:'Playfair Display,serif',fontSize:26,fontWeight:600,color,lineHeight:1}}>{val}</div>
@@ -1052,7 +1447,7 @@ export default function CareCircleDialer() {
             {myLog.length===0 ? (
               <div style={{padding:16,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No calls yet</div>
             ) : myLog.slice(0,60).map((entry,i) => {
-              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+              const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
               return (
                 <div key={i} style={{padding:'8px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',gap:7}}>
                   <div style={{width:5,height:5,borderRadius:'50%',background:c,flexShrink:0}}></div>
@@ -1070,18 +1465,38 @@ export default function CareCircleDialer() {
       {/* ── DASHBOARD TAB ── */}
       {tab==='dashboard' && (
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
-          <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:18}}>{rep.name}'s Dashboard</div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18,flexWrap:'wrap',gap:10}}>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)'}}>{rep.name}'s Dashboard</div>
+            <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+              {['today','week','month','custom'].map(r => (
+                <button key={r} onClick={() => setDashRange(r)}
+                  style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',borderRadius:2,border:`1px solid ${dashRange===r?'var(--teal)':'var(--border2)'}`,background:dashRange===r?'rgba(61,139,122,0.15)':'transparent',color:dashRange===r?'var(--teal)':'var(--dim)',textTransform:'uppercase'}}>
+                  {r === 'today' ? 'Today' : r === 'week' ? 'This Week' : r === 'month' ? 'This Month' : 'Custom'}
+                </button>
+              ))}
+              {dashRange === 'custom' && (
+                <>
+                  <input type="date" value={dashFrom} onChange={e => setDashFrom(e.target.value)}
+                    style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:10,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none'}} />
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>→</span>
+                  <input type="date" value={dashTo} onChange={e => setDashTo(e.target.value)}
+                    style={{padding:'3px 6px',fontFamily:'DM Mono,monospace',fontSize:10,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none'}} />
+                </>
+              )}
+            </div>
+          </div>
 
           {/* ── LIVE TEAM (admin only) ── */}
           {isAdmin && (() => {
-            const today = new Date().toDateString();
+            const TALK_OUTCOMES = new Set(['answered','callback','booked','voicemail','interested']);
             const todayStats = {};
             allLog.forEach(e => {
-              if (!e.repId || new Date(e.timestamp).toDateString() !== today) return;
-              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, duration:0, interested:0 };
+              if (!e.repId || !inDashRange(e.timestamp)) return;
+              if (!todayStats[e.repId]) todayStats[e.repId] = { calls:0, dialDuration:0, talkDuration:0, booked:0 };
               todayStats[e.repId].calls++;
-              todayStats[e.repId].duration += (e.duration || 0);
-              if (e.outcome === 'interested') todayStats[e.repId].interested++;
+              todayStats[e.repId].dialDuration += (e.duration || 0);
+              if (TALK_OUTCOMES.has(e.outcome)) todayStats[e.repId].talkDuration += (e.duration || 0);
+              if (e.outcome === 'booked') todayStats[e.repId].booked++;
             });
             return (
               <div style={{marginBottom:28}}>
@@ -1092,16 +1507,18 @@ export default function CareCircleDialer() {
                 <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
                   <table style={{width:'100%',borderCollapse:'collapse'}}>
                     <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
-                      {['Rep','Status','Calls Today','Talk Time','Interested'].map(h => (
+                      {['Rep','Status',dashRange==='today'?'Calls Today':'Calls','Talk Time','Dial Time','Booked','Monitor'].map(h => (
                         <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>
                       ))}
                     </tr></thead>
                     <tbody>
                       {REPS.map(r => {
                         const isOnline = onlineReps.some(o => o.repId === r.id);
-                        const s = todayStats[r.id] || { calls:0, duration:0, interested:0 };
+                        const s = todayStats[r.id] || { calls:0, dialDuration:0, talkDuration:0, booked:0 };
+                        const conf = activeConfs[r.id];
+                        const isBeingMonitored = monitoring?.repId === r.id;
                         return (
-                          <tr key={r.id} style={{borderBottom:'1px solid var(--border)'}}>
+                          <tr key={r.id} style={{borderBottom:'1px solid var(--border)',background:isBeingMonitored?'rgba(61,139,122,0.06)':'transparent'}}>
                             <td style={{padding:'9px 14px',fontSize:12,fontWeight:500,color:'var(--text)'}}>{r.name}</td>
                             <td style={{padding:'9px 14px'}}>
                               <span style={{display:'inline-flex',alignItems:'center',gap:5,fontFamily:'DM Mono,monospace',fontSize:8,color:isOnline?'var(--gl)':'var(--dim)'}}>
@@ -1110,14 +1527,29 @@ export default function CareCircleDialer() {
                               </span>
                             </td>
                             <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.calls>0?'var(--text)':'var(--dim)'}}>{s.calls}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.duration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.duration)}</td>
-                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.interested>0?'var(--gl)':'var(--dim)',fontWeight:s.interested>0?600:400}}>
-                              {s.interested > 0
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.talkDuration>0?'var(--text)':'var(--dim)'}}>{fmtTime(s.talkDuration)}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.dialDuration>0?'var(--text)':'var(--dim)'}}>{s.dialDuration>0?fmtTime(s.dialDuration):'—'}</td>
+                            <td style={{padding:'9px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:s.booked>0?'var(--gl)':'var(--dim)',fontWeight:s.booked>0?600:400}}>
+                              {s.booked > 0
                                 ? <span style={{cursor:'pointer',textDecoration:'underline',textDecorationStyle:'dotted',textUnderlineOffset:3}} onClick={() => {
-                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'interested' && new Date(e.timestamp).toDateString() === today);
+                                    const entries = allLog.filter(e => e.repId === r.id && e.outcome === 'booked' && inDashRange(e.timestamp));
                                     setInterestedModal({ repName: r.name, entries });
-                                  }}>{s.interested}</span>
-                                : s.interested}
+                                  }}>{s.booked}</span>
+                                : s.booked}
+                            </td>
+                            <td style={{padding:'9px 14px'}}>
+                              {conf ? (
+                                isBeingMonitored ? (
+                                  <button onClick={stopMonitor} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--red)',background:'rgba(196,68,68,0.12)',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>■ STOP</button>
+                                ) : (
+                                  <div style={{display:'flex',gap:5}}>
+                                    <button onClick={() => startMonitor(r.id, r.name, 'listen')} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--blue)',background:'rgba(58,122,170,0.12)',color:'var(--blue)',borderRadius:2,letterSpacing:0.5}}>👂 LISTEN</button>
+                                    <button onClick={() => startMonitor(r.id, r.name, 'whisper')} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.12)',color:'var(--teal)',borderRadius:2,letterSpacing:0.5}}>🎤 WHISPER</button>
+                                  </div>
+                                )
+                              ) : (
+                                <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--border2)'}}>—</span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1129,7 +1561,7 @@ export default function CareCircleDialer() {
             );
           })()}
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:24}}>
-            {[['Total Calls',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Interested',myInterested,'var(--teal)']].map(([label,val,color]) => (
+            {[['Total Calls',myTotal,'var(--green)'],['Answer Rate',`${myRate}%`,'var(--gl)'],['Booked',myBooked,'var(--teal)']].map(([label,val,color]) => (
               <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,padding:18}}>
                 <div style={{fontFamily:'Playfair Display,serif',fontSize:34,fontWeight:700,color,lineHeight:1,marginBottom:5}}>{val}</div>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>{label}</div>
@@ -1138,14 +1570,21 @@ export default function CareCircleDialer() {
           </div>
 
           {/* Admin: all reps */}
-          {isAdmin && (
+          {isAdmin && (() => {
+            const filtered = allLog.filter(e => inDashRange(e.timestamp) && (dashRepFilter === 'all' || e.repId === dashRepFilter));
+            return (
             <div>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--teal)'}}>All Reps Activity</div>
-                <div style={{display:'flex',gap:8}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,flexWrap:'wrap',gap:8}}>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--teal)'}}>All Reps Activity <span style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)',fontWeight:400}}>({filtered.length} records)</span></div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+                  <select value={dashRepFilter} onChange={e => setDashRepFilter(e.target.value)}
+                    style={{padding:'4px 8px',fontFamily:'DM Mono,monospace',fontSize:9,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,outline:'none',cursor:'pointer'}}>
+                    <option value="all">All Reps</option>
+                    {REPS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
                   <button onClick={loadLogs} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>{loadingLog?'Loading...':'↺ Refresh'}</button>
-                  <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...allLog.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'all-calls.csv')}
-                    style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>EXPORT ALL</button>
+                  <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...filtered.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],`calls-${dashRange}.csv`)}
+                    style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>EXPORT</button>
                 </div>
               </div>
               <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
@@ -1154,8 +1593,8 @@ export default function CareCircleDialer() {
                     {['Rep','Contact','Type','Outcome','Dur.','Time','Notes'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
                   </tr></thead>
                   <tbody>
-                    {allLog.slice(0,150).map((entry,i) => {
-                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                    {filtered.slice(0,300).map((entry,i) => {
+                      const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
                       const isExpanded = expandedLog === i;
                       return (
                         <>
@@ -1184,10 +1623,11 @@ export default function CareCircleDialer() {
                     })}
                   </tbody>
                 </table>
-                {allLog.length===0&&<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No calls recorded yet</div>}
+                {filtered.length===0&&<div style={{padding:20,textAlign:'center',fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No calls in this range</div>}
               </div>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -1195,6 +1635,65 @@ export default function CareCircleDialer() {
       {tab==='admin'&&isAdmin&&(
         <div style={{padding:24,overflowY:'auto',height:'calc(100vh - 90px)'}}>
           <div style={{fontFamily:'Playfair Display,serif',fontSize:20,fontWeight:600,color:'var(--gl)',marginBottom:22}}>Admin Panel</div>
+
+          {/* One-time data migrations */}
+          {migrateResult === null && (
+            <div style={{marginBottom:20,padding:'10px 14px',background:'rgba(200,122,42,0.07)',border:'1px solid rgba(200,122,42,0.25)',borderRadius:3,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+              <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--orange)',letterSpacing:0.5}}>Existing records saved as "interested" need to be updated to "booked"</span>
+              <button onClick={runOutcomeMigration} disabled={migrating} style={{padding:'5px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--orange)',background:'rgba(200,122,42,0.12)',color:'var(--orange)',borderRadius:2,letterSpacing:0.5,whiteSpace:'nowrap'}}>
+                {migrating ? 'MIGRATING...' : 'FIX NOW'}
+              </button>
+            </div>
+          )}
+          {migrateResult && (
+            <div style={{marginBottom:20,padding:'10px 14px',background:'rgba(74,155,74,0.07)',border:'1px solid rgba(74,155,74,0.25)',borderRadius:3,fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--green)',letterSpacing:0.5}}>
+              ✓ {migrateResult}
+            </div>
+          )}
+
+          {/* Theme Switcher */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
+              UI Themes — <span style={{color:'var(--gl)'}}>{activeSkin.label}</span>
+              {!activeSkin.dark && <span style={{color:'var(--orange)',marginLeft:6}}>[LIGHT MODE]</span>}
+            </div>
+            <div style={{marginBottom:6,fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>// DARK</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+              {Object.entries(SKINS).filter(([,s]) => s.dark).map(([key, s]) => (
+                <button key={key} onClick={() => setSkinKey(key)} style={{
+                  display:'flex',alignItems:'center',gap:5,padding:'5px 10px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',
+                  border:`1px solid ${skinKey===key?'var(--green)':s.border2}`,
+                  borderRadius:3,
+                  background:skinKey===key?'rgba(74,155,74,0.12)':s.surface,
+                  color:skinKey===key?'var(--gl)':s.accentL,
+                  transition:'all 0.15s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span>{s.label}</span>
+                  {skinKey===key && <span style={{color:'var(--gl)'}}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <div style={{marginBottom:6,fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase'}}>// LIGHT</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {Object.entries(SKINS).filter(([,s]) => !s.dark).map(([key, s]) => (
+                <button key={key} onClick={() => setSkinKey(key)} style={{
+                  display:'flex',alignItems:'center',gap:5,padding:'5px 10px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.5,cursor:'pointer',
+                  border:`1px solid ${skinKey===key?s.accent:s.border2}`,
+                  borderRadius:3,
+                  background:skinKey===key?s.surface3:s.surface2,
+                  color:s.accent,
+                  transition:'all 0.15s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span>{s.label}</span>
+                  {skinKey===key && <span>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* CSV Upload */}
           <div style={{marginBottom:28}}>
@@ -1326,6 +1825,46 @@ export default function CareCircleDialer() {
               </table>
             </div>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:8}}>To add/change reps: update the REPS array in index.jsx and redeploy.</div>
+          </div>
+
+          {/* Number Pool */}
+          <div style={{marginBottom:28}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>Number Pool — Outbound Caller ID</span>
+              <span style={{fontSize:7,color:'var(--dim)',letterSpacing:0.5,fontWeight:400,textTransform:'none'}}>SMS always uses toll-free · changes save instantly</span>
+            </div>
+            <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,overflow:'hidden'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:'1px solid var(--border)'}}>
+                  {['Number','Label','Assigned To (Outbound Calls)'].map(h => <th key={h} style={{padding:'8px 14px',textAlign:'left',fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,fontWeight:400,textTransform:'uppercase'}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {NUMBER_POOL.map(entry => {
+                    const assignedRepId = Object.keys(numberAssignments).find(id => numberAssignments[id] === entry.number) || '';
+                    return (
+                      <tr key={entry.number} style={{borderBottom:'1px solid var(--border)'}}>
+                        <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:11,color:'var(--text)',whiteSpace:'nowrap'}}>{entry.label}</td>
+                        <td style={{padding:'8px 14px',fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>{entry.friendlyName}</td>
+                        <td style={{padding:'8px 14px'}}>
+                          <select
+                            disabled={numberPoolSaving}
+                            value={assignedRepId}
+                            onChange={e => saveNumberAssignment(e.target.value, entry.number)}
+                            style={{background:'var(--surface2)',border:'1px solid var(--border2)',color: assignedRepId ? 'var(--text)' : 'var(--dim)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'5px 8px',outline:'none',borderRadius:3,cursor:'pointer',minWidth:180}}
+                          >
+                            <option value="">— Unassigned (uses toll-free) —</option>
+                            {REPS.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:7}}>
+              Toll-free default: (855) 960-0110 · Unassigned reps dial from toll-free
+            </div>
           </div>
 
           {/* Recordings */}
@@ -1460,7 +1999,7 @@ export default function CareCircleDialer() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,marginBottom:4,textTransform:'uppercase'}}>Status</div>
                     <select value={lifecycleContact.contact.status||'new'} onChange={e => setLifecycleContact(p => ({...p, contact:{...p.contact, status:e.target.value}}))}
                       style={{width:'100%',background:'var(--surface)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'DM Mono,monospace',fontSize:11,padding:'6px 8px',outline:'none',borderRadius:3}}>
-                      {['new','called','voicemail','no-answer','callback','interested','not-interested','gatekeeper','wrong-number','disconnected','dnc'].map(s => <option key={s} value={s}>{s}</option>)}
+                      {['new','called','voicemail','no-answer','callback','booked','not-interested','gatekeeper','wrong-number','disconnected','dnc'].map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                   <div>
@@ -1496,7 +2035,7 @@ export default function CareCircleDialer() {
                 {lifecycleContact.history.length === 0 ? (
                   <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',padding:'12px 0'}}>No calls logged for this contact yet.</div>
                 ) : lifecycleContact.history.map((entry, i) => {
-                  const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',interested:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
+                  const c = {answered:'var(--green)',voicemail:'var(--blue)',callback:'var(--orange)',booked:'var(--gl)','not-interested':'var(--red)',disconnected:'var(--dim)',dnc:'var(--red)','no-answer':'var(--dim)','wrong-number':'var(--dim)',gatekeeper:'var(--orange)'}[entry.outcome]||'var(--dim)';
                   return (
                     <div key={i} style={{padding:'10px 12px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
                       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:entry.notes?6:0}}>
@@ -1508,7 +2047,30 @@ export default function CareCircleDialer() {
                         </div>
                         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{entry.timestamp?new Date(entry.timestamp).toLocaleString():'—'}</span>
                       </div>
-                      {entry.notes&&<div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic',paddingLeft:14,lineHeight:1.5}}>{entry.notes}</div>}
+                      {entry.notes&&<div style={{fontSize:11,color:'var(--mid)',fontStyle:'italic',paddingLeft:14,marginBottom:6,lineHeight:1.5}}>{entry.notes}</div>}
+                      {/* Recording */}
+                      {entry.callSid && (() => {
+                        const rec = lifecycleRecordings[entry.callSid];
+                        if (rec === 'loading') return <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',paddingLeft:14}}>Loading recording...</div>;
+                        if (!rec) return null;
+                        const streamUrl = `/api/recordings?action=stream&sid=${rec.recordingSid}`;
+                        const fullUrl = `https://claw-dialer.vercel.app/api/recordings?action=stream&sid=${rec.recordingSid}`;
+                        return (
+                          <div style={{paddingLeft:14,marginTop:8}}>
+                            <audio controls src={streamUrl} style={{width:'100%',height:32,marginBottom:7,display:'block'}} />
+                            <div style={{display:'flex',gap:7}}>
+                              <a href={streamUrl} download={`recording-${entry.callSid}.mp3`}
+                                style={{padding:'4px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.1)',color:'var(--green)',borderRadius:2,textDecoration:'none',letterSpacing:0.5}}>
+                                ↓ DOWNLOAD
+                              </a>
+                              <button onClick={() => { navigator.clipboard.writeText(fullUrl); notify('Recording link copied', 'success'); }}
+                                style={{padding:'4px 12px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--teal)',background:'rgba(61,139,122,0.1)',color:'var(--teal)',borderRadius:2,letterSpacing:0.5}}>
+                                🔗 COPY LINK
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1524,13 +2086,13 @@ export default function CareCircleDialer() {
           <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:540,maxHeight:'80vh',overflowY:'auto',animation:'slideUp 0.2s ease'}} onClick={e => e.stopPropagation()}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
               <div>
-                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)'}}>Interested Leads</div>
+                <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)'}}>Booked Leads</div>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginTop:2}}>{interestedModal.repName} · today</div>
               </div>
               <button onClick={() => setInterestedModal(null)} style={{padding:'4px 10px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕ CLOSE</button>
             </div>
             {interestedModal.entries.length === 0 ? (
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No interested leads found.</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>No booked leads found.</div>
             ) : interestedModal.entries.map((e, i) => (
               <div key={i} style={{marginBottom:14,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:3,padding:'12px 14px'}}>
                 <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:10,marginBottom:8}}>
@@ -1539,7 +2101,7 @@ export default function CareCircleDialer() {
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--green)',marginTop:2}}>{e.contactPhone}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:3}}>{fmtTime(e.duration)} · {new Date(e.timestamp).toLocaleTimeString()}{e.notes ? ` · "${e.notes}"` : ''}</div>
                   </div>
-                  <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--gl)',border:'1px solid rgba(74,155,74,0.3)',borderRadius:2,padding:'2px 6px',flexShrink:0}}>INTERESTED</span>
+                  <span style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--gl)',border:'1px solid rgba(74,155,74,0.3)',borderRadius:2,padding:'2px 6px',flexShrink:0}}>BOOKED</span>
                 </div>
                 {e.callSid
                   ? <InterestedRecording callSid={e.callSid} />
@@ -1590,9 +2152,100 @@ export default function CareCircleDialer() {
         </div>
       )}
 
+      {/* SKIN PICKER DROPDOWN */}
+      {showSkinPicker && (
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:499}} onClick={() => setShowSkinPicker(false)} />
+          <div style={{position:'fixed',top:54,right:160,zIndex:500,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:12,width:260,boxShadow:'0 8px 28px rgba(0,0,0,0.5)',animation:'slideUp 0.15s ease'}}>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',letterSpacing:1,textTransform:'uppercase',marginBottom:8}}>Choose Theme</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+              {Object.entries(SKINS)
+                .filter(([, s]) => isAdmin || s.repAccessible)
+                .map(([key, s]) => (
+                <button key={key} onClick={() => { setSkinKey(key); setShowSkinPicker(false); }} style={{
+                  display:'flex',alignItems:'center',gap:4,padding:'5px 8px',
+                  fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',borderRadius:3,
+                  border:`1px solid ${skinKey===key?'var(--green)':'rgba(128,128,128,0.3)'}`,
+                  background:skinKey===key?'rgba(74,155,74,0.14)':s.dark?s.surface:s.surface2,
+                  color:s.accentL, transition:'all 0.1s',
+                }}>
+                  <span>{s.icon}</span>
+                  <span style={{whiteSpace:'nowrap'}}>{s.label}</span>
+                  {skinKey===key && <span style={{color:'var(--green)',marginLeft:2}}>✓</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* CHAT PANEL */}
+      {chatOpen && (
+        <div style={{position:'fixed',right:0,top:0,bottom:0,width:320,background:'var(--surface)',borderLeft:'1px solid var(--border2)',zIndex:300,display:'flex',flexDirection:'column',boxShadow:'-4px 0 20px rgba(0,0,0,0.4)'}}>
+          {/* header */}
+          <div style={{padding:'12px 14px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}}>
+            <div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--gl)',letterSpacing:1}}>MESSAGES</div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:2,letterSpacing:0.5}}>{isAdmin ? 'Rep threads → Chase' : 'Your thread with Chase'}</div>
+            </div>
+            <button onClick={() => setChatOpen(false)} style={{padding:'3px 8px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2}}>✕</button>
+          </div>
+          {/* messages */}
+          <div style={{flex:1,overflowY:'auto',padding:'10px 10px 6px',display:'flex',flexDirection:'column',gap:7}}>
+            {chatMessages.length === 0 && (
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',textAlign:'center',marginTop:30}}>No messages yet. Say something!</div>
+            )}
+            {chatMessages
+              .filter(m => isAdmin
+                ? (chatTo ? (m.fromId === chatTo || m.to === chatTo) : true)
+                : (m.fromId === rep.id || m.to === rep.id)
+              )
+              .map(m => {
+                const isMe = m.fromId === rep.id;
+                const isUnread = m.ts > chatLastRead && !isMe;
+                return (
+                  <div key={m.id} style={{display:'flex',flexDirection:'column',alignItems:isMe?'flex-end':'flex-start'}}>
+                    <div style={{
+                      maxWidth:'88%',padding:'8px 10px',borderRadius:4,
+                      background:isUnread?'rgba(200,122,42,0.12)':isMe?'var(--surface3)':'var(--surface2)',
+                      border:`1px solid ${isUnread?'rgba(200,122,42,0.35)':isMe?'var(--border2)':'var(--border)'}`,
+                    }}>
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginBottom:4,display:'flex',gap:6,alignItems:'center'}}>
+                        <span style={{color:isMe?'var(--gl)':m.fromRole==='admin'?'var(--teal)':'var(--mid)'}}>{isMe ? 'You' : m.fromName}</span>
+                        {isMe ? <span>→ {m.toName}</span> : <span>→ Chase</span>}
+                        <span>· {new Date(m.ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false})}</span>
+                        {isUnread && <span style={{color:'var(--orange)'}}>NEW</span>}
+                      </div>
+                      <div style={{fontSize:12,color:'var(--text)',lineHeight:1.45,wordBreak:'break-word'}}>{m.text}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            <div ref={chatBottomRef} />
+          </div>
+          {/* compose */}
+          <div style={{padding:10,borderTop:'1px solid var(--border)',flexShrink:0}}>
+            {isAdmin && (
+              <select value={chatTo} onChange={e => setChatTo(e.target.value)} style={{width:'100%',marginBottom:7,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:11,padding:'5px 8px',outline:'none',borderRadius:3,cursor:'pointer'}}>
+                <option value="">All threads</option>
+                {REPS.filter(r => r.id !== rep.id).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            )}
+            <div style={{display:'flex',gap:6}}>
+              <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }}
+                placeholder={isAdmin ? `Message ${chatTo ? REPS.find(r=>r.id===chatTo)?.name||'' : 'a rep'}...` : 'Message Chase...'}
+                style={{flex:1,background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
+              <button onClick={sendChat} style={{padding:'7px 11px',fontFamily:'DM Mono,monospace',fontSize:9,cursor:'pointer',border:'1px solid var(--green)',background:'rgba(74,155,74,0.14)',color:'var(--gl)',borderRadius:3,letterSpacing:0.5,whiteSpace:'nowrap'}}>SEND</button>
+            </div>
+            {!isAdmin && <div style={{fontFamily:'DM Mono,monospace',fontSize:7,color:'var(--dim)',marginTop:5,letterSpacing:0.3}}>Messages go to Chase only</div>}
+          </div>
+        </div>
+      )}
+
       {/* NOTIFICATION */}
       {notification&&(
-        <div style={{position:'fixed',bottom:22,right:22,padding:'11px 16px',background:'var(--surface)',border:'1px solid var(--border2)',borderLeft:`3px solid ${notification.type==='success'?'var(--green)':notification.type==='warning'?'var(--orange)':'var(--teal)'}`,borderRadius:3,fontFamily:'Inter,sans-serif',fontSize:12,color:'var(--text)',zIndex:1000,maxWidth:300,animation:'slideUp 0.3s ease',boxShadow:'0 4px 16px rgba(0,0,0,0.4)'}}>
+        <div style={{position:'fixed',bottom:22,right:chatOpen?342:22,padding:'11px 16px',background:'var(--surface)',border:'1px solid var(--border2)',borderLeft:`3px solid ${notification.type==='success'?'var(--green)':notification.type==='warning'?'var(--orange)':'var(--teal)'}`,borderRadius:3,fontFamily:'Inter,sans-serif',fontSize:12,color:'var(--text)',zIndex:1000,maxWidth:300,animation:'slideUp 0.3s ease',boxShadow:'0 4px 16px rgba(0,0,0,0.4)'}}>
           {notification.msg}
         </div>
       )}

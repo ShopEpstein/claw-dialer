@@ -1,9 +1,26 @@
 import twilio from 'twilio';
 import Anthropic from '@anthropic-ai/sdk';
-import { saveCall } from './kv';
+import { saveCall, getPhoneAssignments, setPhoneAssignments, getActiveConf, setActiveConf, delActiveConf } from './kv';
 
 const BASE = 'https://claw-dialer.vercel.app';
-const FROM = '+18559600110';
+const FROM = '+18559600110'; // toll-free — SMS default for everyone
+
+// Default outbound caller IDs per rep — overridden at runtime via Admin > Number Pool
+const DEFAULT_PHONE_ASSIGNMENTS = {
+  chase:    '+18502033021', // (850) 203-3021 Chase Local
+  brittany: '+18507211779', // (850) 721-1779 Jessica Local
+  erica:    '+18502043347', // (850) 204-3347 Erica Local
+};
+
+async function getRepPhone(repId) {
+  try {
+    const stored = await getPhoneAssignments();
+    const map = stored || DEFAULT_PHONE_ASSIGNMENTS;
+    return map[repId] || FROM;
+  } catch {
+    return DEFAULT_PHONE_ASSIGNMENTS[repId] || FROM;
+  }
+}
 
 const SYSTEM_PROMPT_B2B = `You are a professional outreach representative for CareCircle Network, calling senior care facilities and providers in Northwest Florida. Calm, credible, direct. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
 
@@ -228,8 +245,9 @@ export default async function handler(req, res) {
         contactName: contactName || '', contactBusiness: contactBusiness || '',
         contactType: contactType || 'b2b', script: script || '',
       });
+      const callFrom = await getRepPhone(repId);
       const call = await client.calls.create({
-        to, from: FROM,
+        to, from: callFrom,
         url: aiMode
           ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&contactType=${contactType||'b2b'}`
           : `${BASE}/api/twilio?action=twiml`,
@@ -258,15 +276,94 @@ export default async function handler(req, res) {
   }
 
   if (action === 'browser-call') {
-    const { To } = body;
+    const { To, repId, contactType: ct } = body;
     res.setHeader('Content-Type', 'text/xml');
     if (!To) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Hangup/></Response>`);
+
+    // ── Admin monitoring an active rep call ──────────────────────────────────
+    if (To === 'monitor') {
+      const { targetRepId, mode } = body;
+      try {
+        const confData = await getActiveConf(targetRepId);
+        if (!confData) return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">No active call for that rep.</Say><Hangup/></Response>`);
+        const { confName, repCallSid } = confData;
+        const adminCallSid = body.CallSid;
+        // Whisper: join muted, status callback will enable coaching + unmute
+        // Listen:  join muted permanently
+        const cbParam = mode === 'whisper'
+          ? ` statusCallback="${BASE}/api/twilio?action=coach-activate&adminCallSid=${adminCallSid}&repCallSid=${encodeURIComponent(repCallSid)}" statusCallbackEvent="join" statusCallbackMethod="POST"`
+          : '';
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="false" endConferenceOnExit="false" beep="false" muted="true"${cbParam}/></Dial></Response>`);
+      } catch(e) {
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Error joining call.</Say><Hangup/></Response>`);
+      }
+    }
+
+    // ── Regular outbound call — simple direct dial ───────────────────────────
+    const callerId = await getRepPhone(repId || '');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="+18559600110" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
+  <Dial callerId="${escapeXml(callerId)}" record="record-from-answer" recordingStatusCallback="${BASE}/api/recordings?action=transcript-webhook" recordingStatusCallbackMethod="POST">
     <Number>${escapeXml(To)}</Number>
   </Dial>
 </Response>`);
+  }
+
+  // ── Conference event callback (start → dial customer; end → clean KV) ──────
+  if (action === 'conf-event') {
+    const event = req.body?.StatusCallbackEvent;
+    const cbRepId = req.query.repId || '';
+
+    if (event === 'conference-start') {
+      try {
+        const confData = await getActiveConf(cbRepId);
+        if (confData) {
+          const { to, callerId: cid, ct: confCt, confName: cName } = confData;
+          const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+          await client.calls.create({
+            to, from: cid,
+            url: `${BASE}/api/twilio?action=conf-customer&confName=${encodeURIComponent(cName)}`,
+            record: true,
+            recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
+            recordingStatusCallbackMethod: 'POST',
+            machineDetection: 'DetectMessageEnd',
+            asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${confCt||'b2b'}`,
+            asyncAmdStatusCallbackMethod: 'POST',
+          });
+        }
+      } catch(e) { console.error('conf-start customer dial error:', e.message); }
+    } else if (event === 'conference-end') {
+      try { await delActiveConf(cbRepId); } catch {}
+    }
+
+    return res.status(200).end();
+  }
+
+  // ── Customer joins conference ──────────────────────────────────────────────
+  if (action === 'conf-customer') {
+    const confName = req.query.confName || '';
+    res.setHeader('Content-Type', 'text/xml');
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Dial><Conference name="${escapeXml(confName)}" startConferenceOnEnter="true" endConferenceOnExit="true" beep="false" maxParticipants="10"/></Dial></Response>`);
+  }
+
+  // ── Conference ended — clean up KV (legacy, also handled by conf-event) ────
+  if (action === 'conf-end') {
+    try { await delActiveConf(req.query.repId || ''); } catch {}
+    return res.status(200).end();
+  }
+
+  // ── Coaching activation via conference participant status callback ─────────
+  // Fires when admin participant joins; enables coaching so only rep hears admin
+  if (action === 'coach-activate') {
+    const { adminCallSid, repCallSid } = req.query;
+    const { ConferenceSid } = req.body || {};
+    try {
+      const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+      await client.conferences(ConferenceSid).participants(adminCallSid).update({
+        coaching: true, callSidToCoach: repCallSid, muted: false,
+      });
+    } catch(e) { console.error('coach-activate error:', e.message); }
+    return res.status(200).end();
   }
 
   if (action === 'inbound') {
@@ -282,6 +379,21 @@ export default async function handler(req, res) {
       }).catch(() => {});
     } catch {}
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Thanks for calling CareCircle Network. We connect families with independent care advocates across Florida. Someone from our team will call you right back — we're noting your number now.</Say><Hangup/></Response>`);
+  }
+
+  if (action === 'phone-assignments') {
+    if (req.method === 'GET') {
+      try {
+        const stored = await getPhoneAssignments();
+        return res.status(200).json({ assignments: stored || DEFAULT_PHONE_ASSIGNMENTS });
+      } catch(err) { return res.status(500).json({ error: err.message }); }
+    }
+    if (req.method === 'POST') {
+      try {
+        await setPhoneAssignments(req.body.assignments || {});
+        return res.status(200).json({ ok: true });
+      } catch(err) { return res.status(500).json({ error: err.message }); }
+    }
   }
 
   return res.status(400).json({ error: 'Unknown action' });
