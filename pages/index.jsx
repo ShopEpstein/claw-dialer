@@ -347,6 +347,8 @@ export default function CareCircleDialer() {
   const [monitoring, setMonitoring] = useState(null); // { repId, repName, mode } | null
   const [dialTimes, setDialTimes] = useState({}); // { repId -> minutes in range }
   const [skinKey, setSkinKey] = useState(() => lGet('cc_skin', 'CARECIRCLE'));
+  const [callbackModal, setCallbackModal] = useState(false);
+  const [callbackTime, setCallbackTime] = useState('');
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
@@ -905,14 +907,14 @@ export default function CareCircleDialer() {
     setCallState('ended');
   }
 
-  async function setDisposition(outcome) {
+  async function setDisposition(outcome, callbackAt) {
     if (!activeContact) return;
     clearInterval(timerRef.current);
     clearInterval(pollRef.current);
     if (twilioConnRef.current) { twilioConnRef.current.disconnect(); twilioConnRef.current = null; }
     setCallState('idle');
     const statusMap = { answered:'called', voicemail:'voicemail', callback:'callback', booked:'booked', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
-    const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null, lastCalledAt: new Date().toISOString() };
+    const contactUpdates = { status: statusMap[outcome] || 'called', notes, claimedBy: null, lastCalledAt: new Date().toISOString(), ...(callbackAt ? { callbackAt } : {}) };
     updateContact(activeContact.id, contactUpdates);
     updateContactKV(contactType, activeContact.id, contactUpdates);
     // Save to KV
@@ -922,9 +924,31 @@ export default function CareCircleDialer() {
       contactPhone: activeContact.phone, contactType,
       outcome, duration: callSeconds, script: SCRIPTS[contactType].name, notes,
       timestamp: new Date().toISOString(), callSid: callSid || null,
+      ...(callbackAt ? { callbackAt } : {}),
     };
     try { await fetch('/api/kv?action=save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(record) }); } catch {}
     setMyLog(prev => [record, ...prev]);
+    // Schedule the callback via the callbacks API and notify admin
+    if (outcome === 'callback' && callbackAt) {
+      try {
+        await fetch('/api/callbacks?action=schedule', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contactId: activeContact.id,
+            contactName: activeContact.name,
+            contactPhone: activeContact.phone,
+            contactType,
+            callbackAt: new Date(callbackAt).toISOString(),
+            repId: rep.id,
+            repName: rep.name,
+            notes,
+            script: SCRIPTS[contactType].find(s => s.id === activeScriptId)?.name || SCRIPTS[contactType][0]?.name,
+          }),
+        });
+        notify(`Callback scheduled for ${new Date(callbackAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`, 'success');
+      } catch { /* best-effort */ }
+    }
     if (outcome === 'booked') {
       notify(`Booked! Auto-sending SMS to ${activeContact.name || activeContact.phone}`, 'success');
       try {
@@ -1386,7 +1410,17 @@ export default function CareCircleDialer() {
               {['connected','ended'].includes(callState)&&(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
                   {[['booked','★ Booked','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
-                    <button key={outcome} onClick={() => setDisposition(outcome)} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
+                    <button key={outcome} onClick={() => {
+                        if (outcome === 'callback') {
+                          // Default to tomorrow at 10am local time
+                          const d = new Date(); d.setDate(d.getDate()+1); d.setHours(10,0,0,0);
+                          const pad = n => String(n).padStart(2,'0');
+                          setCallbackTime(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T10:00`);
+                          setCallbackModal(true);
+                        } else {
+                          setDisposition(outcome);
+                        }
+                      }} style={{padding:'8px 4px',fontFamily:'Inter,sans-serif',fontSize:10,fontWeight:600,cursor:'pointer',border:`1px solid ${color}44`,background:`${color}12`,color,borderRadius:3,textAlign:'center'}}>
                       {label}
                     </button>
                   ))}
@@ -1946,6 +1980,31 @@ export default function CareCircleDialer() {
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',marginTop:14}}>
               <button onClick={() => setSmsModal(false)} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Cancel</button>
               <button onClick={sendSMS} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--green)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>Send SMS</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CALLBACK SCHEDULING MODAL */}
+      {callbackModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:360,animation:'slideUp 0.2s ease'}}>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--orange)',marginBottom:6}}>↩ Schedule Callback</div>
+            {activeContact&&<div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginBottom:16}}>{activeContact.name||activeContact.phone}</div>}
+            <div style={{marginBottom:16}}>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,marginBottom:6,textTransform:'uppercase'}}>Call back at</div>
+              <input type="datetime-local" value={callbackTime} onChange={e=>setCallbackTime(e.target.value)}
+                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:13,padding:'8px 10px',outline:'none',borderRadius:3,cursor:'pointer'}} />
+            </div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginBottom:14,lineHeight:1.6}}>
+              The call will be placed automatically at the scheduled time. Admin will be notified via SMS now.
+            </div>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={() => setCallbackModal(false)} style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Cancel</button>
+              <button onClick={() => { if (!callbackTime) return; setCallbackModal(false); setDisposition('callback', callbackTime); }}
+                style={{padding:'8px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:600,background:'var(--orange)',color:'white',border:'none',cursor:'pointer',borderRadius:3}}>
+                Schedule Callback
+              </button>
             </div>
           </div>
         </div>
