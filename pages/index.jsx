@@ -5,19 +5,19 @@ import Head from 'next/head';
 const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
   ? JSON.parse(process.env.NEXT_PUBLIC_REPS)
   : [
-      { id: 'chase',    name: 'Chase Turnquest',       pin: '5325', role: 'admin' },
-      { id: 'shawn',    name: 'Shawn Rogers',           pin: '5768', role: 'rep'   },
-      { id: 'malik',    name: 'Malik McCauley',         pin: '8322', role: 'rep'   },
-      { id: 'sagar',    name: 'Sagar Kapoor',           pin: '4719', role: 'rep'   },
-      { id: 'karen',    name: 'Karen Wince',            pin: '6048', role: 'rep'   },
-      { id: 'shannon',  name: 'Shannon Jones',          pin: '8921', role: 'rep'   },
-      { id: 'christian',name: 'Christian Daniel Loeza', pin: '7245', role: 'rep'   },
-      { id: 'brittany', name: 'Brittany Lasley',        pin: '3648', role: 'rep'   },
-      { id: 'jessica',  name: 'Jessica Blazer',         pin: '5976', role: 'rep'   },
-      { id: 'chenice',  name: 'Chenice Griffith-Turney',pin: '5978', role: 'rep'   },
-      { id: 'erica',    name: 'Erica Leverett',         pin: '3817', role: 'rep'   },
-      { id: 'lisa',     name: 'Lisa Johnston',          pin: '7153', role: 'rep'   },
-      { id: 'megan',    name: 'Megan Harris',           pin: '2946', role: 'rep'   },
+      { id: 'chase',    name: 'Chase Turnquest',  pin: '5325', role: 'admin' },
+      { id: 'brittany', name: 'Brittany Lasley',  pin: '3648', role: 'rep'   },
+      { id: 'erica',    name: 'Erica Leverett',   pin: '3817', role: 'rep'   },
+      { id: 'rep1',     name: 'Rep 1',             pin: '1001', role: 'rep'   },
+      { id: 'rep2',     name: 'Rep 2',             pin: '1002', role: 'rep'   },
+      { id: 'rep3',     name: 'Rep 3',             pin: '1003', role: 'rep'   },
+      { id: 'rep4',     name: 'Rep 4',             pin: '1004', role: 'rep'   },
+      { id: 'rep5',     name: 'Rep 5',             pin: '1005', role: 'rep'   },
+      { id: 'rep6',     name: 'Rep 6',             pin: '1006', role: 'rep'   },
+      { id: 'rep7',     name: 'Rep 7',             pin: '1007', role: 'rep'   },
+      { id: 'rep8',     name: 'Rep 8',             pin: '1008', role: 'rep'   },
+      { id: 'rep9',     name: 'Rep 9',             pin: '1009', role: 'rep'   },
+      { id: 'rep10',    name: 'Rep 10',            pin: '1010', role: 'rep'   },
     ];
 
 // ─── NUMBER POOL — local numbers available for outbound dialing ───────────────
