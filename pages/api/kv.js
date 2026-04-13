@@ -274,6 +274,49 @@ export default async function handler(req, res) {
     } catch(e) { return res.status(500).json({ messages: [], error: e.message }); }
   }
 
+  if (action === 'reconcile') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const STATUS_MAP = { answered:'called', voicemail:'voicemail', callback:'callback', booked:'booked', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
+      const normalize = p => (p || '').replace(/\D/g, '').slice(-10);
+
+      const [allRaw, contacts] = await Promise.all([
+        kv('LRANGE', 'calls:all', '0', '-1'),
+        loadContactsFromKV(pool),
+      ]);
+
+      const calls = (allRaw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+
+      // Build phone → most recent call map
+      const callMap = {};
+      for (const call of calls) {
+        const phone = normalize(call.contactPhone);
+        if (!phone) continue;
+        if (!callMap[phone] || call.timestamp > callMap[phone].timestamp) {
+          callMap[phone] = call;
+        }
+      }
+
+      let matched = 0;
+      const updated = contacts.map(c => {
+        const phone = normalize(c.phone);
+        const call = phone && callMap[phone];
+        if (!call) return c;
+        matched++;
+        return {
+          ...c,
+          status: STATUS_MAP[call.outcome] || 'called',
+          lastCalledAt: call.timestamp,
+          claimedBy: null,
+          ...(call.notes ? { notes: call.notes } : {}),
+        };
+      });
+
+      await saveContactsToKV(pool, updated);
+      return res.status(200).json({ ok: true, matched, total: contacts.length });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   if (action === 'chat-lastread') {
     try {
       if (req.method === 'POST') {
