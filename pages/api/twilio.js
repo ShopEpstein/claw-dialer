@@ -8,7 +8,7 @@ const FROM = '+18559600110'; // toll-free — SMS default for everyone
 // Default outbound caller IDs per rep — overridden at runtime via Admin > Number Pool
 const DEFAULT_PHONE_ASSIGNMENTS = {
   chase:    '+18502033021', // (850) 203-3021 Chase Local
-  brittany: '+18507211779', // (850) 721-1779 Jessica Local
+  rep11:    '+18507211779', // (850) 721-1779 Jessica Local
   erica:    '+18502043347', // (850) 204-3347 Erica Local
 };
 
