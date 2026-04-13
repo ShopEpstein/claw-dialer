@@ -342,6 +342,8 @@ export default function CareCircleDialer() {
   const [numberPoolSaving, setNumberPoolSaving] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [migrateResult, setMigrateResult] = useState(null);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState(null);
   const [lifecycleRecordings, setLifecycleRecordings] = useState({}); // { callSid -> {recordingSid} | 'loading' | null }
   const [activeConfs, setActiveConfs] = useState({}); // { repId -> confData }
   const [monitoring, setMonitoring] = useState(null); // { repId, repName, mode } | null
@@ -1787,10 +1789,26 @@ export default function CareCircleDialer() {
 
           {/* Contact Management */}
           <div style={{marginBottom:28}}>
-            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
-              Contact Management — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
-              <span style={{marginLeft:8,color:'var(--dim)',fontWeight:400,letterSpacing:0}}>({contacts.length} total)</span>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              <span>Contact Management — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
+              <span style={{marginLeft:8,color:'var(--dim)',fontWeight:400,letterSpacing:0}}>({contacts.length} total)</span></span>
+              <button disabled={reconciling} onClick={async () => {
+                if (!confirm(`Reconcile ${contacts.length} ${contactType.toUpperCase()} contacts against the full call log? This will update status and last-called date for any contact whose phone number appears in the log.`)) return;
+                setReconciling(true); setReconcileResult(null);
+                try {
+                  const r = await fetch(`/api/kv?action=reconcile&pool=${contactType}`, { method: 'POST' });
+                  const d = await r.json();
+                  if (d.ok) {
+                    setReconcileResult(`${d.matched} of ${d.total} contacts updated from call log`);
+                    loadContacts(contactType);
+                  } else { setReconcileResult(`Error: ${d.error}`); }
+                } catch(e) { setReconcileResult(`Error: ${e.message}`); }
+                setReconciling(false);
+              }} style={{padding:'3px 10px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2,letterSpacing:0.5,opacity:reconciling?0.5:1}}>
+                {reconciling ? 'RECONCILING...' : 'RECONCILE W/ CALL LOG'}
+              </button>
             </div>
+            {reconcileResult && <div style={{marginBottom:8,padding:'6px 10px',fontFamily:'DM Mono,monospace',fontSize:9,color: reconcileResult.startsWith('Error') ? 'var(--red)' : 'var(--green)',background: reconcileResult.startsWith('Error') ? 'rgba(204,68,68,0.08)' : 'rgba(74,155,74,0.08)',border:`1px solid ${reconcileResult.startsWith('Error') ? 'rgba(204,68,68,0.2)' : 'rgba(74,155,74,0.2)'}`,borderRadius:3}}>{reconcileResult}</div>}
             <input value={adminSearch} onChange={e=>setAdminSearch(e.target.value)} placeholder="Search name, phone, business..."
               style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3,marginBottom:8}} />
             <div style={{maxHeight:360,overflowY:'auto',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3}}>

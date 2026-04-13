@@ -2,27 +2,38 @@
 // Call recording storage, transcript webhook, AI analysis, Brevo email follow-up
 import Anthropic from '@anthropic-ai/sdk';
 import twilio from 'twilio';
-import fs from 'fs';
-import path from 'path';
 
-const STORE_PATH = '/tmp/claw_recordings.json';
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const KV_URL   = process.env.KV_REST_API_URL;
+const KV_TOKEN = process.env.KV_REST_API_TOKEN;
+const RECORDINGS_KEY  = 'recordings:store';
+const MAX_RECORDINGS  = 500;
+
+const BREVO_API_KEY   = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = 'campaigns@transbidlive.faith';
-const BREVO_FROM_NAME = 'Chase @ VinHunter';
+const BREVO_FROM_NAME  = 'Chase @ VinHunter';
 
-// ── Simple JSON file store (Vercel /tmp persists within function execution) ──
-function loadStore() {
-  try {
-    if (fs.existsSync(STORE_PATH)) {
-      return JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
-    }
-  } catch (e) {}
-  return { recordings: [] };
+async function kv(cmd, ...args) {
+  const r = await fetch(KV_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${KV_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([cmd, ...args]),
+  });
+  const d = await r.json();
+  return d.result;
 }
 
-function saveStore(data) {
+async function loadStore() {
   try {
-    fs.writeFileSync(STORE_PATH, JSON.stringify(data));
+    const raw = await kv('GET', RECORDINGS_KEY);
+    return raw ? JSON.parse(raw) : { recordings: [] };
+  } catch (e) {
+    return { recordings: [] };
+  }
+}
+
+async function saveStore(data) {
+  try {
+    await kv('SET', RECORDINGS_KEY, JSON.stringify(data));
   } catch (e) {}
 }
 
@@ -261,19 +272,19 @@ export default async function handler(req, res) {
     if (TranscriptionStatus !== 'completed' || !TranscriptionText) {
       return res.status(200).end();
     }
-    const store = loadStore();
+    const store = await loadStore();
     const existing = store.recordings.find(r => r.callSid === CallSid);
     if (existing) {
       existing.transcript = TranscriptionText;
       existing.recordingUrl = RecordingUrl;
       existing.transcribedAt = new Date().toISOString();
       // Kick off AI analysis async — don't block the webhook response
-      analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(analysis => {
-        const store2 = loadStore();
+      analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(async (analysis) => {
+        const store2 = await loadStore();
         const rec = store2.recordings.find(r => r.callSid === CallSid);
         if (rec) {
           rec.analysis = analysis;
-          saveStore(store2);
+          await saveStore(store2);
         }
       });
     } else {
@@ -289,14 +300,14 @@ export default async function handler(req, res) {
         analysis: null,
       });
     }
-    saveStore(store);
+    await saveStore(store);
     return res.status(200).end();
   }
 
   // ── SAVE CALL RECORD (called from twilio.js on call completion) ────────────
   if (action === 'save' && req.method === 'POST') {
     const { callSid, contactName, contactPhone, contactEmail, business, outcome, duration, script, notes } = req.body || {};
-    const store = loadStore();
+    const store = await loadStore();
     const existing = store.recordings.findIndex(r => r.callSid === callSid);
     const record = {
       id: existing >= 0 ? store.recordings[existing].id : Date.now(),
@@ -316,15 +327,14 @@ export default async function handler(req, res) {
     };
     if (existing >= 0) store.recordings[existing] = record;
     else store.recordings.unshift(record);
-    // Keep last 500
-    store.recordings = store.recordings.slice(0, 500);
-    saveStore(store);
+    store.recordings = store.recordings.slice(0, MAX_RECORDINGS);
+    await saveStore(store);
     return res.status(200).json({ ok: true });
   }
 
   // ── LIST RECORDINGS ────────────────────────────────────────────────────────
   if (action === 'list') {
-    const store = loadStore();
+    const store = await loadStore();
     const limit = parseInt(req.query.limit || '50');
     return res.status(200).json({ recordings: store.recordings.slice(0, limit), total: store.recordings.length });
   }
@@ -339,7 +349,7 @@ export default async function handler(req, res) {
       summaries = req.body.summaries;
       total = req.body.total || summaries.length;
     } else {
-      const store = loadStore();
+      const store = await loadStore();
       total = store.recordings.length;
       summaries = store.recordings
         .filter(r => r.outcome)
@@ -373,11 +383,11 @@ export default async function handler(req, res) {
     const result = await sendBrevoEmail({ to, toName: contactName, subject, html });
     // Log the send
     if (result.ok) {
-      const store = loadStore();
+      const store = await loadStore();
       const rec = store.recordings.find(r => r.contactEmail === to || r.contactName === contactName);
       if (rec) {
         rec.emailSentAt = new Date().toISOString();
-        saveStore(store);
+        await saveStore(store);
       }
     }
     return res.status(result.ok ? 200 : 500).json(result);
