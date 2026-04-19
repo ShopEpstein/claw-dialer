@@ -149,6 +149,25 @@ export default async function handler(req, res) {
     try {
       const pool = req.query.pool || 'b2b';
       const { id } = req.body;
+      // Patch only the chunk containing this contact to avoid racing with
+      // concurrent contacts-save (CSV upload) and overwriting its new chunks.
+      const metaRaw = await kv('GET', `contacts:${pool}:meta`);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        for (let i = 0; i < meta.chunks; i++) {
+          const raw = await kv('GET', `contacts:${pool}:${i}`);
+          if (!raw) continue;
+          const chunk = JSON.parse(raw);
+          const filtered = chunk.filter(c => c.id !== id);
+          if (filtered.length !== chunk.length) {
+            await kv('SET', `contacts:${pool}:${i}`, JSON.stringify(filtered));
+            await kv('SET', `contacts:${pool}:meta`, JSON.stringify({ chunks: meta.chunks, total: meta.total - 1 }));
+            return res.status(200).json({ ok: true });
+          }
+        }
+        return res.status(200).json({ ok: true, notFound: true });
+      }
+      // Legacy single-key fallback
       const contacts = await loadContactsFromKV(pool);
       await saveContactsToKV(pool, contacts.filter(c => c.id !== id));
       return res.status(200).json({ ok: true });
@@ -159,6 +178,26 @@ export default async function handler(req, res) {
     try {
       const pool = req.query.pool || 'b2b';
       const { id, updates } = req.body;
+      // Patch only the chunk that contains this contact — avoids a full
+      // read-modify-write that would race with concurrent contacts-save calls
+      // (e.g. a CSV upload) and silently drop newly uploaded contacts.
+      const metaRaw = await kv('GET', `contacts:${pool}:meta`);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        for (let i = 0; i < meta.chunks; i++) {
+          const raw = await kv('GET', `contacts:${pool}:${i}`);
+          if (!raw) continue;
+          const chunk = JSON.parse(raw);
+          const idx = chunk.findIndex(c => c.id === id);
+          if (idx !== -1) {
+            chunk[idx] = { ...chunk[idx], ...updates };
+            await kv('SET', `contacts:${pool}:${i}`, JSON.stringify(chunk));
+            return res.status(200).json({ ok: true });
+          }
+        }
+        return res.status(200).json({ ok: true, notFound: true });
+      }
+      // Legacy single-key fallback
       const contacts = await loadContactsFromKV(pool);
       await saveContactsToKV(pool, contacts.map(c => c.id === id ? { ...c, ...updates } : c));
       return res.status(200).json({ ok: true });
