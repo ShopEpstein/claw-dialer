@@ -297,6 +297,7 @@ export default function CareCircleDialer() {
   const [rep, setRep] = useState(null);
   const [contactType, setContactType] = useState('b2c');
   const [contacts, setContacts] = useState([]);
+  const [listAssignments, setListAssignments] = useState({});
   const [contactsLoading, setContactsLoading] = useState(false);
   const [activeContact, setActiveContact] = useState(null);
   const [tab, setTab] = useState('dialer');
@@ -547,6 +548,24 @@ export default function CareCircleDialer() {
     } catch(e) { notify(`Failed to save contacts: ${e.message}`, 'warning'); }
   }
 
+  async function loadListAssignments(pool) {
+    try {
+      const r = await fetch(`/api/kv?action=list-assignments&pool=${pool}`);
+      const d = await r.json();
+      setListAssignments(d.assignments || {});
+    } catch {}
+  }
+
+  async function saveListAssignments(pool, assignments) {
+    try {
+      await fetch(`/api/kv?action=list-assignments-save&pool=${pool}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignments }),
+      });
+    } catch(e) { notify(`Failed to save list assignment: ${e.message}`, 'warning'); }
+  }
+
   async function updateContactKV(pool, id, updates) {
     try {
       await fetch(`/api/kv?action=contact-update&pool=${pool}`, {
@@ -560,6 +579,7 @@ export default function CareCircleDialer() {
   useEffect(() => {
     if (!rep) return;
     loadContacts(contactType);
+    loadListAssignments(contactType);
     setActiveContact(null);
     setStatusFilter('new');
     setActiveScriptId(DEFAULT_SCRIPT[contactType]);
@@ -802,7 +822,10 @@ export default function CareCircleDialer() {
     const phoneNotCalledToday = !c.phone || !calledPhones24h.has(c.phone)
       || ['callback','booked'].includes(c.status)
       || statusFilter === c.status;
-    return ms && mf && mc && notDead && notCalledToday && phoneNotCalledToday;
+    // List assignment: reps only see contacts from their assigned lists (or unassigned lists)
+    const assignedTo = c.list_name ? listAssignments[c.list_name] : null;
+    const listOk = rep?.role === 'admin' || !assignedTo || assignedTo === rep?.id;
+    return ms && mf && mc && notDead && notCalledToday && phoneNotCalledToday && listOk;
   });
 
   function selectContact(c) {
@@ -1753,17 +1776,38 @@ export default function CareCircleDialer() {
             {contacts.length === 0 && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts in this pool yet.</div>}
             {[...new Set(contacts.map(c => c.list_name).filter(Boolean))].map(listName => {
               const count = contacts.filter(c => c.list_name === listName).length;
+              const assignedRepId = listAssignments[listName] || '';
               return (
-                <div key={listName} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6}}>
-                  <div>
+                <div key={listName} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:3,marginBottom:6,gap:10,flexWrap:'wrap'}}>
+                  <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:12,fontWeight:500,color:'var(--text)'}}>{listName}</div>
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',marginTop:2}}>{count} contacts</div>
                   </div>
+                  <select
+                    value={assignedRepId}
+                    onChange={e => {
+                      const updated = { ...listAssignments, [listName]: e.target.value || null };
+                      if (!e.target.value) delete updated[listName];
+                      setListAssignments(updated);
+                      saveListAssignments(contactType, updated);
+                      notify(e.target.value ? `"${listName}" assigned to ${REPS.find(r=>r.id===e.target.value)?.name}` : `"${listName}" unassigned (visible to all reps)`, 'success');
+                    }}
+                    style={{fontFamily:'DM Mono,monospace',fontSize:8,padding:'4px 6px',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',borderRadius:2,cursor:'pointer'}}
+                  >
+                    <option value=''>All Reps</option>
+                    {REPS.filter(r => r.role === 'rep').map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
                   <button onClick={() => {
                     if (!confirm(`Delete "${listName}" and remove all ${count} contacts from the ${contactType.toUpperCase()} pool?`)) return;
                     const updated = contacts.filter(c => c.list_name !== listName);
                     setContacts(updated);
                     saveContacts(contactType, updated);
+                    const updatedAssignments = { ...listAssignments };
+                    delete updatedAssignments[listName];
+                    setListAssignments(updatedAssignments);
+                    saveListAssignments(contactType, updatedAssignments);
                     notify(`Deleted list "${listName}" (${count} contacts removed)`, 'success');
                   }} style={{padding:'5px 10px',fontFamily:'DM Mono,monospace',fontSize:8,cursor:'pointer',border:'1px solid var(--red)',background:'transparent',color:'var(--red)',borderRadius:2,letterSpacing:0.5}}>DELETE</button>
                 </div>

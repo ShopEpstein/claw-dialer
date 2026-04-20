@@ -119,6 +119,23 @@ export default async function handler(req, res) {
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
+  if (action === 'list-assignments') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const raw = await kv('GET', `list-assignments:${pool}`);
+      return res.status(200).json({ assignments: raw ? JSON.parse(raw) : {} });
+    } catch(e) { return res.status(500).json({ assignments: {}, error: e.message }); }
+  }
+
+  if (action === 'list-assignments-save') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const { assignments } = req.body;
+      await kv('SET', `list-assignments:${pool}`, JSON.stringify(assignments));
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   if (action === 'rep-online') {
     try {
       const { repId, repName } = req.body;
