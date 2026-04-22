@@ -272,12 +272,35 @@ export default async function handler(req, res) {
     if (TranscriptionStatus !== 'completed' || !TranscriptionText) {
       return res.status(200).end();
     }
+
+    // Look up the matching call log from calls:all to get rep/contact/outcome metadata
+    let callMeta = {};
+    try {
+      const rawCalls = await kv('LRANGE', 'calls:all', '0', '499');
+      if (rawCalls && rawCalls.length > 0) {
+        const match = rawCalls
+          .map(s => { try { return JSON.parse(s); } catch { return null; } })
+          .find(c => c && c.callSid === CallSid);
+        if (match) callMeta = match;
+      }
+    } catch { /* non-fatal — proceed without enrichment */ }
+
     const store = await loadStore();
     const existing = store.recordings.find(r => r.callSid === CallSid);
     if (existing) {
       existing.transcript = TranscriptionText;
       existing.recordingUrl = RecordingUrl;
+      existing.recordingSid = RecordingSid;
       existing.transcribedAt = new Date().toISOString();
+      // Backfill metadata if not already set
+      if (!existing.repId && callMeta.repId) existing.repId = callMeta.repId;
+      if (!existing.repName && callMeta.repName) existing.repName = callMeta.repName;
+      if (!existing.contactName || existing.contactName === 'Unknown') existing.contactName = callMeta.contactName || existing.contactName;
+      if (!existing.contactPhone && callMeta.contactPhone) existing.contactPhone = callMeta.contactPhone;
+      if (!existing.contactBusiness && callMeta.contactBusiness) existing.contactBusiness = callMeta.contactBusiness;
+      if (!existing.outcome || existing.outcome === 'unknown') existing.outcome = callMeta.outcome || existing.outcome;
+      if (!existing.duration && callMeta.duration) existing.duration = callMeta.duration;
+      if (!existing.script && callMeta.script) existing.script = callMeta.script;
       // Kick off AI analysis async — don't block the webhook response
       analyzeTranscript(TranscriptionText, existing.contactName, existing.outcome).then(async (analysis) => {
         const store2 = await loadStore();
@@ -295,8 +318,15 @@ export default async function handler(req, res) {
         recordingUrl: RecordingUrl,
         transcript: TranscriptionText,
         transcribedAt: new Date().toISOString(),
-        contactName: 'Unknown',
-        outcome: 'unknown',
+        repId: callMeta.repId || '',
+        repName: callMeta.repName || '',
+        contactName: callMeta.contactName || 'Unknown',
+        contactPhone: callMeta.contactPhone || '',
+        contactBusiness: callMeta.contactBusiness || '',
+        outcome: callMeta.outcome || 'unknown',
+        duration: callMeta.duration || 0,
+        script: callMeta.script || '',
+        notes: '',
         analysis: null,
       });
     }
