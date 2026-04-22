@@ -119,6 +119,23 @@ export default async function handler(req, res) {
     } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
+  if (action === 'list-assignments') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const raw = await kv('GET', `list-assignments:${pool}`);
+      return res.status(200).json({ assignments: raw ? JSON.parse(raw) : {} });
+    } catch(e) { return res.status(500).json({ assignments: {}, error: e.message }); }
+  }
+
+  if (action === 'list-assignments-save') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const { assignments } = req.body;
+      await kv('SET', `list-assignments:${pool}`, JSON.stringify(assignments));
+      return res.status(200).json({ ok: true });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
+  }
+
   if (action === 'rep-online') {
     try {
       const { repId, repName } = req.body;
@@ -149,6 +166,25 @@ export default async function handler(req, res) {
     try {
       const pool = req.query.pool || 'b2b';
       const { id } = req.body;
+      // Patch only the chunk containing this contact to avoid racing with
+      // concurrent contacts-save (CSV upload) and overwriting its new chunks.
+      const metaRaw = await kv('GET', `contacts:${pool}:meta`);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        for (let i = 0; i < meta.chunks; i++) {
+          const raw = await kv('GET', `contacts:${pool}:${i}`);
+          if (!raw) continue;
+          const chunk = JSON.parse(raw);
+          const filtered = chunk.filter(c => c.id !== id);
+          if (filtered.length !== chunk.length) {
+            await kv('SET', `contacts:${pool}:${i}`, JSON.stringify(filtered));
+            await kv('SET', `contacts:${pool}:meta`, JSON.stringify({ chunks: meta.chunks, total: meta.total - 1 }));
+            return res.status(200).json({ ok: true });
+          }
+        }
+        return res.status(200).json({ ok: true, notFound: true });
+      }
+      // Legacy single-key fallback
       const contacts = await loadContactsFromKV(pool);
       await saveContactsToKV(pool, contacts.filter(c => c.id !== id));
       return res.status(200).json({ ok: true });
@@ -159,6 +195,26 @@ export default async function handler(req, res) {
     try {
       const pool = req.query.pool || 'b2b';
       const { id, updates } = req.body;
+      // Patch only the chunk that contains this contact — avoids a full
+      // read-modify-write that would race with concurrent contacts-save calls
+      // (e.g. a CSV upload) and silently drop newly uploaded contacts.
+      const metaRaw = await kv('GET', `contacts:${pool}:meta`);
+      if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        for (let i = 0; i < meta.chunks; i++) {
+          const raw = await kv('GET', `contacts:${pool}:${i}`);
+          if (!raw) continue;
+          const chunk = JSON.parse(raw);
+          const idx = chunk.findIndex(c => c.id === id);
+          if (idx !== -1) {
+            chunk[idx] = { ...chunk[idx], ...updates };
+            await kv('SET', `contacts:${pool}:${i}`, JSON.stringify(chunk));
+            return res.status(200).json({ ok: true });
+          }
+        }
+        return res.status(200).json({ ok: true, notFound: true });
+      }
+      // Legacy single-key fallback
       const contacts = await loadContactsFromKV(pool);
       await saveContactsToKV(pool, contacts.map(c => c.id === id ? { ...c, ...updates } : c));
       return res.status(200).json({ ok: true });
@@ -272,6 +328,49 @@ export default async function handler(req, res) {
       const messages = (raw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
       return res.status(200).json({ messages });
     } catch(e) { return res.status(500).json({ messages: [], error: e.message }); }
+  }
+
+  if (action === 'reconcile') {
+    try {
+      const pool = req.query.pool || 'b2b';
+      const STATUS_MAP = { answered:'called', voicemail:'voicemail', callback:'callback', booked:'booked', 'not-interested':'not-interested', disconnected:'disconnected', dnc:'dnc', 'no-answer':'no-answer', 'wrong-number':'wrong-number', gatekeeper:'gatekeeper' };
+      const normalize = p => (p || '').replace(/\D/g, '').slice(-10);
+
+      const [allRaw, contacts] = await Promise.all([
+        kv('LRANGE', 'calls:all', '0', '-1'),
+        loadContactsFromKV(pool),
+      ]);
+
+      const calls = (allRaw || []).map(s => { try { return JSON.parse(s); } catch { return null; } }).filter(Boolean);
+
+      // Build phone → most recent call map
+      const callMap = {};
+      for (const call of calls) {
+        const phone = normalize(call.contactPhone);
+        if (!phone) continue;
+        if (!callMap[phone] || call.timestamp > callMap[phone].timestamp) {
+          callMap[phone] = call;
+        }
+      }
+
+      let matched = 0;
+      const updated = contacts.map(c => {
+        const phone = normalize(c.phone);
+        const call = phone && callMap[phone];
+        if (!call) return c;
+        matched++;
+        return {
+          ...c,
+          status: STATUS_MAP[call.outcome] || 'called',
+          lastCalledAt: call.timestamp,
+          claimedBy: null,
+          ...(call.notes ? { notes: call.notes } : {}),
+        };
+      });
+
+      await saveContactsToKV(pool, updated);
+      return res.status(200).json({ ok: true, matched, total: contacts.length });
+    } catch(e) { return res.status(500).json({ error: e.message }); }
   }
 
   if (action === 'chat-lastread') {
