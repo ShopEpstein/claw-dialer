@@ -1971,20 +1971,30 @@ export default function CareCircleDialer() {
               <button onClick={async () => {
                 setRecordingsLoading(true);
                 try {
-                  // Fetch from both sources in parallel: Twilio (complete list) + KV (enriched metadata)
-                  const [twilioRes, kvRes] = await Promise.all([
+                  // Fetch Twilio recordings + full call log in parallel
+                  const [twilioRes, callsRes] = await Promise.all([
                     fetch('/api/recordings?action=fetch-list', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fetchRecent: 100 }) }),
-                    fetch('/api/recordings?action=list&limit=500'),
+                    fetch('/api/kv?action=all'),
                   ]);
                   const twilioData = await twilioRes.json();
-                  const kvData = await kvRes.json();
-                  // Build a lookup map from KV store by callSid
-                  const kvMap = {};
-                  for (const rec of (kvData.recordings || [])) { if (rec.callSid) kvMap[rec.callSid] = rec; }
-                  // Merge: Twilio list is source of truth for recordingSid/url; KV fills in metadata
+                  const callsData = await callsRes.json();
+                  // Build lookup from call log by callSid
+                  const callMap = {};
+                  for (const c of (callsData.calls || [])) { if (c.callSid) callMap[c.callSid] = c; }
+                  // Merge: Twilio provides recordingSid/url/dateCreated; call log provides rep/contact/outcome
                   const merged = (twilioData.list || []).map(rec => {
-                    const meta = kvMap[rec.callSid] || {};
-                    return { ...rec, ...meta, recordingSid: rec.recordingSid, recordingUrl: rec.recordingUrl, dateCreated: rec.dateCreated, duration: meta.duration || rec.duration };
+                    const c = callMap[rec.callSid] || {};
+                    return {
+                      ...rec,
+                      contactName: c.contactName || '',
+                      contactBusiness: c.contactBusiness || '',
+                      contactPhone: c.contactPhone || '',
+                      repName: c.repName || '',
+                      repId: c.repId || '',
+                      outcome: c.outcome || '',
+                      script: c.script || '',
+                      duration: c.duration || rec.duration,
+                    };
                   });
                   setRecordings(merged);
                 } catch { notify('Failed to load recordings', 'warning'); }
