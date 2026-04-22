@@ -1971,9 +1971,22 @@ export default function CareCircleDialer() {
               <button onClick={async () => {
                 setRecordingsLoading(true);
                 try {
-                  const r = await fetch('/api/recordings?action=list&limit=100');
-                  const d = await r.json();
-                  setRecordings(d.recordings || []);
+                  // Fetch from both sources in parallel: Twilio (complete list) + KV (enriched metadata)
+                  const [twilioRes, kvRes] = await Promise.all([
+                    fetch('/api/recordings?action=fetch-list', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ fetchRecent: 100 }) }),
+                    fetch('/api/recordings?action=list&limit=500'),
+                  ]);
+                  const twilioData = await twilioRes.json();
+                  const kvData = await kvRes.json();
+                  // Build a lookup map from KV store by callSid
+                  const kvMap = {};
+                  for (const rec of (kvData.recordings || [])) { if (rec.callSid) kvMap[rec.callSid] = rec; }
+                  // Merge: Twilio list is source of truth for recordingSid/url; KV fills in metadata
+                  const merged = (twilioData.list || []).map(rec => {
+                    const meta = kvMap[rec.callSid] || {};
+                    return { ...rec, ...meta, recordingSid: rec.recordingSid, recordingUrl: rec.recordingUrl, dateCreated: rec.dateCreated, duration: meta.duration || rec.duration };
+                  });
+                  setRecordings(merged);
                 } catch { notify('Failed to load recordings', 'warning'); }
                 setRecordingsLoading(false);
               }} style={{padding:'3px 9px',fontFamily:'DM Mono,monospace',fontSize:7,cursor:'pointer',border:'1px solid var(--border2)',background:'transparent',color:'var(--dim)',borderRadius:2,letterSpacing:0.5}}>
