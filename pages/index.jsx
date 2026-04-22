@@ -18,6 +18,7 @@ const REPS = typeof process !== 'undefined' && process.env.NEXT_PUBLIC_REPS
       { id: 'rep8',     name: 'Rep 8',             pin: '1008', role: 'rep'   },
       { id: 'rep9',     name: 'Rep 9',             pin: '1009', role: 'rep'   },
       { id: 'rep10',    name: 'Rep 10',            pin: '1010', role: 'rep'   },
+      { id: 'rep11',    name: 'Rep 11',            pin: '1011', role: 'rep'   },
     ];
 
 // ─── NUMBER POOL — local numbers available for outbound dialing ───────────────
