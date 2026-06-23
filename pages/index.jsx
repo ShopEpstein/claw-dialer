@@ -31,126 +31,68 @@ const NUMBER_POOL = [
 
 // ─── SCRIPTS ──────────────────────────────────────────────────────────────────
 const SCRIPTS = {
-  b2b: [
+  adv: [
     {
-      id: 'b2b-cold-facility',
-      name: 'Cold — Nursing Home / ALF',
+      id: 'adv-cold',
+      name: 'Cold — Advertiser Outreach',
       color: '#4A9B4A',
       sections: [
-        { label: 'OPENER', text: "Hi, is this the owner or administrator? This call may be recorded. I'm reaching out from CareCircle Network — we run the Intelligence Scanner that already indexes senior care facilities across Northwest Florida. Your facility has a current profile in our system. Quick question for you." },
-        { label: 'HOOK', text: "Pull up carecircle.fit/research and search your facility name — I'll wait. [Pause.] That score pulls from AHCA inspection records, CMS data, Google reviews, BBB, and employee satisfaction data. Families are using this to make placement decisions right now." },
-        { label: 'THE SHIFT', text: "A Place for Mom is under a Senate investigation — 37.5% of their 'Best of Senior Living' winners had active neglect citations. Families are looking for a trustworthy alternative. We send families to facilities with clean profiles. We charge $150 per referral. APFM charges $3,500 to $7,000 per placement." },
-        { label: 'ADVOCACY ANGLE', text: "In March 2026 the HHS Inspector General confirmed nursing homes are chemically restraining dementia patients to lighten staff workload. That's national news. Families are scared. The facility that says 'we welcome independent family advocates, we have nothing to hide' — that's a line in your admissions materials no competitor can say. That's what partnership with CareCircle gives you." },
-        { label: 'PRICING', text: "Network Partner: $499 setup, $149/month — referral matching, SEO content, managed profile. Featured Partner: $999 setup, $349/month — priority placement, AI care platform. 60-day guarantee: no qualified referral in 60 days, full refund." },
-        { label: 'CLOSE', text: "Can I text you the link to your current scanner profile so you can see what families are finding? No commitment — just transparency." },
-        { label: 'OBJECTIONS', text: "Uses APFM → 'Under Senate investigation. We charge $150/referral, they charge up to $7,000. No reason you can't use both.' | No budget → '60-day guarantee removes the risk. Full refund if we don't deliver.' | Info already public → 'It is — we pull public sources. The question is whether families see your raw data or your curated profile.' | Staff won't like advocates → 'The facilities that say that are exactly why families need this service. Being advocacy-welcome is a differentiator right now.'" },
+        { label: 'OPENER', text: "Hi, is this [Name]? I'm calling from ScrollPay — we built a free browser extension that pays users in Bitcoin for ads they see while browsing. We're onboarding founding advertisers right now. Quick question for you." },
+        { label: 'HOOK', text: "Instead of ad blockers killing your impressions, our users opted in specifically to see ads — and they're paid in XP credits for every view. Campaigns run on XP. 50,000 XP gets your campaign live, and you set your own daily and total budget." },
+        { label: 'DIFFERENTIATOR', text: "These users installed an extension specifically to engage with ads. No fraud, no bots — an opt-in audience earning XP for their attention. That's a completely different quality impression than display or social." },
+        { label: 'PLATFORM', text: "Upload creative in the advertiser portal, set your XP budget, and we match you to the right audience. Founding Partners get a listing at scrollpay.app/partners. XP is an advertising credit — not a security or token." },
+        { label: 'CLOSE', text: "Can I send you the advertiser info and a link to the portal? No commitment — just want you to see the numbers." },
+        { label: 'OBJECTIONS', text: "Audience too small → 'It's early — Founding Partners get front-page placement and the lowest rates we'll ever offer.' | Too good to be true → 'Users earn XP — a free ad credit — for attention they're already giving to ads. The incentive is real; the audience is genuinely engaged.' | How do I measure it → 'Dashboard shows impressions, spend, and XP budget in real time. You control every budget lever.' | Am I buying a token → 'No — XP is an advertising credit for running campaigns, not a coin or security. There is a separate meme coin called $SCROLL but that is completely unrelated to buying ad space.'" },
       ]
     },
     {
-      id: 'b2b-cold-agency',
-      name: 'Cold — Home Care Agency',
-      color: '#4A9B4A',
-      sections: [
-        { label: 'OPENER', text: "Hi, I'm reaching out from CareCircle Network — we actively match families in your area with licensed home care providers. Your agency already has a profile in our system. Two minutes?" },
-        { label: 'HOOK', text: "Go to carecircle.fit/research and search your agency name. That profile pulls from your FL license status, Google reviews, BBB, AHCA records, and Indeed. Families are comparing you to competitors before they call anyone." },
-        { label: 'DIFFERENTIATOR', text: "We charge $150 per converted client. A Place for Mom charges $3,500 to $7,000. We're 95% less. And families who find you through CareCircle are pre-educated and higher intent than a cold referral — they've already compared you to alternatives." },
-        { label: 'FEATURED VALUE', text: "Featured Partner includes our AI care intelligence platform — real-time care logs, family portal for out-of-state family members, concern flagging. You can offer this to client families as a value-add in your own admissions conversations." },
-        { label: 'PRICING', text: "Network Partner: $149/month plus $150 per converted client. Featured Partner: $349/month — no per-referral fee, includes AI care platform. Both include a 60-day full refund guarantee." },
-        { label: 'CLOSE', text: "Can I text you a link to your current profile so you can see what families are finding? No commitment." },
-        { label: 'OBJECTIONS', text: "More referrals than we can handle → 'This is about quality signal, not volume. CareCircle families are pre-motivated and have already compared you to alternatives.' | Don't want per-referral fee → 'Featured Partner at $349/month — flat rate, no per-referral charge.' | Already have referral sources → 'We reach families doing independent research online before they call anyone. Different channel entirely.'" },
-      ]
-    },
-    {
-      id: 'b2b-warm-followup',
+      id: 'adv-warm',
       name: 'Warm Follow-Up',
       color: '#4A9B4A',
       sections: [
-        { label: 'OPENER', text: "Hi [Name], it's [Your Name] from CareCircle Network — following up on our conversation from [day]. Did you get a chance to look at the partnership overview I sent?" },
-        { label: 'IF INTERNAL APPROVER', text: "Here's the language that usually makes this easy internally: one referral from us — one converted client — covers your annual Network Partner cost by a factor of 10 or more. A single memory care resident represents $50,000 to $80,000 in annual revenue. The partnership costs $1,490 a year. That's the math your approver needs." },
-        { label: 'THREE-WAY CLOSE', text: "If they want to hear it directly, I'm happy to get on a quick call with both of you. I can do [day/time]. Does that work?" },
-        { label: 'ROI CASE', text: "60-day guarantee: if we don't send you a qualified referral in 60 days, full refund. You're not making a faith bet — the only risk is 60 days of time. The upside is being a featured partner in the fastest-growing senior care accountability platform in Northwest Florida." },
-        { label: 'CLOSE', text: "Can we book a 15-minute call this week to get you activated? I can have your profile live within 24 hours of the agreement." },
-        { label: 'OBJECTIONS', text: "Still not sure on ROI → '60-day guarantee. Full refund if we don't deliver.' | Want free listing only → 'Free listings appear after featured and network partners in family matching. You're visible but not prioritized.' | Need to think → 'What would make you confident? I can answer that right now.'" },
-      ]
-    },
-    {
-      id: 'b2b-closing',
-      name: 'Closing Call',
-      color: '#4A9B4A',
-      sections: [
-        { label: 'OPENER', text: "Hi [Name], it's [Your Name] — circling back to confirm where you're at. Last time it sounded like you were leaning toward [Network / Featured] Partnership. Ready to move forward?" },
-        { label: 'NEXT STEPS', text: "Here's what happens: I send you the partnership agreement today — straightforward, month-to-month, cancel anytime. Once signed and the setup fee is processed, your profile goes live within 24 hours and you start appearing in family matching immediately. For Featured Partners, I'll book a 30-minute onboarding call." },
-        { label: 'SETUP FEE OBJECTION', text: "The setup fee covers your profile build, vetting review, and match configuration. It's one-time and fully covered by the 60-day guarantee — if we don't deliver a qualified referral in 60 days, the entire amount comes back to you." },
-        { label: 'CLOSE', text: "I can send the agreement right now — takes about 5 minutes to sign. Want me to send it while we're on the phone?" },
-        { label: 'OBJECTIONS', text: "Month-to-month vs annual → 'Month-to-month available at standard monthly rate. Annual saves you 2 months. Most partners convert to annual after the first referral.' | Referrals slow to come → '60-day guarantee is exactly for that. Full refund if we don't deliver in 60 days.'" },
+        { label: 'OPENER', text: "Hi [Name], it's [Your Name] from ScrollPay — following up on our conversation from [day]. Did you get a chance to look at the advertiser portal?" },
+        { label: 'RESTATE VALUE', text: "To recap: 50,000 XP gets your campaign live. You control daily and total XP budget. Users are paid to view your ads — you're reaching people who opted in specifically to see brand content." },
+        { label: 'FOUNDING PARTNER PUSH', text: "The Founding Partner listing at scrollpay.app/partners is something I want to lock in for you today. As the network grows, that front-page placement becomes much harder to get." },
+        { label: 'CLOSE', text: "Ready to get your campaign set up? I can walk you through the portal right now — takes about five minutes." },
+        { label: 'OBJECTIONS', text: "Need more data → 'I can get you campaign benchmarks from our beta cohort. What metric matters most — CPM, CTR, or total spend?' | Not in budget → 'What's your usual digital ad spend? The 50K XP launch fee is designed to be accessible — let me show you what that converts to in reach.'" },
       ]
     },
   ],
-  b2c: [
+  miner: [
     {
-      id: 'b2c-inbound-warm',
-      name: 'Inbound / Warm Lead',
+      id: 'miner-cold',
+      name: 'Cold — Extension Pitch',
       color: '#3D8B7A',
       sections: [
-        { label: 'OPENER', text: "Hi, is this [First Name]? This is [Your Name] calling from CareCircle Network — you reached out through our website about your family's care situation. Did I catch you at an okay time?" },
-        { label: 'DISCOVERY', text: "I appreciate you reaching out. Tell me a little about what's going on — who is in the facility and what's been on your mind? [Listen. Note: facility type, how long they've been there, what triggered the call, whether they're local or out of state.]" },
-        { label: 'BRIDGE', text: "Got it. So you have [loved one] at [facility type] and [summarize concern]. That's exactly the situation we built this service for — not because something is definitely wrong, but because right now you don't have a way to know what happens when you're not there." },
-        { label: 'WHAT WE DO', text: "We enter the facility as your loved one's designated essential caregiver — that's a legal designation that gives us full access. We show up unannounced. We cover overnight visits, weekends, shift changes — the windows families almost never see. Written report within 24 hours of every visit." },
-        { label: 'PRICING', text: "We start most families with the Starter — four visits over seven to ten days, covering all major shift windows including at least one overnight. It's $599 one-time and gives you a real picture of how that facility operates when nobody expects us. After that, monthly plans start at $799." },
-        { label: 'CLOSE', text: "I just need about ten minutes to get your loved one's information, the facility name and address, and what you want us to pay attention to. We can have the first visit scheduled within 48 hours. Do you have time now?" },
-        { label: 'OBJECTIONS', text: "Need to talk to siblings → 'You don't need a family vote to gather information. The Starter is $599 and gives everyone documented proof of what's actually happening.' | Insurance covers it? → 'It's not — and that's intentional. We work for your family, not an insurer.' | Already visit regularly → 'Staff knows your face. We show up at 2am on a Tuesday. That's a completely different picture.' | Facility would object → 'Facilities cannot legally prevent an authorized family advocate. Facilities that push back are exactly the ones families need to know about.'" },
+        { label: 'OPENER', text: "Hi [Name], quick question — do you use Chrome or Firefox? [Yes.] I'm calling from ScrollPay — we just launched a free browser extension that pays you in Bitcoin for ads you already scroll past. Two minutes?" },
+        { label: 'HOW IT WORKS', text: "You install the extension, it runs in the background, and every ad you see while browsing earns you XP. XP is a free advertising credit — save it for the weekly Bitcoin draw, or sell it on the open XP market. Nothing to buy, no hardware." },
+        { label: 'REFERRAL', text: "There's a referral program: 2,500 XP per direct install, 500 one level down, 100 below that. Founding Members get a 1.5x multiplier on all referral XP — so right now is the best time to get in and start building your downline." },
+        { label: 'PRIVACY', text: "The extension reads only the domain of the page you're on — just enough to count an ad view. It never reads your content, messages, or keystrokes. Your data is never sold. That's in the privacy policy at scrollpay.app." },
+        { label: 'CLOSE', text: "Can I text you the install link? Takes about 30 seconds to set up and runs completely in the background — you don't change anything about how you browse." },
+        { label: 'OBJECTIONS', text: "Too good to be true → 'You're earning XP for attention you're already giving to ads. The Bitcoin draw varies with ad revenue — it's not guaranteed — but the XP you earn is real and has market value.' | Is my data safe → 'The extension reads the domain only — never content, messages, or keystrokes. Data is never sold. That's baked into the privacy policy.' | How much can I make → 'XP has no guaranteed value and the weekly BTC prize varies with ad revenue — we never promise returns. Founding Members earn 1.5x referral XP right now.' | No BTC wallet → 'No problem — the setup guide walks you through a free wallet in about two minutes, included with the install.' | Is this the SCROLL coin → '$SCROLL is a separate speculative meme coin — unrelated to the extension or your XP. Most memecoins go to zero and I never recommend buying it.'" },
       ]
     },
     {
-      id: 'b2c-social',
-      name: 'Social / Facebook Lead',
+      id: 'miner-warm',
+      name: 'Warm Follow-Up',
       color: '#3D8B7A',
       sections: [
-        { label: 'OPENER', text: "Hi [Name], this is [Your Name] with CareCircle Network — you filled out a form through our Facebook page a little while ago about your family's care situation. Did I catch you at an okay time?" },
-        { label: 'RE-ENGAGE', text: "I just wanted to follow up quickly. Tell me — who is the family member you're concerned about and where are they right now? [They may not remember the form. Don't make them feel embarrassed — move to their situation.]" },
-        { label: 'VALIDATE', text: "[Reflect what they said.] That concern is completely valid — and most families we talk to are in exactly that position. They visit when they can. The staff seems good. But there's a whole part of the facility's week they've never seen." },
-        { label: 'WHAT WE DO', text: "What CareCircle does is fill that gap. We go in unannounced — overnight, weekends, shift changes — as your loved one's authorized advocate. We document what we find and send you a written report within 24 hours. No surprises, no guessing." },
-        { label: 'PRICING + CLOSE', text: "The best starting point is our Starter — four visits over seven to ten days, $599 one-time. Most families say they got information they couldn't have gotten any other way. Want me to walk you through what that looks like?" },
-        { label: 'TRIGGER QUESTION', text: "[If hesitant:] Can I ask — what was it about the post that caught your attention? Was there something specific going on with your loved one's care? [This surfaces the real concern. Reflect it back and anchor the Starter to solving that specific thing.]" },
-        { label: 'OBJECTIONS', text: "Just curious, not sure I need it → 'That's how most families start. Can I ask — what made you curious? Something specific going on?' | Don't know what you do → 'In one sentence: trained advocates into facilities unannounced, overnight, written report within 24 hours. We work for the family.' | Too expensive → 'The Starter is $599 one-time. It's the right first step for any family that wants to know what's actually happening.'" },
-      ]
-    },
-    {
-      id: 'b2c-cold',
-      name: 'Cold Outbound Family',
-      color: '#3D8B7A',
-      sections: [
-        { label: 'OPENER', text: "Hi, my name is [Rep Name] — I'm calling from CareCircle Network. Do you have 30 seconds for me to explain why I'm reaching out? [Wait for yes.] We help families across the country navigate senior care — whether that's keeping an eye on a loved one in a facility, or finding quality in-home help so someone can stay at home. Quick question — do you have a parent or family member who's either in a nursing home or assisted living right now, or maybe still at home but starting to need some day-to-day help? [Listen. Let them talk. Their answer routes the call.]" },
-        { label: 'TRACK A — IN A FACILITY', text: "How long have they been there, and how often are you able to visit? [Listen.] Here's why I ask. A World Health Organization review found that 64% of facility staff — roughly two out of three — admitted to some form of resident mistreatment in the past year. That's not an attack on every facility, and most staff are good people doing hard work under pressure. But it means the families who stay close and stay visible get measurably better outcomes. That's what we do. We send trained independent advocates into facilities unannounced — overnight, weekends, shift changes — the times families never see. You get a written report within 24 hours. We work for your family, not the facility." },
-        { label: 'TRACK B — NEEDS HOME CARE', text: "Got it. CareCircle has a vetted network of licensed home care agencies across the country. When a family comes to us, we match you with a top-rated agency in your area — someone local, reputable, with the track record to back it up. They handle non-medical home care: companionship, personal care, light housekeeping, transportation, meal prep — the things that let someone stay safely at home. Most accept major insurance, and depending on your state, some Medicaid coverage applies too. A lot of families are surprised by what's actually covered. Would it be worth a free 15-minute call with a matched agency in your area just to see what's available? No commitment — just information." },
-        { label: 'TRACK C — NOT SURE', text: "Completely fair. Can I ask what the care picture looks like right now? Even just knowing what's out there before you need it is useful — most families call us after something's already gone wrong." },
-        { label: 'JUST HAVE A CONVERSATION', text: "Don't rush the pitch. Ask: 'What's the biggest thing you worry about with their care right now?' | 'How often are you able to get in and see them?' | 'Have you noticed any changes recently — in them, or in how the staff are responding?' Understand the situation. The right solution becomes obvious when you listen. You're not closing today — you're building trust." },
-        { label: 'BOOK THE FOLLOW-UP', text: "Here's what I'd suggest — let me set up a short call between you and the right person on our team. They'll look at your specific situation and tell you exactly what makes sense. Free, no obligation, 15 minutes. Are mornings or afternoons better for you this week?" },
-        { label: 'OBJECTIONS', text: "Not sure I need anything → 'Completely fair — can I ask what the care situation looks like right now? Even just knowing what's out there is useful.' | Home care is expensive → 'Our partner agencies take most insurance, and depending on your state, some Medicaid coverage applies. A lot of families don't realize what's covered. The consultation is free — worth finding out.' | Already in a facility and happy → 'Great to hear. An unannounced visit either confirms everything's great, or catches something early. Families who do it say they sleep better at night.' | How did you get my number → 'We connect with families navigating senior care. If you'd prefer not to be called, I'll take you off the list right now — no problem at all.' | Those statistics sound made up → 'It's from a World Health Organization review of studies on long-term care — the 64% figure is on WHO's official elder abuse fact sheet. I can text you the link right now.' [Text: https://www.who.int/news-room/fact-sheets/detail/abuse-of-older-people] | Do you operate in my state → 'Yes — we have vetted partners in [state]. Let me connect you with the agency in your area.'" },
-      ]
-    },
-    {
-      id: 'b2c-assisting-seniors',
-      name: 'Assisting Seniors Referral',
-      color: '#3D8B7A',
-      sections: [
-        { label: 'OPENER', text: "Hi [Name], this is [Your Name] — I'm calling on behalf of Assisting Seniors and CareCircle Network. You were referred to us and I wanted to reach out personally. How are things going right now with your family's care situation?" },
-        { label: 'QUALIFY — LISTEN FOR TRACK', text: "[CRITICAL: Listen carefully. Are they talking about finding in-home care (Assisting Seniors track) or about a loved one already in a facility with concerns (CareCircle Present track)?]" },
-        { label: 'ASSISTING SENIORS TRACK', text: "You're in exactly the right place. Assisting Seniors has been serving Gulf Coast families for 17 years — they specialize in exactly this situation. I'm going to connect you directly with their team. Is [time] a good time for that call? [CRITICAL: Do NOT pitch Guardian Plans to Medicaid-qualified patients. Route to Assisting Seniors.]" },
-        { label: 'CARECIRCLE PRESENT TRACK', text: "Tell me more about the facility situation. How long have they been there and what's been on your mind? [If they're on this track, go to Inbound Warm Lead script from here — the opener is already done.]" },
-        { label: 'ASSISTING SENIORS HANDOFF', text: "Assisting Seniors is our founding partner — 17 years in this market, 5-star Google rating, zero state enforcement actions. They will take care of you. Their number is [Assisting Seniors number]. I'll send them your information right now so they're ready for you." },
-        { label: 'OBJECTIONS', text: "Thought Assisting Seniors was handling my case → 'They are — and they're excellent. I'm just making sure you have everything you need and the right team is ready for you.' | What's the difference → 'Assisting Seniors helps families find care. CareCircle monitors the quality of care after placement — unannounced visits, overnight coverage, written reports. Two different services, both working for your family.'" },
+        { label: 'OPENER', text: "Hi [Name], it's [Your Name] from ScrollPay — following up to make sure you got the install link I sent. Did you get a chance to try the extension?" },
+        { label: 'IF INSTALLED', text: "Once it's running you'll see XP accumulate in your dashboard as you browse. The extension detects pages with active ad campaigns and credits you automatically — no extra steps." },
+        { label: 'REFERRAL PUSH', text: "The fastest way to grow your XP is the referral program. 2,500 XP per direct install, 500 one level down, 100 below that. Share it with ten people and that's 25,000 XP before you even browse — and Founding Members earn 1.5x right now." },
+        { label: 'CLOSE', text: "Is there anyone in your network — coworkers, friends, family — who'd want to get paid for browsing? Happy to send you a shareable referral link right now." },
+        { label: 'OBJECTIONS', text: "Didn't install yet → 'No worries — let me send the link again. Takes 30 seconds and you can uninstall anytime. No commitment.' | Forgot about it → 'Totally understand. Free to install, earns XP passively, Founding Member 1.5x referral bonus is only available during early access.'" },
       ]
     },
   ]
 };
 
 // Active script per contact type — default to first in each array
-const DEFAULT_SCRIPT = { b2b: 'b2b-cold-facility', b2c: 'b2c-cold' };
+const DEFAULT_SCRIPT = { adv: 'adv-cold', miner: 'miner-cold' };
 
 const SMS_TEMPLATES = {
-  b2b: (name) => `CareCircle Network: Hi${name?' '+name.split(' ')[0]:''} — your facility's scanner profile and partner options: carecircle.fit/research — Questions? Care@CareCircle.Fit or 850-341-4324. Reply STOP to opt out.`,
-  b2c: (name) => `CareCircle Network: Hi${name?' '+name.split(' ')[0]:''} — information on our family advocacy service: carecircle.fit — Questions? Care@CareCircle.Fit or 850-341-4324. Reply STOP to opt out.`,
+  adv: (name) => `ScrollPay: Hi${name?' '+name.split(' ')[0]:''} — free opt-in ad platform, earn XP credits. Founding Partner info: scrollpay.app/partners Reply STOP to opt out.`,
+  miner: (name) => `ScrollPay: Mine Bitcoin for ads you already scroll past — free browser extension + weekly BTC draw. Install: scrollpay.app  XP has no guaranteed value. Reply STOP to opt out.`,
 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
@@ -181,7 +123,7 @@ function sSet(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catc
 function lGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } }
 function lSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
 
-const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#1A3D1A"/><text x="5" y="22" font-size="14" font-family="serif" fill="#4CAF50" font-weight="bold">CC</text></svg>')}`;
+const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="4" fill="#0A1628"/><text x="4" y="22" font-size="12" font-family="sans-serif" fill="#F7931A" font-weight="bold">SP</text></svg>')}`;
 
 // ─── SKINS ────────────────────────────────────────────────────────────────────
 const SKINS = {
@@ -242,8 +184,8 @@ function LoginScreen({ onLogin, activeSkin }) {
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',animation:'fadeIn 0.3s ease'}}>
       <div style={{width:380,padding:48,background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,animation:'slideUp 0.3s ease'}}>
         <div style={{textAlign:'center',marginBottom:40}}>
-          <div style={{fontFamily:'Playfair Display,serif',fontSize:30,fontWeight:700,color:'var(--gl)',letterSpacing:0.5}}>CareCircle</div>
-          <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',letterSpacing:3,textTransform:'uppercase',marginTop:6}}>Remote Care Center</div>
+          <div style={{fontFamily:'Playfair Display,serif',fontSize:30,fontWeight:700,color:'var(--gl)',letterSpacing:0.5}}>ScrollPay</div>
+          <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',letterSpacing:3,textTransform:'uppercase',marginTop:6}}>Sales Dialer</div>
           {activeSkin?.tagline && <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--mid)',letterSpacing:1,marginTop:5}}>{activeSkin.tagline}</div>}
           <div style={{width:36,height:1,background:'var(--border2)',margin:'14px auto 0'}}></div>
         </div>
@@ -263,7 +205,7 @@ function LoginScreen({ onLogin, activeSkin }) {
             Sign In
           </button>
         </form>
-        <div style={{textAlign:'center',marginTop:22,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>carecircle.fit · 850-341-4324</div>
+        <div style={{textAlign:'center',marginTop:22,fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>scrollpay.app</div>
       </div>
     </div>
   );
@@ -296,7 +238,7 @@ function InterestedRecording({ callSid }) {
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function CareCircleDialer() {
   const [rep, setRep] = useState(null);
-  const [contactType, setContactType] = useState('b2c');
+  const [contactType, setContactType] = useState('miner');
   const [contacts, setContacts] = useState([]);
   const [listAssignments, setListAssignments] = useState({});
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -375,7 +317,7 @@ export default function CareCircleDialer() {
 
   // Session restore
   useEffect(() => {
-    const saved = sGet('cc_rep', null);
+    const saved = sGet('sp_rep', null);
     if (saved) { setRep(saved); startHeartbeat(saved); }
   }, []);
 
@@ -404,7 +346,7 @@ export default function CareCircleDialer() {
   }
 
   function handleLogin(repData) {
-    sSet('cc_rep', repData);
+    sSet('sp_rep', repData);
     setRep(repData);
     startHeartbeat(repData);
   }
@@ -1155,7 +1097,7 @@ export default function CareCircleDialer() {
   return (
     <>
       <Head>
-        <title>CareCircle — Remote Care Center</title>
+        <title>ScrollPay — Dialer</title>
         <link rel="icon" href={FAVICON} />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <style>{fullCss}</style>
@@ -1164,8 +1106,8 @@ export default function CareCircleDialer() {
       {/* TOP BAR */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',height:50,background:'var(--surface)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:100}}>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <span style={{fontFamily:'Playfair Display,serif',fontSize:17,fontWeight:700,color:'var(--gl)'}}>CareCircle</span>
-          <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2}}>//&nbsp;REMOTE CARE CENTER</span>
+          <span style={{fontFamily:'Playfair Display,serif',fontSize:17,fontWeight:700,color:'var(--gl)'}}>ScrollPay</span>
+          <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2}}>//&nbsp;DIALER</span>
           <span style={{display:'flex',alignItems:'center',gap:5,padding:'2px 8px',borderRadius:2,fontFamily:'DM Mono,monospace',fontSize:8,background:'rgba(74,155,74,0.1)',border:'1px solid rgba(74,155,74,0.2)',color:'var(--green)'}}>
             <span style={{width:5,height:5,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite',display:'inline-block'}}></span>LIVE
           </span>
@@ -1198,15 +1140,11 @@ export default function CareCircleDialer() {
 
       {/* INFO BAR */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:24,padding:'5px 20px',background:'rgba(180,140,60,0.07)',borderBottom:'1px solid rgba(180,140,60,0.18)',flexWrap:'wrap'}}>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--gl)',letterSpacing:0.5}}>carecircle.fit</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--gl)',letterSpacing:0.5}}>scrollpay.app</span>
         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>850-341-4324</span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>a Stacverse project</span>
         <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--text)',letterSpacing:0.5}}>Care@CareCircle.Fit</span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Billing questions → <span style={{color:'var(--text)'}}>Billing@CareCircle.Fit</span></span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>·</span>
-        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Assisting Seniors: <span style={{color:'var(--text)'}}>850-602-5161</span></span>
+        <span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:0.5}}>Advertisers → <span style={{color:'var(--text)'}}>scrollpay.app/partners</span></span>
       </div>
 
       {/* NAV */}
@@ -1218,8 +1156,8 @@ export default function CareCircleDialer() {
         ))}
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,padding:'6px 0'}}>
           <div style={{display:'flex',border:'1px solid var(--border2)',borderRadius:3,overflow:'hidden'}}>
-            <button onClick={() => setContactType('b2b')} style={{padding:'4px 11px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:'none',background:contactType==='b2b'?'var(--gd)':'transparent',color:contactType==='b2b'?'var(--gl)':'var(--dim)',transition:'all 0.15s'}}>B2B PROVIDERS</button>
-            <button onClick={() => setContactType('b2c')} style={{padding:'4px 11px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:'none',borderLeft:'1px solid var(--border2)',background:contactType==='b2c'?'var(--gd)':'transparent',color:contactType==='b2c'?'var(--gl)':'var(--dim)',transition:'all 0.15s'}}>B2C FAMILIES</button>
+            <button onClick={() => setContactType('adv')} style={{padding:'4px 11px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:'none',background:contactType==='adv'?'var(--gd)':'transparent',color:contactType==='adv'?'var(--gl)':'var(--dim)',transition:'all 0.15s'}}>ADV ADVERTISERS</button>
+            <button onClick={() => setContactType('miner')} style={{padding:'4px 11px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:'none',borderLeft:'1px solid var(--border2)',background:contactType==='miner'?'var(--gd)':'transparent',color:contactType==='miner'?'var(--gl)':'var(--dim)',transition:'all 0.15s'}}>MINER EXTENSION</button>
           </div>
           <button onClick={() => setAiCallMode(v => !v)} style={{padding:'4px 9px',fontFamily:'DM Mono,monospace',fontSize:8,letterSpacing:0.8,cursor:'pointer',border:`1px solid ${aiCallMode?'var(--green)':'var(--border2)'}`,background:aiCallMode?'rgba(74,155,74,0.12)':'transparent',color:aiCallMode?'var(--green)':'var(--dim)',borderRadius:2}}>
             {aiCallMode?'🤖 AI ON':'🤖 AI'}
@@ -1240,7 +1178,7 @@ export default function CareCircleDialer() {
               // ── ADMIN: full scrollable list ──────────────────────────────
               <>
                 <div style={{padding:'10px 12px',borderBottom:'1px solid var(--border)',background:'var(--surface)',display:'flex',flexDirection:'column',gap:6}}>
-                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='b2b'?'providers':'families'}...`}
+                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder={`Search ${contactType==='adv'?'advertisers':'miners'}...`}
                     style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border2)',color:'var(--text)',fontFamily:'Inter,sans-serif',fontSize:12,padding:'7px 10px',outline:'none',borderRadius:3}} />
                   <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                     {['new','all','called','callback','booked','voicemail','no-answer','not-interested','gatekeeper','disconnected','wrong-number','dnc'].map(f => (
@@ -1249,7 +1187,7 @@ export default function CareCircleDialer() {
                       </button>
                     ))}
                   </div>
-                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{allFiltered.length} contacts · {contactType==='b2b'?'Providers':'Families'}</div>
+                  <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)'}}>{allFiltered.length} contacts · {contactType==='adv'?'Advertisers':'Miners'}</div>
                 </div>
                 <div style={{flex:1,overflowY:'auto'}}>
                   {allFiltered.length === 0 ? (
@@ -1365,7 +1303,7 @@ export default function CareCircleDialer() {
                     {activeContact.business_name&&<div style={{fontSize:11,color:'var(--dim)',marginTop:2}}>{activeContact.business_name}</div>}
                     {activeContact.city&&<div style={{fontSize:10,color:'var(--dim)'}}>{[activeContact.city, activeContact.state, activeContact.zip].filter(Boolean).join(', ')}</div>}
                     {activeContact.address&&<div style={{fontSize:10,color:'var(--dim)'}}>{activeContact.address}</div>}
-                    {contactType==='b2c'&&(activeContact.age||activeContact.income||activeContact.networth)&&(
+                    {contactType==='miner'&&(activeContact.age||activeContact.income||activeContact.networth)&&(
                       <div style={{display:'flex',gap:10,marginTop:4,flexWrap:'wrap'}}>
                         {activeContact.age&&<span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',background:'var(--surface2)',padding:'2px 6px',borderRadius:2}}>AGE {activeContact.age}</span>}
                         {activeContact.income&&<span style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',background:'var(--surface2)',padding:'2px 6px',borderRadius:2}}>INC ${Number(activeContact.income).toLocaleString()}</span>}
@@ -1435,7 +1373,7 @@ export default function CareCircleDialer() {
               )}
               {['connected','ended'].includes(callState)&&(
                 <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
-                  {[['booked','★ Booked','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='b2b'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
+                  {[['booked','★ Booked','var(--gl)'],['callback','↩ Callback','var(--orange)'],['answered','✓ Spoke','var(--green)'],['voicemail','📬 Left VM','var(--blue)'],['no-answer','🔇 No Answer','var(--dim)'],['not-interested','✕ Not Int.','var(--red)'],...(contactType==='adv'?[['gatekeeper','🚪 Gatekeeper','var(--orange)']]:[]),['wrong-number','🔀 Wrong #','var(--dim)'],['disconnected','✂ Disconn.','var(--dim)'],['dnc','🚫 DNC','var(--red)']].map(([outcome,label,color]) => (
                     <button key={outcome} onClick={() => {
                         if (outcome === 'callback') {
                           // Default to tomorrow at 10am local time
@@ -1758,12 +1696,12 @@ export default function CareCircleDialer() {
           {/* CSV Upload */}
           <div style={{marginBottom:28}}>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
-              Upload Contacts — currently uploading to: <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType==='b2b'?'B2B Provider Pool':'B2C Family Pool'}</span>
+              Upload Contacts — currently uploading to: <span style={{color:contactType==='adv'?'var(--green)':'var(--teal)'}}>{contactType==='adv'?'ADV Advertiser Pool':'MINER Extension Pool'}</span>
             </div>
-            <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginBottom:10}}>Toggle B2B / B2C in the nav bar to switch pools before uploading.</div>
+            <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)',marginBottom:10}}>Toggle ADV / MINER in the nav bar to switch pools before uploading.</div>
             <label style={{display:'block',border:'1px dashed var(--border2)',padding:24,textAlign:'center',cursor:'pointer',background:'var(--surface2)',borderRadius:3}}>
               <div style={{fontSize:24,marginBottom:6}}>📂</div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>Click to upload CSV → {contactType==='b2b'?'Provider':'Family'} pool<br/><span style={{fontSize:8,opacity:0.6}}>Columns: name, business_name, phone, email, city</span></div>
+              <div style={{fontFamily:'DM Mono,monospace',fontSize:10,color:'var(--dim)'}}>Click to upload CSV → {contactType==='adv'?'Advertiser':'Miner'} pool<br/><span style={{fontSize:8,opacity:0.6}}>Columns: name, business_name, phone, email, city</span></div>
               <input type="file" accept=".csv" style={{display:'none'}} onChange={handleCSV} />
             </label>
           </div>
@@ -1771,8 +1709,8 @@ export default function CareCircleDialer() {
           {/* Lists */}
           <div style={{marginBottom:28}}>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>
-              Uploaded Lists — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
-              <span style={{color:'var(--dim)',marginLeft:6}}>(toggle B2B/B2C above to manage the other pool)</span>
+              Uploaded Lists — <span style={{color:contactType==='adv'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
+              <span style={{color:'var(--dim)',marginLeft:6}}>(toggle ADV/MINER above to manage the other pool)</span>
             </div>
             {contacts.length === 0 && <div style={{fontFamily:'DM Mono,monospace',fontSize:9,color:'var(--dim)'}}>No contacts in this pool yet.</div>}
             {[...new Set(contacts.map(c => c.list_name).filter(Boolean))].map(listName => {
@@ -1835,7 +1773,7 @@ export default function CareCircleDialer() {
           {/* Contact Management */}
           <div style={{marginBottom:28}}>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
-              <span>Contact Management — <span style={{color:contactType==='b2b'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
+              <span>Contact Management — <span style={{color:contactType==='adv'?'var(--green)':'var(--teal)'}}>{contactType.toUpperCase()} Pool</span>
               <span style={{marginLeft:8,color:'var(--dim)',fontWeight:400,letterSpacing:0}}>({contacts.length} total)</span></span>
               <button disabled={reconciling} onClick={async () => {
                 if (!confirm(`Reconcile ${contacts.length} ${contactType.toUpperCase()} contacts against the full call log? This will update status and last-called date for any contact whose phone number appears in the log.`)) return;
@@ -2043,7 +1981,7 @@ export default function CareCircleDialer() {
           <div>
             <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:2,textTransform:'uppercase',marginBottom:10,paddingBottom:8,borderBottom:'1px solid var(--border)'}}>Data Export</div>
             <div style={{display:'flex',gap:10}}>
-              <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...allLog.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'carecircle-all-calls.csv')}
+              <button onClick={() => exportCSV([['Rep','Contact','Business','Phone','Type','Outcome','Duration','Script','Notes','Time'],...allLog.map(c=>[c.repName,c.contactName,c.contactBusiness,c.contactPhone,c.contactType,c.outcome,c.duration,c.script,c.notes,c.timestamp])],'scrollpay-all-calls.csv')}
                 style={{padding:'9px 14px',fontFamily:'Inter,sans-serif',fontSize:11,fontWeight:500,background:'transparent',color:'var(--dim)',border:'1px solid var(--border2)',cursor:'pointer',borderRadius:3}}>Export All Calls</button>
             </div>
           </div>
@@ -2102,7 +2040,7 @@ export default function CareCircleDialer() {
       {showAddModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border2)',borderRadius:4,padding:22,width:380,animation:'slideUp 0.2s ease'}}>
-            <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)',marginBottom:16}}>Add {contactType==='b2b'?'Provider':'Family'} Contact</div>
+            <div style={{fontFamily:'Playfair Display,serif',fontSize:16,fontWeight:600,color:'var(--gl)',marginBottom:16}}>Add {contactType==='adv'?'Advertiser':'Miner'} Contact</div>
             {[['Name','name'],['Business / Facility','business_name'],['Phone','phone'],['Email','email']].map(([label,key]) => (
               <div key={key} style={{marginBottom:10}}>
                 <div style={{fontFamily:'DM Mono,monospace',fontSize:8,color:'var(--dim)',letterSpacing:1,marginBottom:5,textTransform:'uppercase'}}>{label}</div>

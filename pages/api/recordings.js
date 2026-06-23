@@ -10,7 +10,7 @@ const MAX_RECORDINGS  = 500;
 
 const BREVO_API_KEY   = process.env.BREVO_API_KEY;
 const BREVO_FROM_EMAIL = 'campaigns@transbidlive.faith';
-const BREVO_FROM_NAME  = 'Chase @ VinHunter';
+const BREVO_FROM_NAME  = 'Chase @ ScrollPay';
 
 async function kv(cmd, ...args) {
   const r = await fetch(KV_URL, {
@@ -62,11 +62,14 @@ async function sendBrevoEmail({ to, toName, subject, html }) {
 }
 
 function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
-  const isVinHunter = !product || product.toLowerCase().includes('vin') || product.toLowerCase().includes('hunter');
-  const isClaw = product.toLowerCase().includes('claw');
-  const isTransBid = product.toLowerCase().includes('transbid');
+  const isScrollPay = product.toLowerCase().includes('scrollpay') || product.toLowerCase().includes('scroll') || product.toLowerCase().includes('miner') || product.toLowerCase().includes('adv');
+  const isVinHunter = !isScrollPay && (!product || product.toLowerCase().includes('vin') || product.toLowerCase().includes('hunter'));
+  const isClaw = !isScrollPay && product.toLowerCase().includes('claw');
+  const isTransBid = !isScrollPay && product.toLowerCase().includes('transbid');
 
-  const subject = isVinHunter
+  const subject = isScrollPay
+    ? `Free Bitcoin-rewards browser extension — ${business || contactName || 'you'}`
+    : isVinHunter
     ? `4 things CARFAX can't check — ${business || contactName || 'your dealership'}`
     : isClaw
     ? `Your 21-agent AI system — ${business || contactName || 'your business'}`
@@ -172,9 +175,43 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
             </td></tr>
           </table>`;
 
-  const bodyContent = isVinHunter ? vinHunterBody : isClaw ? clawBody : isTransBid ? transbidBody : vinHunterBody;
-  const brandName = isVinHunter ? 'VinHunter' : isClaw ? 'EconoClaw' : isTransBid ? 'TransBid Live' : 'VinHunter';
-  const brandColor = isVinHunter ? '#14F1C6' : isClaw ? '#FF6B2B' : '#14F1C6';
+  const scrollpayBody = `
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 16px;">
+            Good talking with you. Here's a quick summary of what we discussed.
+          </p>
+          <p style="font-size:15px;color:#333;line-height:1.7;margin:0 0 20px;">
+            <strong>ScrollPay</strong> is the free Bitcoin-rewards browser extension by Stacverse — earn XP for ads you already scroll past, enter weekly BTC prize draws, zero cost to install.
+          </p>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#F7931A;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Free to install</strong> — no purchase required, no payment info needed</span>
+            </td></tr>
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#F7931A;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Earn Bitcoin XP</strong> for ads you scroll past anyway — weekly BTC prize draws</span>
+            </td></tr>
+            <tr><td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
+              <span style="color:#F7931A;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Advertisers:</strong> pay-per-scroll opt-in network — zero bot traffic, real human scrolls only</span>
+            </td></tr>
+            <tr><td style="padding:8px 0;">
+              <span style="color:#F7931A;font-weight:bold;font-size:14px;">✓</span>
+              <span style="font-size:14px;color:#333;margin-left:8px;"><strong>Founding Partner rates</strong> locked forever — early advertisers and miners</span>
+            </td></tr>
+          </table>
+          <p style="font-size:12px;color:#888;line-height:1.6;margin:0 0 20px;">
+            XP has no guaranteed monetary value. No purchase necessary to participate.
+          </p>
+          <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+            <tr><td style="background:#F7931A;border-radius:3px;">
+              <a href="https://scrollpay.app" style="display:block;padding:14px 28px;color:#fff;font-weight:bold;font-size:15px;text-decoration:none;letter-spacing:1px;">→ Install Free at scrollpay.app</a>
+            </td></tr>
+          </table>`;
+
+  const bodyContent = isScrollPay ? scrollpayBody : isVinHunter ? vinHunterBody : isClaw ? clawBody : isTransBid ? transbidBody : vinHunterBody;
+  const brandName = isScrollPay ? 'ScrollPay' : isVinHunter ? 'VinHunter' : isClaw ? 'EconoClaw' : isTransBid ? 'TransBid Live' : 'VinHunter';
+  const brandColor = isScrollPay ? '#F7931A' : isVinHunter ? '#14F1C6' : isClaw ? '#FF6B2B' : '#14F1C6';
 
   const html = `
 <!DOCTYPE html>
@@ -186,7 +223,7 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
       <table width="580" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <tr><td style="background:#080A0F;padding:24px 32px;">
           <span style="font-family:'Courier New',monospace;font-size:18px;color:${brandColor};letter-spacing:3px;font-weight:bold;">${brandName.toUpperCase()}</span>
-          ${isVinHunter ? '<span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// VINLEDGER AI LIVE</span>' : ''}
+          ${isScrollPay ? '<span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// BY STACVERSE</span>' : isVinHunter ? '<span style="font-family:Arial,sans-serif;font-size:11px;color:#6B7A8D;letter-spacing:2px;margin-left:8px;">// VINLEDGER AI LIVE</span>' : ''}
         </td></tr>
         <tr><td style="padding:32px;">
           <p style="font-size:16px;color:#1a1a1a;margin:0 0 16px;">Hey ${contactName ? contactName.split(' ')[0] : 'there'},</p>
@@ -196,13 +233,13 @@ function buildFollowUpEmail(contactName, business, product = 'VinHunter') {
           </p>
           <p style="font-size:14px;color:#333;margin:0;">
             — Chase<br>
-            <span style="color:#888;font-size:12px;">VinHunter · VinLedger AI Live · EconoClaw · TransBid Live · (850) 341-4324</span>
+            <span style="color:#888;font-size:12px;">ScrollPay · Stacverse · scrollpay.app · (850) 341-4324</span>
           </p>
         </td></tr>
         <tr><td style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #eee;">
           <p style="font-size:11px;color:#aaa;margin:0;line-height:1.5;">
             You're receiving this because you expressed interest during a recent call.
-            Reply STOP to opt out. Solana Solar Solutions · 11000 Tanton Lane, Pensacola FL 32506
+            Reply STOP to opt out. ScrollPay · 11000 Tanton Lane, Pensacola FL 32506
           </p>
         </td></tr>
       </table>
