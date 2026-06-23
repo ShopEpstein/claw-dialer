@@ -22,57 +22,30 @@ async function getRepPhone(repId) {
   }
 }
 
-const SYSTEM_PROMPT_B2B = `You are a professional outreach representative for CareCircle Network, calling senior care facilities and providers in Northwest Florida. Calm, credible, direct. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
+const SYSTEM_PROMPT = `You are a professional outreach representative for ScrollPay, a free Bitcoin-rewards browser extension by Stacverse. Friendly, direct, concise. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown. This call may be recorded. You must disclose you are an AI if sincerely asked.
 
-You are calling to introduce the CareCircle Network Intelligence Scanner — a transparency platform that already indexes their facility using 6+ public data sources.
+── WHAT SCROLLPAY IS ──
+ScrollPay is a free browser extension that rewards users with Bitcoin XP for ads they already scroll past. Weekly BTC prize draws, no cost to install, no purchase required. XP has no guaranteed monetary value.
 
-── WHAT CARECIRCLE NETWORK IS ──
-An AI-powered Intelligence Scanner cross-referencing FL AHCA records, CMS Medicare data, Google Reviews, BBB complaints, Indeed/Glassdoor, and ProPublica — generating scored quality reports on every senior care provider in our market. Families use it free. Providers pay to manage their profile.
+── FOR ADVERTISERS ──
+ScrollPay offers a pay-per-scroll opt-in ad network — brands pay only when a real human scrolls their ad. No bots, no impression fraud, no wasted spend. Founding Partner pricing locked at launch rates. More info at scrollpay.app/partners.
 
-── PARTNER TIERS ──
-- Directory Listing: Free
-- Network Partner: $499 setup, $149/month — referral matching, SEO content, managed profile
-- Featured Partner: $999 setup, $349/month — priority placement, AI platform access
-- Per-referral fee: $150 (A Place for Mom charges $3,500–$7,000 per placement)
+── FOR EXTENSION INSTALLERS ──
+Install the free ScrollPay extension and earn XP for scrolling ads you already see. Enter weekly BTC prize draws at no cost. Install at scrollpay.app.
 
-── KEY POINTS ──
-- A Place for Mom is under Senate investigation — 37.5% of their award winners had active neglect citations
-- The March 2026 HHS OIG reports on chemical restraint are driving family urgency right now
-- Their facility is already indexed — claim it or leave it unmanaged
+── COMPLIANCE ──
+- Never make guaranteed earnings claims — XP has no guaranteed monetary value
+- Always offer to text info rather than pressure a verbal commitment
+- If asked whether you are an AI or a bot, confirm you are an AI assistant
 
 ── OBJECTIONS ──
-- "We use A Place for Mom" → "They're under Senate investigation. We charge $150 per referral, they charge up to $7,000."
-- "Not interested" → "Can I text you a link to your current scanner profile?"
-- "Too expensive" → "We have a free directory listing — no cost."
-- "Who is this?" → "CareCircle Network — the transparency scanner for senior care facilities in Northwest Florida. Your facility is already in our system."
-
-When they agree to receive information respond with only: SEND_LINK
-When they firmly want to end the call respond with only: HANGUP`;
-
-const SYSTEM_PROMPT_B2C = `You are a compassionate outreach representative for CareCircle Network, calling families with a loved one in senior care. Warm, credible, never pushy. Keep every response to 1-2 sentences MAX. Plain spoken words only, no special characters or markdown.
-
-── WHAT CARECIRCLE PRESENT IS ──
-Family-funded, resident-first monitoring. Trained advocates enter facilities unannounced — overnight, weekends, holidays — executing the Guardian Visit Algorithm. Written report within 24 hours. No competitor nationally offers this.
-
-── SERVICE TIERS ──
-- Starter: $599 one-time — 4 visits in 7-10 days, all shift windows, baseline report
-- Guardian Essential: from $799/month — 4 visits/month, sustained deterrence
-- Guardian: from $1,500/month — 8-10 visits, overnights, weekends
-- Guardian Elite: from $2,500/month — near-daily presence
-
-── KEY POINTS ──
-- 64% of nursing home staff admitted abuse or neglect in the past year
-- 1 in 24 elder abuse cases are ever reported
-- March 2026 HHS OIG confirmed facilities sedate residents with antipsychotics to reduce staff workload
-- Ombudsman program: 1 paid staff per 50 facilities, 40% get zero quarterly visits
-- No competitor offers unannounced overnight algorithmically-sequenced visits nationally
-
-── OBJECTIONS ──
-- "Facility seems fine" → "Most families feel that way until something happens on a night shift. Our Starter gives you a baseline in writing."
-- "Too expensive" → "The Starter is $599 one-time. If something is wrong, catching it early is worth everything."
-- "Don't think we need it" → "Can I text you the information? No commitment at all."
-- "They have cameras" → "Cameras don't stop what happens when staff know family isn't coming."
-- "Who is this?" → "CareCircle Network — we send trained advocates into facilities for families who want to know what's happening when they can't be there."
+- "Not interested" → "Can I text you the install link? It's free and takes 30 seconds."
+- "What is this?" → "ScrollPay — free Bitcoin-rewards browser extension from Stacverse. Want me to text you the link?"
+- "Is this a scam?" → "It's a free extension, no payment info needed. I can text you the scrollpay.app link right now."
+- "How do I earn Bitcoin?" → "You earn XP for scrolling ads you already see, and XP enters weekly BTC prize draws. Completely free."
+- "Too busy" → "Totally fine — I'll just text you the link."
+- "We have an ad platform" → "ScrollPay is pay-per-scroll with zero bot traffic — happy to text you our Founding Partner rates."
+- "Who is this?" → "I'm an AI assistant calling on behalf of the ScrollPay team — free Bitcoin-rewards browser extension."
 
 When they agree to receive information respond with only: SEND_LINK
 When they firmly want to end the call respond with only: HANGUP`;
@@ -100,10 +73,8 @@ export default async function handler(req, res) {
   if (action === 'ai-twiml') {
     res.setHeader('Content-Type', 'text/xml');
     const to = req.query.to || '';
-    const ct = req.query.contactType || 'b2b';
-    const opening = ct === 'b2c'
-      ? "Hi — this call may be recorded. I'm reaching out from CareCircle Network. We work with families who have a loved one in a senior care facility. Is this a good moment?"
-      : "Hi, is this the owner or administrator? This call may be recorded. I'm reaching out from CareCircle Network — we run the transparency scanner that indexes senior care facilities in Northwest Florida. Quick question for you.";
+    const ct = req.query.contactType || 'adv';
+    const opening = "Hi, this call may be recorded. I'm an AI assistant calling on behalf of the ScrollPay team — quick question for you, got a minute?";
     return res.status(200).send(buildGather(opening, [], to, ct));
   }
 
@@ -111,7 +82,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/xml');
     const speech = req.body?.SpeechResult || '';
     const to = req.query.to || '';
-    const ct = req.query.contactType || 'b2b';
+    const ct = req.query.contactType || 'adv';
     let history = [];
     try { history = JSON.parse(decodeURIComponent(req.query.history || '[]')); } catch(e) {}
     if (speech) history.push({ role: 'user', content: speech });
@@ -121,7 +92,7 @@ export default async function handler(req, res) {
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 120,
-        system: ct === 'b2c' ? SYSTEM_PROMPT_B2C : SYSTEM_PROMPT_B2B,
+        system: SYSTEM_PROMPT,
         messages: history,
       });
       const reply = response.content[0].text.trim();
@@ -130,9 +101,9 @@ export default async function handler(req, res) {
         if (to) {
           try {
             const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-            const smsBody = ct === 'b2c'
-              ? `CareCircle Network: Thank you for your time. Learn about our family advocacy service at carecircle.fit — Questions? Care@CareCircle.Fit or 850-341-4324. Reply STOP to opt out.`
-              : `CareCircle Network: Your facility scanner profile and partner options — carecircle.fit/research — Questions? Care@CareCircle.Fit or 850-341-4324. Reply STOP to opt out.`;
+            const smsBody = ct === 'miner'
+              ? `ScrollPay: Mine Bitcoin for ads you already scroll past — free browser extension + weekly BTC draw. Install: scrollpay.app  XP has no guaranteed value. Reply STOP to opt out.`
+              : `ScrollPay: Free opt-in ad platform for brands — Founding Partner info at scrollpay.app/partners  Reply STOP to opt out.`;
             await client.messages.create({ to, from: FROM, body: smsBody });
           } catch(e) { console.error('SMS error:', e.message); }
         }
@@ -152,7 +123,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'text/xml');
     return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Say voice="Polly.Matthew-Neural">Hello, this is CareCircle Network. Please stay on the line.</Say>
+  <Say voice="Polly.Matthew-Neural">Hello, this is ScrollPay. Please stay on the line.</Say>
   <Gather numDigits="1" action="${BASE}/api/twilio?action=gather" method="POST" timeout="8">
     <Say voice="Polly.Matthew-Neural">Press 1 to receive more information by text, or hang up if this is not a good time.</Say>
   </Gather>
@@ -164,13 +135,13 @@ export default async function handler(req, res) {
   if (action === 'gather') {
     const digit = req.body?.Digits;
     const customerPhone = req.body?.To || req.body?.Called || req.body?.From;
-    const ct = req.query.contactType || 'b2b';
+    const ct = req.query.contactType || 'adv';
     if (digit === '1' && customerPhone) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-        const smsBody = ct === 'b2c'
-          ? `CareCircle Network: Family advocacy service info — carecircle.fit — 850-341-4324. Reply STOP to opt out.`
-          : `CareCircle Network: Facility scanner profile and partner options — carecircle.fit/research — 850-341-4324. Reply STOP to opt out.`;
+        const smsBody = ct === 'miner'
+          ? `ScrollPay: Mine Bitcoin for ads you already scroll past — free browser extension + weekly BTC draw. Install: scrollpay.app  XP has no guaranteed value. Reply STOP to opt out.`
+          : `ScrollPay: Free opt-in ad platform for brands — Founding Partner info at scrollpay.app/partners  Reply STOP to opt out.`;
         await client.messages.create({ to: customerPhone, from: FROM, body: smsBody });
       } catch(err) { console.error('SMS error:', err.message); }
     }
@@ -184,7 +155,7 @@ export default async function handler(req, res) {
       try {
         const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
         await client.calls(CallSid).update({
-          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Play>https://carecirclenetwork-9181.twil.io/carecirclevoicedrop.mp3</Play><Hangup/></Response>`
+          twiml: `<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Hi, this is a message from ScrollPay — the free Bitcoin-rewards browser extension. Earn Bitcoin XP just by scrolling ads you already see. Completely free to install at scrollpay dot app. Have a great day.</Say><Hangup/></Response>`
         });
       } catch(err) { console.error('VM drop error:', err.message); }
     }
@@ -203,7 +174,7 @@ export default async function handler(req, res) {
           contactName: req.query.contactName ? decodeURIComponent(req.query.contactName) : '',
           contactBusiness: req.query.contactBusiness ? decodeURIComponent(req.query.contactBusiness) : '',
           contactPhone: To,
-          contactType: req.query.contactType || 'b2b',
+          contactType: req.query.contactType || 'adv',
           script: req.query.script ? decodeURIComponent(req.query.script) : '',
           outcome: CallStatus === 'completed' && dur >= 15 ? 'answered' : 'voicemail',
           duration: dur,
@@ -243,13 +214,13 @@ export default async function handler(req, res) {
       const params = new URLSearchParams({
         repId: repId || '', repName: repName || '',
         contactName: contactName || '', contactBusiness: contactBusiness || '',
-        contactType: contactType || 'b2b', script: script || '',
+        contactType: contactType || 'adv', script: script || '',
       });
       const callFrom = await getRepPhone(repId);
       const call = await client.calls.create({
         to, from: callFrom,
         url: aiMode
-          ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&contactType=${contactType||'b2b'}`
+          ? `${BASE}/api/twilio?action=ai-twiml&to=${encodeURIComponent(to)}&contactType=${contactType||'adv'}`
           : `${BASE}/api/twilio?action=twiml`,
         record: true,
         recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
@@ -258,7 +229,7 @@ export default async function handler(req, res) {
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['completed','failed','busy','no-answer'],
         machineDetection: 'DetectMessageEnd',
-        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${contactType||'b2b'}`,
+        asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${contactType||'adv'}`,
         asyncAmdStatusCallbackMethod: 'POST',
       });
       return res.status(200).json({ success: true, callSid: call.sid });
@@ -327,7 +298,7 @@ export default async function handler(req, res) {
             recordingStatusCallback: `${BASE}/api/recordings?action=transcript-webhook`,
             recordingStatusCallbackMethod: 'POST',
             machineDetection: 'DetectMessageEnd',
-            asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${confCt||'b2b'}`,
+            asyncAmdStatusCallback: `${BASE}/api/twilio?action=amd&contactType=${confCt||'adv'}`,
             asyncAmdStatusCallbackMethod: 'POST',
           });
         }
@@ -375,10 +346,10 @@ export default async function handler(req, res) {
       client.messages.create({
         to: '+18503414324',
         from: FROM,
-        body: `📞 INBOUND CALL: ${caller} just called CareCircle. Call them back now.`,
+        body: `📞 INBOUND CALL: ${caller} just called ScrollPay. Call them back now.`,
       }).catch(() => {});
     } catch {}
-    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Thanks for calling CareCircle Network. We connect families with independent care advocates across Florida. Someone from our team will call you right back — we're noting your number now.</Say><Hangup/></Response>`);
+    return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response><Say voice="Polly.Matthew-Neural">Thanks for calling ScrollPay — the free Bitcoin-rewards browser extension by Stacverse. Someone from our team will call you right back — we're noting your number now.</Say><Hangup/></Response>`);
   }
 
   if (action === 'phone-assignments') {
